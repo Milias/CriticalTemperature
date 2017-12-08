@@ -13,5 +13,16 @@
 #include <gsl/gsl_roots.h>
 #include <mpfr.h>
 
-double logExp(double x, double xmax);
+/*** MPFR ***/
+
+constexpr bool use_mpfr = false;
+constexpr mp_prec_t prec = 64;
+
+/*** gsl_integration workspace size ***/
+
+constexpr size_t w_size = 1<<10;
+
+/*** Utility functions ***/
+
+double logExp(double x, double xmax = 50);
 

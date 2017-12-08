@@ -11,7 +11,7 @@ from spec_func_full import *
 N = 1<<2
 ones_arr = ones(N)
 
-w, E, mu, beta, a = 3, 1, -1, 2, 1
+w, E, mu, beta, a = 3, 1, -1, 2, -0.01
 
 z1 = 0.5 * E - 2 * mu
 z2 = 0.5 * w - 0.5 * z1
@@ -21,10 +21,10 @@ print((z1, z2))
 #"""
 t0 = time.time()
 for i in range(N):
-  r = polePos(E, mu, beta, a)
+  r = poleRes(E, mu, beta, a)
 dt = time.time() - t0
 
-print('%.3f ms, (%.10f, %.10f)' % (dt * 1000 / N, real(r), imag(r)))
+print('time: %.3f ms, result: (%.10f, %.10f)' % (dt * 1000 / N, real(r), imag(r)))
 exit()
 #"""
 
