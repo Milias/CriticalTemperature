@@ -4,6 +4,7 @@
 *.sync-conflict*
 
 bin/*
+*.o
 
 *__pycache__*
 
