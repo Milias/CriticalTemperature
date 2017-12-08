@@ -1,0 +1,12 @@
+*.swp
+*.swo
+
+*.sync-conflict*
+
+bin/*
+
+*__pycache__*
+
+*.eps
+*.png
+*.pdf
