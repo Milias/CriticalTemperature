@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <chrono>
 #include <assert.h>
@@ -10,4 +12,6 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_roots.h>
 #include <mpfr.h>
+
+double logExp(double x, double xmax);
 

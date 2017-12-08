@@ -8,6 +8,5 @@ bin/*
 
 *__pycache__*
 
-*.eps
-*.png
-*.pdf
+graphs
+
