@@ -1,5 +1,7 @@
 #include "common.h"
 
+/*** Utility functions ***/
+
 double logExp(double x, double xmax) {
   // log( 1 + exp( x ) )
   double d_y;

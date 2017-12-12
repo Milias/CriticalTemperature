@@ -1,4 +1,4 @@
-#include "common.h"
+#include "integrals.h"
 
 /*** I1 ***/
 
@@ -14,8 +14,8 @@ double I1dmu(double z2) {
 
 double integrandI2part1(double x, void * params) {
   double * params_arr = (double *)params;
-  double w, E, mu, beta, r;
-  w = params_arr[0];
+  double /*w,*/ E, mu, beta, r;
+  //w = params_arr[0];
   E = params_arr[1];
   mu = params_arr[2];
   beta = params_arr[3];
@@ -36,14 +36,8 @@ double integrandI2part1(double x, void * params) {
 
 double integrandI2part2(double x, void * params) {
   double * params_arr = (double *)params;
-  double w, E, mu, beta, z2;
-  w = params_arr[0];
-  E = params_arr[1];
-  mu = params_arr[2];
-  beta = params_arr[3];
-  z2 = params_arr[4];
 
-  return integrandI2part1(x, params) / (x - z2);
+  return integrandI2part1(x, params) / (x - params_arr[4]);
 }
 
 double integralI2Real(double w, double E, double mu, double beta) {
@@ -56,7 +50,7 @@ double integralI2Real(double w, double E, double mu, double beta) {
 
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
 
-  if (params_arr[4] < 0) {
+  if (params_arr[4] <= 0) {
     gsl_integration_qagiu(&integrand_part2, 0, 0, 1e-10, w_size, ws, result, &error);
   } else {
     gsl_function integrand_part1;
@@ -86,19 +80,6 @@ std::complex<double> I2(double w, double E, double mu, double beta) {
 
 /*** T matrix ***/
 
-std::complex<double> invTmatrixMB(double w, double E, double mu, double beta, double a) {
-  double y2 = - 0.25 * E + mu + 0.5 * w;
-  std::complex<double> r;
-
-  if (y2 > 0) {
-    r = std::complex<double>(a, I1(y2)) + I2(w, E, mu, beta);
-  } else {
-    r = a + I1(-y2) + I2(w, E, mu, beta);
-  }
-
-  return r;
-}
-
 double invTmatrixMB_real(double w, void * params) {
   double * params_arr = (double *)params;
   double E, mu, beta, a, r;
@@ -109,7 +90,7 @@ double invTmatrixMB_real(double w, void * params) {
 
   double y2 = - 0.25 * E + mu + 0.5 * w;
 
-  if (y2 > 0) {
+  if (y2 >= 0) {
     r = a + integralI2Real(w, E, mu, beta);
   } else {
     r = a + I1(-y2) + integralI2Real(w, E, mu, beta);
@@ -118,20 +99,42 @@ double invTmatrixMB_real(double w, void * params) {
   return r;
 }
 
+double invTmatrixMB_imag(double w, void * params) {
+  double * params_arr = (double *)params;
+  double E, mu, beta, r;
+  E = params_arr[0];
+  mu = params_arr[1];
+  beta = params_arr[2];
+
+  double y2 = - 0.25 * E + mu + 0.5 * w;
+
+  if (y2 > 0) {
+    r = I1(y2) + integralI2Imag(w, E, mu, beta);
+  } else {
+    r = integralI2Imag(w, E, mu, beta);
+  }
+
+  return r;
+}
+
+std::complex<double> invTmatrixMB(double w, double E, double mu, double beta, double a) {
+  double params_arr[] = {E, mu, beta, a};
+  return std::complex<double>(invTmatrixMB_real(w, params_arr), invTmatrixMB_imag(w, params_arr));
+}
+
 double polePos(double E, double mu, double beta, double a) {
   double w_lo = 0.5 * E - 2 * mu, w_hi, r = 0;
-  std::complex<double> val1 = invTmatrixMB(w_lo, E, mu, beta, a);
+  double params_arr[] = {E, mu, beta, a};
+  double val1 = invTmatrixMB_real(w_lo, params_arr);
   bool found = false;
 
-  assert(abs(val1.imag()) < 1e-10 && "Imaginary part of T_MB is not zero.");
-
-  if (invTmatrixMB(-1e10, E, mu, beta, a).real() * val1.real() > 0) {
+  if (invTmatrixMB_real(-1e10, params_arr) * val1 > 0) {
     return NAN;
   }
 
   // Find a proper bound using exponential sweep.
   for(w_hi = - 1; w_hi > -1e10; w_hi *= 2) {
-    if (invTmatrixMB(w_hi, E, mu, beta, a).real() * val1.real() < 0) {
+    if (invTmatrixMB_real(w_hi, params_arr) * val1 < 0) {
       found = true;
       break;
     }
@@ -139,12 +142,11 @@ double polePos(double E, double mu, double beta, double a) {
   }
 
   if (found) {
-    double params[] = {E, mu, beta, a};
     int status = GSL_CONTINUE;
 
     gsl_function T_mat;
     T_mat.function = &invTmatrixMB_real;
-    T_mat.params = params;
+    T_mat.params = params_arr;
 
     const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
     gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
@@ -170,11 +172,10 @@ double polePos(double E, double mu, double beta, double a) {
 
 double integrandPoleRes(double x, void * params) {
   double * params_arr = (double *)params;
-  double E, mu, beta, z0, r;
+  double E, mu, z0, r;
   z0 = params_arr[0];
   E = params_arr[1];
   mu = params_arr[2];
-  beta = params_arr[3];
 
   r = integrandI2part1(x, params) / pow(x + 0.5 * (0.5 * E - 2 * mu - z0), 2);
 
@@ -254,7 +255,7 @@ double integrandBranch(double y, void * params) {
     mpfr_sub_ui(mpfr_res, mpfr_res, 1, MPFR_RNDN);
     mpfr_d_div(mpfr_res, final_result, mpfr_res, MPFR_RNDN);
 
-    final_result = mpfr_get_d(mpfr_res, MPFR_RNDN);
+    final_result = r.imag() / (2 * M_PI * mpfr_get_d(mpfr_res, MPFR_RNDN));
     mpfr_clear(mpfr_res);
   } else {
     final_result = r.imag() / (2 * M_PI * (exp(beta * y) - 1));

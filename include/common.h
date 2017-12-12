@@ -22,7 +22,9 @@ constexpr mp_prec_t prec = 64;
 
 constexpr size_t w_size = 1<<10;
 
-/*** Utility functions ***/
+extern "C" {
+  /*** Utility functions ***/
 
-double logExp(double x, double xmax = 50);
+  double logExp(double x, double xmax = 50);
+}
 

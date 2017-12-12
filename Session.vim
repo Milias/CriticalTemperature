@@ -2,10 +2,10 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-imap <Nul> <C-Space>
-inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
-inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
 inoremap <expr> <Down> pumvisible() ? "\" : "\<Down>"
+inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
+inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
+imap <Nul> <C-Space>
 nnoremap \d :YcmShowDetailedDiagnostic
 noremap <silent> \w :call ToggleWrap()
 noremap <silent> \s :set spell!
@@ -45,6 +45,7 @@ set switchbuf=usetab,newtab
 set tabline=%!airline#extensions#tabline#get()
 set tabstop=2
 set wildmenu
+set window=74
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -53,15 +54,19 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +3 Makefile
-badd +42 src/main.cpp
-badd +13 include/common.h
-badd +0 src/common.cpp
+badd +33 Makefile
+badd +24 src/main.cpp
+badd +7 include/common.h
+badd +26 src/common.cpp
 badd +13 .gitignore
+badd +29 include/integrals.h
+badd +158 src/integrals.cpp
+badd +3 python/c_api_test.py
+badd +28 python/c_wrap.py
 argglobal
 silent! argdel *
 $argadd Makefile
-edit src/main.cpp
+edit python/c_wrap.py
 set splitbelow splitright
 wincmd _ | wincmd |
 vsplit
@@ -75,11 +80,11 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 99 + 99) / 198)
-exe '2resize ' . ((&lines * 36 + 37) / 75)
-exe 'vert 2resize ' . ((&columns * 98 + 99) / 198)
-exe '3resize ' . ((&lines * 35 + 37) / 75)
-exe 'vert 3resize ' . ((&columns * 98 + 99) / 198)
+exe 'vert 1resize ' . ((&columns * 131 + 104) / 209)
+exe '2resize ' . ((&lines * 37 + 37) / 75)
+exe 'vert 2resize ' . ((&columns * 77 + 104) / 209)
+exe '3resize ' . ((&lines * 34 + 37) / 75)
+exe 'vert 3resize ' . ((&columns * 77 + 104) / 209)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -114,8 +119,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'cpp'
-setlocal filetype=cpp
+if &filetype != 'python'
+setlocal filetype=python
 endif
 setlocal fixendofline
 setlocal foldcolumn=0
@@ -179,8 +184,8 @@ setlocal statusline=%!airline#statusline(1)
 setlocal suffixesadd=
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'cpp'
-setlocal syntax=cpp
+if &syntax != 'python'
+setlocal syntax=python
 endif
 setlocal tabstop=2
 setlocal tagcase=
@@ -196,15 +201,15 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 22 - ((21 * winheight(0) + 36) / 72)
+let s:l = 28 - ((27 * winheight(0) + 36) / 72)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-22
-normal! 017|
+28
+normal! 0
 wincmd w
 argglobal
-if bufexists('include/common.h') | buffer include/common.h | else | edit include/common.h | endif
+if bufexists('include/integrals.h') | buffer include/integrals.h | else | edit include/integrals.h | endif
 setlocal keymap=
 setlocal noarabic
 setlocal noautoindent
@@ -320,16 +325,16 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1 - ((0 * winheight(0) + 18) / 36)
+let s:l = 28 - ((27 * winheight(0) + 18) / 37)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1
-normal! 012|
+28
+normal! 010|
 lcd /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp
 wincmd w
 argglobal
-if bufexists('/storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/src/common.cpp') | buffer /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/src/common.cpp | else | edit /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/src/common.cpp | endif
+if bufexists('/storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py') | buffer /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py | else | edit /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py | endif
 setlocal keymap=
 setlocal noarabic
 setlocal noautoindent
@@ -363,8 +368,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'cpp'
-setlocal filetype=cpp
+if &filetype != 'python'
+setlocal filetype=python
 endif
 setlocal fixendofline
 setlocal foldcolumn=0
@@ -428,8 +433,8 @@ setlocal statusline=%!airline#statusline(3)
 setlocal suffixesadd=
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'cpp'
-setlocal syntax=cpp
+if &syntax != 'python'
+setlocal syntax=python
 endif
 setlocal tabstop=2
 setlocal tagcase=
@@ -445,18 +450,18 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 18 - ((17 * winheight(0) + 17) / 35)
+let s:l = 1 - ((0 * winheight(0) + 17) / 34)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-18
-normal! 018|
+1
+normal! 0
 wincmd w
-exe 'vert 1resize ' . ((&columns * 99 + 99) / 198)
-exe '2resize ' . ((&lines * 36 + 37) / 75)
-exe 'vert 2resize ' . ((&columns * 98 + 99) / 198)
-exe '3resize ' . ((&lines * 35 + 37) / 75)
-exe 'vert 3resize ' . ((&columns * 98 + 99) / 198)
+exe 'vert 1resize ' . ((&columns * 131 + 104) / 209)
+exe '2resize ' . ((&lines * 37 + 37) / 75)
+exe 'vert 2resize ' . ((&columns * 77 + 104) / 209)
+exe '3resize ' . ((&lines * 34 + 37) / 75)
+exe 'vert 3resize ' . ((&columns * 77 + 104) / 209)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
