@@ -27,8 +27,6 @@ double integrandI2part1(double x, void * params) {
     double Ep = beta * (E_ex + sqrt( E * x )), Em = beta * (E_ex - sqrt( E * x ));
 
     r = sqrt(x) + (logExp(Em) - logExp(Ep)) / ( 2 * beta * sqrt(E) );
-    if (r != r) { return 0; }
-    r = abs(r) < 1e-15 ? 0.0 : r;
   }
 
   return r;
@@ -128,7 +126,9 @@ double polePos(double E, double mu, double beta, double a) {
   double val1 = invTmatrixMB_real(w_lo, params_arr);
   bool found = false;
 
-  if (invTmatrixMB_real(-1e10, params_arr) * val1 > 0) {
+  std::cout << invTmatrixMB_real(-1e12, params_arr) << ", " << val1 << std::endl;
+
+  if (invTmatrixMB_real(-1e12, params_arr) * val1 > 0) {
     return NAN;
   }
 

@@ -45,7 +45,6 @@ set switchbuf=usetab,newtab
 set tabline=%!airline#extensions#tabline#get()
 set tabstop=2
 set wildmenu
-set window=74
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -54,19 +53,20 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +33 Makefile
-badd +24 src/main.cpp
-badd +7 include/common.h
-badd +26 src/common.cpp
+badd +38 Makefile
+badd +5 src/main.cpp
+badd +9 include/common.h
+badd +33 src/common.cpp
 badd +13 .gitignore
-badd +29 include/integrals.h
-badd +158 src/integrals.cpp
-badd +3 python/c_api_test.py
+badd +9 include/integrals.h
+badd +18 src/integrals.cpp
+badd +17 python/c_api_test.py
 badd +28 python/c_wrap.py
+badd +4 python/common.py
 argglobal
 silent! argdel *
 $argadd Makefile
-edit python/c_wrap.py
+edit python/c_api_test.py
 set splitbelow splitright
 wincmd _ | wincmd |
 vsplit
@@ -80,11 +80,11 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 131 + 104) / 209)
+exe 'vert 1resize ' . ((&columns * 104 + 98) / 197)
 exe '2resize ' . ((&lines * 37 + 37) / 75)
-exe 'vert 2resize ' . ((&columns * 77 + 104) / 209)
+exe 'vert 2resize ' . ((&columns * 92 + 98) / 197)
 exe '3resize ' . ((&lines * 34 + 37) / 75)
-exe 'vert 3resize ' . ((&columns * 77 + 104) / 209)
+exe 'vert 3resize ' . ((&columns * 92 + 98) / 197)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -201,12 +201,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 28 - ((27 * winheight(0) + 36) / 72)
+let s:l = 17 - ((16 * winheight(0) + 36) / 72)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-28
-normal! 0
+17
+normal! 03|
 wincmd w
 argglobal
 if bufexists('include/integrals.h') | buffer include/integrals.h | else | edit include/integrals.h | endif
@@ -325,16 +325,16 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 28 - ((27 * winheight(0) + 18) / 37)
+let s:l = 29 - ((25 * winheight(0) + 18) / 37)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-28
-normal! 010|
+29
+normal! 0
 lcd /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp
 wincmd w
 argglobal
-if bufexists('/storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py') | buffer /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py | else | edit /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_api_test.py | endif
+if bufexists('/storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_wrap.py') | buffer /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_wrap.py | else | edit /storage/Utrecht/PhD/Actual\ PhD/code/critical_temp/python/c_wrap.py | endif
 setlocal keymap=
 setlocal noarabic
 setlocal noautoindent
@@ -450,18 +450,18 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1 - ((0 * winheight(0) + 17) / 34)
+let s:l = 40 - ((9 * winheight(0) + 17) / 34)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1
-normal! 0
+40
+normal! 025|
 wincmd w
-exe 'vert 1resize ' . ((&columns * 131 + 104) / 209)
+exe 'vert 1resize ' . ((&columns * 104 + 98) / 197)
 exe '2resize ' . ((&lines * 37 + 37) / 75)
-exe 'vert 2resize ' . ((&columns * 77 + 104) / 209)
+exe 'vert 2resize ' . ((&columns * 92 + 98) / 197)
 exe '3resize ' . ((&lines * 34 + 37) / 75)
-exe 'vert 3resize ' . ((&columns * 77 + 104) / 209)
+exe 'vert 3resize ' . ((&columns * 92 + 98) / 197)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

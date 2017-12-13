@@ -2,10 +2,10 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-inoremap <expr> <Down> pumvisible() ? "\" : "\<Down>"
-inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
-inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
 imap <Nul> <C-Space>
+inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
+inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
+inoremap <expr> <Down> pumvisible() ? "\" : "\<Down>"
 nnoremap \d :YcmShowDetailedDiagnostic
 noremap <silent> \w :call ToggleWrap()
 noremap <silent> \s :set spell!
@@ -44,6 +44,7 @@ set switchbuf=usetab,newtab
 set tabline=%!airline#extensions#tabline#get()
 set tabstop=2
 set wildmenu
+set window=47
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -55,7 +56,7 @@ set shortmess=aoO
 badd +78 main.py
 badd +33 common.py
 badd +8 I1.py
-badd +19 I2.py
+badd +42 I2.py
 badd +9 analytic_n.py
 badd +22 spec_func_full.py
 badd +1 scrap.py
@@ -76,11 +77,11 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe '1resize ' . ((&lines * 16 + 24) / 49)
-exe '2resize ' . ((&lines * 29 + 24) / 49)
-exe 'vert 2resize ' . ((&columns * 100 + 104) / 208)
-exe '3resize ' . ((&lines * 29 + 24) / 49)
-exe 'vert 3resize ' . ((&columns * 107 + 104) / 208)
+exe '1resize ' . ((&lines * 22 + 24) / 48)
+exe '2resize ' . ((&lines * 22 + 24) / 48)
+exe 'vert 2resize ' . ((&columns * 101 + 104) / 208)
+exe '3resize ' . ((&lines * 22 + 24) / 48)
+exe 'vert 3resize ' . ((&columns * 106 + 104) / 208)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -197,25 +198,25 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 25 - ((9 * winheight(0) + 8) / 16)
+let s:l = 46 - ((21 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-25
-normal! 016|
+46
+normal! 0
 wincmd w
 argglobal
 if bufexists('spec_func_full.py') | buffer spec_func_full.py | else | edit spec_func_full.py | endif
 let s:cpo_save=&cpo
 set cpo&vim
-inoremap <buffer> <silent> <Up> gk
-inoremap <buffer> <silent> <Down> gj
-inoremap <buffer> <silent> <Home> g<Home>
 inoremap <buffer> <silent> <End> g<End>
-noremap <buffer> <silent> <Up> gk
-noremap <buffer> <silent> <Down> gj
-noremap <buffer> <silent> <Home> g<Home>
+inoremap <buffer> <silent> <Home> g<Home>
+inoremap <buffer> <silent> <Down> gj
+inoremap <buffer> <silent> <Up> gk
 noremap <buffer> <silent> <End> g<End>
+noremap <buffer> <silent> <Home> g<Home>
+noremap <buffer> <silent> <Down> gj
+noremap <buffer> <silent> <Up> gk
 let &cpo=s:cpo_save
 unlet s:cpo_save
 setlocal keymap=
@@ -333,27 +334,15 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 36 - ((12 * winheight(0) + 14) / 29)
+let s:l = 43 - ((8 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-36
-normal! 030|
+43
+normal! 039|
 wincmd w
 argglobal
-if bufexists('I2.py') | buffer I2.py | else | edit I2.py | endif
-let s:cpo_save=&cpo
-set cpo&vim
-inoremap <buffer> <silent> <Up> gk
-inoremap <buffer> <silent> <Down> gj
-inoremap <buffer> <silent> <Home> g<Home>
-inoremap <buffer> <silent> <End> g<End>
-noremap <buffer> <silent> <Up> gk
-noremap <buffer> <silent> <Down> gj
-noremap <buffer> <silent> <Home> g<Home>
-noremap <buffer> <silent> <End> g<End>
-let &cpo=s:cpo_save
-unlet s:cpo_save
+if bufexists('common.py') | buffer common.py | else | edit common.py | endif
 setlocal keymap=
 setlocal noarabic
 setlocal noautoindent
@@ -415,7 +404,7 @@ setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
 setlocal noinfercase
 setlocal iskeyword=@,48-57,_,192-255
 setlocal keywordprg=
-setlocal linebreak
+setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 set list
@@ -469,19 +458,19 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 10 - ((6 * winheight(0) + 14) / 29)
+let s:l = 70 - ((9 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-10
-normal! 093|
+70
+normal! 02|
 wincmd w
-2wincmd w
-exe '1resize ' . ((&lines * 16 + 24) / 49)
-exe '2resize ' . ((&lines * 29 + 24) / 49)
-exe 'vert 2resize ' . ((&columns * 100 + 104) / 208)
-exe '3resize ' . ((&lines * 29 + 24) / 49)
-exe 'vert 3resize ' . ((&columns * 107 + 104) / 208)
+3wincmd w
+exe '1resize ' . ((&lines * 22 + 24) / 48)
+exe '2resize ' . ((&lines * 22 + 24) / 48)
+exe 'vert 2resize ' . ((&columns * 101 + 104) / 208)
+exe '3resize ' . ((&lines * 22 + 24) / 48)
+exe 'vert 3resize ' . ((&columns * 106 + 104) / 208)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

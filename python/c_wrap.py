@@ -15,26 +15,61 @@ integrals_so = ctypes.CDLL('bin/libintegrals.so')
 
 ### common.h
 
-class logExpClass(genericFunctor):
-  def __call__(self, x, xmax = 50):
-    try:
-      return self.func(x, xmax)
-    except Exception as e:
-      print(e)
-      return
+initializeMPFR_GSL = genericFunctor(integrals_so, "initializeMPFR_GSL", [], None)
+initializeMPFR_GSL()
 
-logExp = logExpClass(integrals_so, "logExp", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+logExp_functor = genericFunctor(integrals_so, "logExp", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+def logExp(x, xmax = 50):
+  return logExp_functor(x, xmax)
 
 ### integrals.h
 
-I1 = genericFunctor(integrals_so, "I1", [ ctypes.c_double ], ctypes.c_double)
-I1dmu = genericFunctor(integrals_so, "I1dmu", [ ctypes.c_double ], ctypes.c_double)
+I1_functor = genericFunctor(integrals_so, "I1", [ ctypes.c_double ], ctypes.c_double)
+I1dmu_functor = genericFunctor(integrals_so, "I1dmu", [ ctypes.c_double ], ctypes.c_double)
 
-I2_real = genericFunctor(integrals_so, "integralI2Real", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
-I2_imag = genericFunctor(integrals_so, "integralI2Imag", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+I2_real_functor = genericFunctor(integrals_so, "integralI2Real", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+I2_imag_functor = genericFunctor(integrals_so, "integralI2Imag", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+invTmatrixMB_real_functor = genericFunctor(integrals_so, "invTmatrixMB_real", [ ctypes.c_double, ctypes.c_void_p ], ctypes.c_double)
+
+polePos_functor = genericFunctor(integrals_so, "polePos", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+poleRes_functor = genericFunctor(integrals_so, "poleRes", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double, ctype.c_double ], ctypes.c_double)
+
+integralBranch_functor = genericFunctor(integrals_so, "integralBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+def I1(x):
+  return I1_functor(x)
+
+def I1dmu(x):
+  return I1dmu_functor(x)
+
+def I2_real(w, E, mu, beta):
+  return I2_real_functor(w, E, mu, beta)
+
+def I2_imag(w, E, mu, beta):
+  return I2_imag_functor(w, E, mu, beta)
 
 def I2(w, E, mu, beta):
   return complex(I2_real(w, E, mu, beta), I2_imag(w, E, mu, beta))
 
-polePos = genericFunctor(integrals_so, "polePos", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+def invTmatrixMB_real(w, *args):
+  params = (ctypes.c_double * 4)()
+
+  for i in range(len(args)):
+    params[i] = args[i]
+
+  return invTmatrixMB_real_functor(w, ctypes.cast(params, ctypes.c_void_p))
+
+def polePos(E, mu, beta, a):
+  return polePos_functor(E, mu, beta, a)
+
+def poleRes(E, mu, beta, a):
+  return poleRes_functor(E, mu, beta, a)
+
+def integralBranch(E, mu, beta, a):
+  return integralBranch_functor(E, mu, beta, a)
 

@@ -1,6 +1,7 @@
 from multiprocessing import Pool, cpu_count
 
 import time
+import itertools
 
 from numpy import *
 import numpy.lib.scimath as sm
