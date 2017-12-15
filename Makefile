@@ -1,7 +1,10 @@
-CC=clang++
+CC=clang
+CCPP=clang++
+
+CFLAGS=-O3 -Wall
 
 CPPFLAGS=-std=c++17 -pedantic -Wall -O3
-CPPLIBS=-lgsl -lcblas -lm -lgmpxx -lmpfr -lgmp
+CPPLIBS=-lgsl -lcblas -lm -lgmpxx -lmpfr -lgmp -ldb
 CPPINCL=-Iinclude
 
 BINNAME=ctemp
@@ -9,26 +12,27 @@ BINPATH=bin
 SRCPATH=src
 TEMPPATH=tmp
 
+C_SRC=$(wildcard $(SRCPATH)/*.c)
+C_OBJ=$(C_SRC:.c=.c.o)
+
 SRC=$(wildcard $(SRCPATH)/*.cpp)
-OBJ=$(SRC:.cpp=.o)
-OBJ_NO_MAIN=$(filter-out $(SRCPATH)/main.o, $(OBJ))
-OBJ_LIB=$(addsuffix .so, $(basename $(filter-out $(SRCPATH)/main.o, $(OBJ))))
+OBJ=$(SRC:.cpp=.cpp.o)
+OBJ_NO_MAIN=$(filter-out $(SRCPATH)/main.cpp.o, $(OBJ))
 
-all: $(OBJ)
-	$(CC) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) $^ -o $(BINPATH)/$(BINNAME)
+all: $(C_OBJ) $(OBJ)
+	$(CCPP) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) $^ -o $(BINPATH)/$(BINNAME)
 
-lib: $(OBJ_NO_MAIN)
-#	ar cr libintegrals.a $(addprefix $(BINPATH)/lib, $(notdir $^))
-	$(CC) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) -shared -fPIC -o $(BINPATH)/libintegrals.so $^
+lib: $(C_OBJ) $(OBJ_NO_MAIN)
+	$(CCPP) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) -shared -fPIC -o $(BINPATH)/libintegrals.so $^
 
-main: $(OBJ)
-	$(CC) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) $^ -o $(BINPATH)/$(BINNAME)
+main: $(C_OBJ) $(OBJ)
+	$(CCPP) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) $^ -o $(BINPATH)/$(BINNAME)
 
-%.o: %.cpp
-	$(CC) $(CPPFLAGS) $(CPPINCL) -fPIC -c $^ -o $@
+%.cpp.o: %.cpp
+	$(CCPP) $(CPPFLAGS) $(CPPINCL) -fPIC -c $^ -o $@
 
-%.so: $(OBJ_NO_MAIN)
-	$(CC) $(CPPFLAGS) $(CPPLIBS) $(CPPINCL) -shared -fPIC -o $(BINPATH)/lib$(notdir $@) $^
+%.c.o: %.c
+	$(CC) $(CFLAGS) $(CPPINCL) -fPIC -c $^ -o $@
 
 .PHONY: clean
 clean:

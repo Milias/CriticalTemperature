@@ -1,4 +1,5 @@
 import ctypes
+import time
 
 ### Global
 
@@ -37,9 +38,13 @@ polePos_functor = genericFunctor(integrals_so, "polePos", [ ctypes.c_double,  ct
 
 poleRes_functor = genericFunctor(integrals_so, "poleRes", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
-poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double, ctype.c_double ], ctypes.c_double)
+poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 integralBranch_functor = genericFunctor(integrals_so, "integralBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+integralDensityPole_functor = genericFunctor(integrals_so, "integralDensityPole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+integralDensityBranch_functor = genericFunctor(integrals_so, "integralDensityBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 def I1(x):
   return I1_functor(x)
@@ -72,4 +77,10 @@ def poleRes(E, mu, beta, a):
 
 def integralBranch(E, mu, beta, a):
   return integralBranch_functor(E, mu, beta, a)
+
+def integralDensityPole(mu, beta, a):
+  return integralDensityPole_functor(mu, beta, a)
+
+def integralDensityBranch(mu, beta, a):
+  return integralDensityBranch_functor(mu, beta, a)
 

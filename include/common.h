@@ -13,6 +13,8 @@
 #include <gsl/gsl_roots.h>
 #include <mpfr.h>
 
+#include "mp-polylog.h"
+
 /*** MPFR ***/
 
 constexpr bool use_mpfr = false;

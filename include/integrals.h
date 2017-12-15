@@ -15,6 +15,7 @@ extern "C" {
   double integralI2Real(double w, double E, double mu, double beta);
   double integralI2Imag(double w, double E, double mu, double beta);
 
+  // TODO: I2dmu
   double integrandI2dmuPart1(double x, void * params);
 
   /*** T matrix ***/
@@ -22,14 +23,28 @@ extern "C" {
   double invTmatrixMB_real(double w, void * params);
   double invTmatrixMB_imag(double w, void * params);
 
+  /*** Matsubara sum: pole contribution ***/
+
   double polePos(double E, double mu, double beta, double a);
   double integrandPoleRes(double x, void * params);
   double integralPoleRes(double E, double mu, double beta, double z0);
   double poleRes(double E, double mu, double beta, double a);
   double poleRes_pole(double E, double mu, double beta, double a, double z0);
 
+  /*** Matsubara sum: branch contribution ***/
+
   double integrandBranch(double y, void * params);
   double integralBranch(double E, double mu, double beta, double a);
+
+  /*** Density: pole contribution ***/
+
+  double integrandDensityPole(double x, void * params);
+  double integralDensityPole(double mu, double beta, double a);
+
+  /*** Density: branch contribution ***/
+
+  double integrandDensityBranch(double x, void * params);
+  double integralDensityBranch(double mu, double beta, double a);
 }
 
 /*** C++ only ***/

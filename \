@@ -170,20 +170,19 @@ double polePos(double E, double mu, double beta, double a) {
 
 double integrandPoleRes(double x, void * params) {
   double * params_arr = (double *)params;
-  double dz, E, mu, r;
-  dz = params_arr[0];
+  double E, mu, z0, r;
+  z0 = params_arr[0];
   E = params_arr[1];
   mu = params_arr[2];
 
-  r = integrandI2part1(x - 0.5 * dz, params) / pow(x, 2);
+  r = integrandI2part1(x, params) / pow(x + 0.5 * (0.5 * E - 2 * mu - z0), 2);
 
   return r;
 }
 
 double integralPoleRes(double E, double mu, double beta, double z0) {
   double result[] = {0, 0}, error;
-  double dz = 0.5 * E - 2 * mu - z0;
-  double params_arr[] = {dz, E, mu, beta};
+  double params_arr[] = {z0, E, mu, beta};
 
   gsl_function integrand;
   integrand.function = &integrandPoleRes;
@@ -191,8 +190,10 @@ double integralPoleRes(double E, double mu, double beta, double z0) {
 
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
 
-  //gsl_integration_qags(&integrand, 0.5 * dz, dz, 0, 1e-10, w_size, ws, result, &error);
-  gsl_integration_qagiu(&integrand, 0.5 * dz, 0, 1e-10, w_size, ws, result + 1, &error);
+  //gsl_integration_qags(&integrand, 0, 2 * z0, 0, 1e-10, w_size, ws, result, &error);
+  gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result + 1, &error);
+
+  printf("Error %f\n", error);
 
   gsl_integration_workspace_free(ws);
 
@@ -294,6 +295,8 @@ double integralDensityPole(double mu, double beta, double a) {
   double result[] = {0}, error;
   double params_arr[] = {mu, beta, a};
 
+  printf("Starting %.10f\n", mu);
+
   gsl_function integrand;
   integrand.function = &integrandDensityPole;
   integrand.params = params_arr;
@@ -301,6 +304,8 @@ double integralDensityPole(double mu, double beta, double a) {
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
   gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result, &error);
   gsl_integration_workspace_free(ws);
+
+  printf("Finished %.10f\n", mu);
 
   return result[0];
 }
