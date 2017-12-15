@@ -31,7 +31,7 @@ extern "C" {
 
   /*** Utility functions ***/
 
-  double logExp(double x, double xmax = 50);
-  double logExp_mpfr(double x, double xmax = 50);
+  double logExp(double x, double xmax = 1e3);
+  double logExp_mpfr(double x, double xmax = 1e3);
 }
 

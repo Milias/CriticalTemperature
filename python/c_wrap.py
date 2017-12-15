@@ -34,6 +34,8 @@ I2_imag_functor = genericFunctor(integrals_so, "integralI2Imag", [ ctypes.c_doub
 
 invTmatrixMB_real_functor = genericFunctor(integrals_so, "invTmatrixMB_real", [ ctypes.c_double, ctypes.c_void_p ], ctypes.c_double)
 
+invTmatrixMB_imag_functor = genericFunctor(integrals_so, "invTmatrixMB_imag", [ ctypes.c_double, ctypes.c_void_p ], ctypes.c_double)
+
 polePos_functor = genericFunctor(integrals_so, "polePos", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 poleRes_functor = genericFunctor(integrals_so, "poleRes", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
@@ -68,6 +70,22 @@ def invTmatrixMB_real(w, *args):
     params[i] = args[i]
 
   return invTmatrixMB_real_functor(w, ctypes.cast(params, ctypes.c_void_p))
+
+def invTmatrixMB_imag(w, *args):
+  params = (ctypes.c_double * 4)()
+
+  for i in range(len(args)):
+    params[i] = args[i]
+
+  return invTmatrixMB_imag_functor(w, ctypes.cast(params, ctypes.c_void_p))
+
+def invTmatrixMB(w, *args):
+  params = (ctypes.c_double * 4)()
+
+  for i in range(len(args)):
+    params[i] = args[i]
+
+  return complex(invTmatrixMB_real_functor(w, ctypes.cast(params, ctypes.c_void_p)), invTmatrixMB_imag_functor(w, ctypes.cast(params, ctypes.c_void_p)))
 
 def polePos(E, mu, beta, a):
   return polePos_functor(E, mu, beta, a)

@@ -26,7 +26,11 @@ double integrandI2part1(double x, void * params) {
     double E_ex = 0.25 * E - mu + x;
     double Ep = beta * (E_ex + sqrt( E * x )), Em = beta * (E_ex - sqrt( E * x ));
 
-    r = sqrt(x) + (logExp(Em) - logExp(Ep)) / ( 2 * beta * sqrt(E) );
+    if (Ep > 1e10 && Em > 1e10) {
+      r = 0;
+    } else {
+      r = sqrt(x) + (logExp_mpfr(Em) - logExp_mpfr(Ep)) / ( 2 * beta * sqrt(E) );
+    }
   }
 
   return r;
@@ -66,8 +70,6 @@ double integralI2Real(double w, double E, double mu, double beta) {
 
 double integralI2Imag(double w, double E, double mu, double beta) {
   double params_arr[] = {w, E, mu, beta, 0.5 * w - 0.25 * E + mu};
-
-  if (params_arr[4] < 0) { return 0; }
 
   return 2 * integrandI2part1(params_arr[4], params_arr);
 }
@@ -109,7 +111,7 @@ double invTmatrixMB_imag(double w, void * params) {
   if (y2 > 0) {
     r = I1(y2) + integralI2Imag(w, E, mu, beta);
   } else {
-    r = integralI2Imag(w, E, mu, beta);
+    r = 0;
   }
 
   return r;
@@ -121,21 +123,28 @@ std::complex<double> invTmatrixMB(double w, double E, double mu, double beta, do
 }
 
 double polePos(double E, double mu, double beta, double a) {
+  if (E > 1e8) {
+    return - 2 * a*a + 0.5 * E - 2 * mu;
+  }
   double w_lo = 0.5 * E - 2 * mu, w_hi, r = 0;
   double params_arr[] = {E, mu, beta, a};
   double val1 = invTmatrixMB_real(w_lo, params_arr);
+  double w_max = std::max(1e12, 1e4 * abs(a));
   bool found = false;
 
-  if (invTmatrixMB_real(-1e12, params_arr) * val1 > 0) {
+  //printf("%.10f, %.10f, %d\n", w_lo, val1, val1 < 0);
+
+  if (val1 < 0) {
     return NAN;
   }
 
   // Find a proper bound using exponential sweep.
-  for(w_hi = - 1; w_hi > -1e10; w_hi *= 2) {
-    if (invTmatrixMB_real(w_hi, params_arr) * val1 < 0) {
+  for(w_hi = fmin(-1, w_lo); w_hi > -w_max; w_hi *= 2) {
+    if (invTmatrixMB_real(w_hi, params_arr) < 0) {
       found = true;
       break;
     }
+
     w_lo = w_hi;
   }
 
@@ -170,12 +179,10 @@ double polePos(double E, double mu, double beta, double a) {
 
 double integrandPoleRes(double x, void * params) {
   double * params_arr = (double *)params;
-  double dz, E, mu, r;
+  double dz, r;
   dz = params_arr[0];
-  E = params_arr[1];
-  mu = params_arr[2];
 
-  r = integrandI2part1(x - 0.5 * dz, params) / pow(x, 2);
+  r = integrandI2part1(x, params) / pow(x + 0.5 * dz, 2);
 
   return r;
 }
@@ -184,6 +191,8 @@ double integralPoleRes(double E, double mu, double beta, double z0) {
   double result[] = {0, 0}, error;
   double dz = 0.5 * E - 2 * mu - z0;
   double params_arr[] = {dz, E, mu, beta};
+
+  printf("%.10f\n", dz);
 
   gsl_function integrand;
   integrand.function = &integrandPoleRes;
