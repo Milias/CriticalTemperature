@@ -4,15 +4,15 @@ int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  /*
-  cpx_t x, s, z;
+  double p1, p2;
+  p1 = polylogExp(1.5, 1);
+  p2 = polylogExpM(1.5, 1);
 
-  cpx_set_d(x, 0, 0);
-  cpx_set_d(s, 1.5, 0);
-  cpx_set_d(z, 2, 0);
+  printf("%.16f, %.16f", p1, p2);
 
-  std::cout << cpx_polylog(x, s, z, 128) << std::endl;
-  */
+  std::cout << "\nFinished\n";
+
+  return 0;
 
   double w = 3, E = 0, mu = -1, beta = 2, a = 1;
 

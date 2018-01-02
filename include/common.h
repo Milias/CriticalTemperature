@@ -13,12 +13,14 @@
 #include <gsl/gsl_roots.h>
 #include <mpfr.h>
 
-#include "mp-polylog.h"
+#include <arf.h>
+#include <arb.h>
+#include <acb.h>
 
 /*** MPFR ***/
 
 constexpr bool use_mpfr = false;
-constexpr mp_prec_t prec = 256;
+constexpr mp_prec_t prec = 64;
 
 /*** gsl_integration workspace size ***/
 
@@ -33,5 +35,11 @@ extern "C" {
 
   double logExp(double x, double xmax = 1e3);
   double logExp_mpfr(double x, double xmax = 1e3);
+
+  // real(Li_s(exp(z)))
+  double polylogExp(double s, double z);
+
+  // real(Li_s(-exp(z)))
+  double polylogExpM(double s, double z);
 }
 

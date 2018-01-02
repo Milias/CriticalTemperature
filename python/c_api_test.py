@@ -20,9 +20,9 @@ def compExcitonicDensity(mu, beta, a):
   return y
 
 N = 1<<10
-w, E, mu, beta, a = 0, 1e5, -1, 1, 1
+w, E, mu, beta, a = 0, 1e5, 1, 1, -1
 
-pole_pos = polePos(E, mu, beta, a)
+#pole_pos = polePos(E, mu, beta, a)
 
 """
 t0 = time.time()
@@ -39,25 +39,32 @@ print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 exit()
 """
 #"""
-x = linspace(0, 1e3, N)
+x = linspace(0, 2, N)
 #x = linspace(2 * pole_pos if pole_pos < 0 else 2 * pole_pos - (0.5 * E - 2 * mu), 0.5 * E - 2 * mu, N)
+#x = linspace(0, 10, N)
 
 t0 = time.time()
-#y = array(parallelTable(poleRes, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-#y = array(parallelTable(invTmatrixMB, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 y = array(parallelTable(polePos, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+#y = array(parallelTable(invTmatrixMB, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+#y = array(parallelTable(polePos, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+#y = array(parallelTable(integralDensityPole, itertools.repeat(mu, N), itertools.repeat(beta, N), x))
+#y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 dt = time.time() - t0
 
-print(y)
-print(- 2 * a**2 + 0.5 * x - 2 * mu)
+#print(y)
 
-y = log10(abs(y + 2 * a**2 - 0.5 * x + 2 * mu))
+y_approx = 0.5 * x - 2 * mu
 
-print(y)
+#print(y_approx)
 
-fig, axarr, axarr0 = complexPlot(x, y)
+y = log10(-(y - y_approx))
+
+#print(y)
+
+fig, axarr, axarr0 = complexPlot(x, y, ('r.', 'b.'))
 #fig, axarr, axarr0 = complexPlot(x, y)
 #axarr.plot(x, - 0.25 * E + mu + 0.5 * x)
+#axarr.plot(x, 0.5 * x - 2 * mu)
 #axarr.plot(x, 0.5 * x + polePos(0, mu, beta, a))
 #axarr.axhline(y = invTmatrixMB_real(0.5 * E - 2 * mu, E, mu, beta, a))
 #axarr.axvline(x = pole_pos)

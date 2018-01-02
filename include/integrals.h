@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "templates.h"
 
 extern "C" {
   /*** I1 ***/
@@ -52,4 +53,5 @@ extern "C" {
 std::complex<double> I2(double w, double E, double mu, double beta);
 
 std::complex<double> invTmatrixMB(double w, double E, double mu, double beta, double a);
+
 

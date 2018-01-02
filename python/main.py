@@ -77,6 +77,10 @@ def plotDensity(N, mu, beta, a):
 
 N = 1<<5
 
+print(fp.polylog(1.5, exp(1)))
+print(fp.polylog(1.5, -exp(1)))
+exit()
+
 a = -1
 beta = 1.5
 #plotDensity(N, linspace(-1, 0, N), beta, a)

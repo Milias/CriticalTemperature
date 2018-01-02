@@ -123,9 +123,6 @@ std::complex<double> invTmatrixMB(double w, double E, double mu, double beta, do
 }
 
 double polePos(double E, double mu, double beta, double a) {
-  if (E > 1e8) {
-    return - 2 * a*a + 0.5 * E - 2 * mu;
-  }
   double w_lo = 0.5 * E - 2 * mu, w_hi, r = 0;
   double params_arr[] = {E, mu, beta, a};
   double val1 = invTmatrixMB_real(w_lo, params_arr);
@@ -179,33 +176,14 @@ double polePos(double E, double mu, double beta, double a) {
 
 double integrandPoleRes(double x, void * params) {
   double * params_arr = (double *)params;
-  double dz, r;
-  dz = params_arr[0];
+  double dz = params_arr[0];
 
-  r = integrandI2part1(x, params) / pow(x + 0.5 * dz, 2);
-
-  return r;
+  return integrandI2part1(x, params) / pow(x + 0.5 * dz, 2);
 }
 
 double integralPoleRes(double E, double mu, double beta, double z0) {
-  double result[] = {0, 0}, error;
   double dz = 0.5 * E - 2 * mu - z0;
-  double params_arr[] = {dz, E, mu, beta};
-
-  printf("%.10f\n", dz);
-
-  gsl_function integrand;
-  integrand.function = &integrandPoleRes;
-  integrand.params = params_arr;
-
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-
-  //gsl_integration_qags(&integrand, 0.5 * dz, dz, 0, 1e-10, w_size, ws, result, &error);
-  gsl_integration_qagiu(&integrand, 0.5 * dz, 0, 1e-10, w_size, ws, result + 1, &error);
-
-  gsl_integration_workspace_free(ws);
-
-  return result[0] + result[1];
+  return integralTemplate(&integrandPoleRes, dz, dz, E, mu, beta);
 }
 
 double poleRes(double E, double mu, double beta, double a) {
@@ -214,7 +192,7 @@ double poleRes(double E, double mu, double beta, double a) {
 
   if (isnan(z0)) { return 0; }
 
-  assert(z1 > z0 && "z1 has to be larger than z0");
+  assert(z1 >= z0 && "z1 has to be larger or equal than z0");
 
   double r, z2 = 0.5 * ( z1 - z0 );
 
@@ -226,7 +204,7 @@ double poleRes(double E, double mu, double beta, double a) {
 double poleRes_pole(double E, double mu, double beta, double /*a*/, double z0) {
   double z1 = 0.5 * E - 2 * mu;
 
-  assert(z1 > z0 && "z1 has to be larger than z0");
+  assert(z1 >= z0 && "z1 has to be larger or equal than z0");
 
   double r, z2 = 0.5 * ( z1 - z0 );
 
@@ -271,19 +249,8 @@ double integrandBranch(double y, void * params) {
 }
 
 double integralBranch(double E, double mu, double beta, double a) {
-  double result[] = {0}, error;
   double z1 = 0.5 * E - 2 * mu;
-  double params_arr[] = {E, mu, beta, a};
-
-  gsl_function integrand;
-  integrand.function = &integrandBranch;
-  integrand.params = params_arr;
-
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-  gsl_integration_qagiu(&integrand, z1, 0, 1e-10, w_size, ws, result, &error);
-  gsl_integration_workspace_free(ws);
-
-  return result[0] / ( 2 * M_PI );
+  return integralTemplate(&integrandBranch, z1, E, mu, beta, a);
 }
 
 double integrandDensityPole(double x, void * params) {
@@ -294,30 +261,12 @@ double integrandDensityPole(double x, void * params) {
   a = params_d[2];
 
   r = poleRes(x, mu, beta, a);
-  r = isnan(r) ? 0.0 : r * sqrt(x);
-
-  return r;
+  return isnan(r) ? 0.0 : r * sqrt(x);
 }
 
 double integralDensityPole(double mu, double beta, double a) {
-  double result[] = {0}, error;
-  double params_arr[] = {mu, beta, a};
-
-  gsl_function integrand;
-  integrand.function = &integrandDensityPole;
-  integrand.params = params_arr;
-
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-  gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result, &error);
-  gsl_integration_workspace_free(ws);
-
-  return result[0];
+  return integralTemplate(&integrandDensityPole, mu, beta, a);
 }
-
-struct integrandDensityBranch_struct {
-  double mu, beta, a;
-  gsl_integration_workspace * ws;
-};
 
 double integrandDensityBranch(double x, void * params) {
   double mu, beta, a, r;
@@ -336,17 +285,6 @@ double integrandDensityBranch(double x, void * params) {
 }
 
 double integralDensityBranch(double mu, double beta, double a) {
-  double result[] = {0}, error;
-  double params_arr[] = {mu, beta, a};
-
-  gsl_function integrand;
-  integrand.function = &integrandDensityBranch;
-  integrand.params = params_arr;
-
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-  gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result, &error);
-  gsl_integration_workspace_free(ws);
-
-  return result[0];
+  return integralTemplate(&integrandDensityBranch, mu, beta, a);
 }
 

@@ -44,6 +44,8 @@ poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_d
 
 integralBranch_functor = genericFunctor(integrals_so, "integralBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
+integrandDensityPole_functor = genericFunctor(integrals_so, "integrandDensityPole", [ ctypes.c_double,  ctypes.c_void_p ], ctypes.c_double)
+
 integralDensityPole_functor = genericFunctor(integrals_so, "integralDensityPole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 integralDensityBranch_functor = genericFunctor(integrals_so, "integralDensityBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
@@ -95,6 +97,14 @@ def poleRes(E, mu, beta, a):
 
 def integralBranch(E, mu, beta, a):
   return integralBranch_functor(E, mu, beta, a)
+
+def integrandDensityPole(E, *args):
+  params = (ctypes.c_double * 4)()
+
+  for i in range(len(args)):
+    params[i] = args[i]
+
+  return integrandDensityPole_functor(E, ctypes.cast(params, ctypes.c_void_p))
 
 def integralDensityPole(mu, beta, a):
   return integralDensityPole_functor(mu, beta, a)

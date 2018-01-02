@@ -2,10 +2,10 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-imap <Nul> <C-Space>
-inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
-inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
 inoremap <expr> <Down> pumvisible() ? "\" : "\<Down>"
+inoremap <expr> <S-Tab> pumvisible() ? "\" : "\<S-Tab>"
+inoremap <expr> <Up> pumvisible() ? "\" : "\<Up>"
+imap <Nul> <C-Space>
 nnoremap \d :YcmShowDetailedDiagnostic
 noremap <silent> \w :call ToggleWrap()
 noremap <silent> \s :set spell!
@@ -54,16 +54,16 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
 endif
 set shortmess=aoO
 badd +78 main.py
-badd +33 common.py
+badd +78 common.py
 badd +8 I1.py
 badd +42 I2.py
-badd +9 analytic_n.py
-badd +22 spec_func_full.py
-badd +1 scrap.py
+badd +19 analytic_n.py
+badd +45 spec_func_full.py
+badd +35 scrap.py
 argglobal
 silent! argdel *
 $argadd main.py
-edit scrap.py
+edit main.py
 set splitbelow splitright
 wincmd _ | wincmd |
 split
@@ -77,11 +77,11 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe '1resize ' . ((&lines * 22 + 24) / 48)
-exe '2resize ' . ((&lines * 22 + 24) / 48)
-exe 'vert 2resize ' . ((&columns * 101 + 104) / 208)
-exe '3resize ' . ((&lines * 22 + 24) / 48)
-exe 'vert 3resize ' . ((&columns * 106 + 104) / 208)
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe '2resize ' . ((&lines * 21 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 103 + 104) / 208)
+exe '3resize ' . ((&lines * 21 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 104 + 104) / 208)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -198,27 +198,15 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 46 - ((21 * winheight(0) + 11) / 22)
+let s:l = 86 - ((15 * winheight(0) + 11) / 22)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-46
-normal! 0
+86
+normal! 044|
 wincmd w
 argglobal
-if bufexists('spec_func_full.py') | buffer spec_func_full.py | else | edit spec_func_full.py | endif
-let s:cpo_save=&cpo
-set cpo&vim
-inoremap <buffer> <silent> <End> g<End>
-inoremap <buffer> <silent> <Home> g<Home>
-inoremap <buffer> <silent> <Down> gj
-inoremap <buffer> <silent> <Up> gk
-noremap <buffer> <silent> <End> g<End>
-noremap <buffer> <silent> <Home> g<Home>
-noremap <buffer> <silent> <Down> gj
-noremap <buffer> <silent> <Up> gk
-let &cpo=s:cpo_save
-unlet s:cpo_save
+if bufexists('analytic_n.py') | buffer analytic_n.py | else | edit analytic_n.py | endif
 setlocal keymap=
 setlocal noarabic
 setlocal noautoindent
@@ -280,7 +268,7 @@ setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
 setlocal noinfercase
 setlocal iskeyword=@,48-57,_,192-255
 setlocal keywordprg=
-setlocal linebreak
+setlocal nolinebreak
 setlocal nolisp
 setlocal lispwords=
 set list
@@ -334,12 +322,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 43 - ((8 * winheight(0) + 11) / 22)
+let s:l = 13 - ((7 * winheight(0) + 10) / 21)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-43
-normal! 039|
+13
+normal! 038|
 wincmd w
 argglobal
 if bufexists('common.py') | buffer common.py | else | edit common.py | endif
@@ -458,19 +446,19 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 70 - ((9 * winheight(0) + 11) / 22)
+let s:l = 75 - ((3 * winheight(0) + 10) / 21)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-70
-normal! 02|
+75
+normal! 0
 wincmd w
-3wincmd w
-exe '1resize ' . ((&lines * 22 + 24) / 48)
-exe '2resize ' . ((&lines * 22 + 24) / 48)
-exe 'vert 2resize ' . ((&columns * 101 + 104) / 208)
-exe '3resize ' . ((&lines * 22 + 24) / 48)
-exe 'vert 3resize ' . ((&columns * 106 + 104) / 208)
+2wincmd w
+exe '1resize ' . ((&lines * 22 + 23) / 47)
+exe '2resize ' . ((&lines * 21 + 23) / 47)
+exe 'vert 2resize ' . ((&columns * 103 + 104) / 208)
+exe '3resize ' . ((&lines * 21 + 23) / 47)
+exe 'vert 3resize ' . ((&columns * 104 + 104) / 208)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
