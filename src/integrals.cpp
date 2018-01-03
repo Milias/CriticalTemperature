@@ -26,11 +26,7 @@ double integrandI2part1(double x, void * params) {
     double E_ex = 0.25 * E - mu + x;
     double Ep = beta * (E_ex + sqrt( E * x )), Em = beta * (E_ex - sqrt( E * x ));
 
-    if (Ep > 1e10 && Em > 1e10) {
-      r = 0;
-    } else {
-      r = sqrt(x) + (logExp_mpfr(Em) - logExp_mpfr(Ep)) / ( 2 * beta * sqrt(E) );
-    }
+    r = sqrt(x) + (logExp_mpfr(Em) - logExp_mpfr(Ep)) / ( 2 * beta * sqrt(E) );
   }
 
   return r;
@@ -79,6 +75,18 @@ std::complex<double> I2(double w, double E, double mu, double beta) {
 }
 
 /*** T matrix ***/
+
+double invTmatrixMB_real_constrained(double E, void * params) {
+  double * params_arr = (double *)params;
+  double w, mu, beta, a, r;
+  mu = params_arr[0];
+  beta = params_arr[1];
+  a = params_arr[2];
+  w = 0.5 * E - 2 * mu;
+
+  r = a + integralI2Real(w, E, mu, beta);
+  return r;
+}
 
 double invTmatrixMB_real(double w, void * params) {
   double * params_arr = (double *)params;
@@ -129,8 +137,6 @@ double polePos(double E, double mu, double beta, double a) {
   double w_max = std::max(1e12, 1e4 * abs(a));
   bool found = false;
 
-  //printf("%.10f, %.10f, %d\n", w_lo, val1, val1 < 0);
-
   if (val1 < 0) {
     return NAN;
   }
@@ -174,16 +180,87 @@ double polePos(double E, double mu, double beta, double a) {
   return r;
 }
 
+double findLastPos(double mu, double beta, double a) {
+  // Returns the maximum energy at which is possible to
+  // find a solution to polePos.
+  double params_arr[] = {mu, beta, a};
+
+  if (invTmatrixMB_real_constrained(0, params_arr) <= 0) {
+    return NAN;
+  }
+
+  double w_lo = 0, w_hi, r = 0;
+  double w_max = 1e10;
+  bool found = false;
+
+  // Find a proper bound using exponential sweep.
+  for(w_hi = 1; w_hi < w_max; w_hi *= 2) {
+    if (invTmatrixMB_real_constrained(w_hi, params_arr) < 0) {
+      found = true;
+      break;
+    }
+
+    w_lo = w_hi;
+  }
+
+  if (found) {
+    int status = GSL_CONTINUE;
+
+    gsl_function T_mat;
+    T_mat.function = &invTmatrixMB_real_constrained;
+    T_mat.params = params_arr;
+
+    const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+    gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+    gsl_root_fsolver_set(s, &T_mat, w_lo, w_hi);
+
+    for (; status == GSL_CONTINUE; ) {
+      status = gsl_root_fsolver_iterate(s);
+      r = gsl_root_fsolver_root(s);
+      w_lo = gsl_root_fsolver_x_lower(s);
+      w_hi = gsl_root_fsolver_x_upper(s);
+      status = gsl_root_test_interval(w_lo, w_hi, 0, 1e-10);
+    }
+
+    gsl_root_fsolver_free (s);
+
+  } else {
+    r = NAN;
+  }
+
+  return r;
+}
+
 double integrandPoleRes(double x, void * params) {
   double * params_arr = (double *)params;
   double dz = params_arr[0];
 
-  return integrandI2part1(x, params) / pow(x + 0.5 * dz, 2);
+  double r = integrandI2part1(x, params) / pow(x + 0.5 * dz, 2);
+  return r;
 }
 
 double integralPoleRes(double E, double mu, double beta, double z0) {
   double dz = 0.5 * E - 2 * mu - z0;
-  return integralTemplate(&integrandPoleRes, dz, dz, E, mu, beta);
+  double result[] = {0, 0}, error;
+  double params_arr[] = { dz, E, mu, beta };
+
+  gsl_function integrand;
+  integrand.function = &integrandPoleRes;
+  integrand.params = params_arr;
+
+  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
+
+  if (dz < 0.5) {
+    gsl_integration_qags(&integrand, dz, 1, 1e-10, 128, w_size, ws, result, &error);
+    gsl_integration_qagiu(&integrand, 1, 0, 1e-10, w_size, ws, result + 1, &error);
+  } else {
+    gsl_integration_qagiu(&integrand, dz, 0, 1e-10, w_size, ws, result + 1, &error);
+  }
+
+  gsl_integration_workspace_free(ws);
+
+  return result[0];
 }
 
 double poleRes(double E, double mu, double beta, double a) {
@@ -194,9 +271,9 @@ double poleRes(double E, double mu, double beta, double a) {
 
   assert(z1 >= z0 && "z1 has to be larger or equal than z0");
 
-  double r, z2 = 0.5 * ( z1 - z0 );
+  double r, z2 = ( z1 - z0 );
 
-  r = (I1dmu(z2)) / (exp(beta * z0) + 1) / ( 1 / sqrt(2 * ( z1 - z0 )) - integralPoleRes(E, mu, beta, z0) / M_PI );
+  r = (I1dmu(0.5 * z2)) / (exp(beta * z0) + 1) / ( 1 / sqrt(2 * z2) - integralPoleRes(E, mu, beta, z0) / M_PI );
 
   return r;
 }
@@ -265,7 +342,40 @@ double integrandDensityPole(double x, void * params) {
 }
 
 double integralDensityPole(double mu, double beta, double a) {
-  return integralTemplate(&integrandDensityPole, mu, beta, a);
+  double result[] = {0}, error;
+  double params_arr[] = { mu, beta, a };
+
+  gsl_function integrand;
+  integrand.function = &integrandDensityPole;
+  integrand.params = params_arr;
+
+  if (a < 0) {
+    size_t neval = 0;
+    printf("%.10f, %.10f, %.10f\n", mu, beta, a);
+    double E_max = findLastPos(mu, beta, a) - 1e-10;
+
+    printf("%.10f\n", E_max);
+    if (isnan(E_max)) { return 0; }
+
+    /*
+    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
+    gsl_integration_qag(&integrand, 0, E_max, 0, 1e-10, w_size, GSL_INTEG_GAUSS21, ws, result, &error);
+    gsl_integration_workspace_free(ws);
+    */
+
+    gsl_integration_qng(&integrand, 0, E_max, 0, 1e-10, result, &error, &neval);
+    printf("%.10f, %.10f, %ld\n", a, error, neval);
+
+
+  } else {
+    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
+    gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result, &error);
+    gsl_integration_workspace_free(ws);
+
+    printf("%.10f, %.10f\n", a, error);
+  }
+
+  return result[0];
 }
 
 double integrandDensityBranch(double x, void * params) {
@@ -285,6 +395,17 @@ double integrandDensityBranch(double x, void * params) {
 }
 
 double integralDensityBranch(double mu, double beta, double a) {
-  return integralTemplate(&integrandDensityBranch, mu, beta, a);
+  double result[] = {0}, error;
+  double params_arr[] = { mu, beta, a };
+
+  gsl_function integrand;
+  integrand.function = &integrandDensityBranch;
+  integrand.params = params_arr;
+
+  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
+  gsl_integration_qagiu(&integrand, 0, 0, 1e-10, w_size, ws, result, &error);
+  gsl_integration_workspace_free(ws);
+
+  return result[0];
 }
 

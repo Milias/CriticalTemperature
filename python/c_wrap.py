@@ -40,6 +40,8 @@ polePos_functor = genericFunctor(integrals_so, "polePos", [ ctypes.c_double,  ct
 
 poleRes_functor = genericFunctor(integrals_so, "poleRes", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
+findLastPos_functor = genericFunctor(integrals_so, "findLastPos", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
 poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 integralBranch_functor = genericFunctor(integrals_so, "integralBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
@@ -91,6 +93,9 @@ def invTmatrixMB(w, *args):
 
 def polePos(E, mu, beta, a):
   return polePos_functor(E, mu, beta, a)
+
+def findLastPos(mu, beta, a):
+  return findLastPos_functor(mu, beta, a)
 
 def poleRes(E, mu, beta, a):
   return poleRes_functor(E, mu, beta, a)

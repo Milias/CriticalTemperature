@@ -27,6 +27,7 @@ extern "C" {
   /*** Matsubara sum: pole contribution ***/
 
   double polePos(double E, double mu, double beta, double a);
+  double findLastPos(double mu, double beta, double a);
   double integrandPoleRes(double x, void * params);
   double integralPoleRes(double E, double mu, double beta, double z0);
   double poleRes(double E, double mu, double beta, double a);

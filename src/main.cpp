@@ -4,17 +4,11 @@ int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  double p1, p2;
-  p1 = polylogExp(1.5, 1);
-  p2 = polylogExpM(1.5, 1);
+  double w = 3, E = 0, mu = 1, beta = 1, a = -1;
 
-  printf("%.16f, %.16f", p1, p2);
-
-  std::cout << "\nFinished\n";
+  std::cout << findLastPos(mu, beta, a) << std::endl;
 
   return 0;
-
-  double w = 3, E = 0, mu = -1, beta = 2, a = 1;
 
   uint32_t N = 1<<10;
 

@@ -1,5 +1,6 @@
 *.swp
 *.swo
+*.swm
 
 *.sync-conflict*
 
@@ -9,4 +10,7 @@ bin/*
 *__pycache__*
 
 graphs
+
+.ycm_extra_conf.py
+*Session.vim
 
