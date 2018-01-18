@@ -47,6 +47,11 @@ extern "C" {
 
   double integrandDensityBranch(double x, void * params);
   double integralDensityBranch(double mu, double beta, double a);
+
+  /*** Density: analytic solution ***/
+  double analytic_n_id(double mu, double beta);
+  double analytic_n_ex(double mu, double beta, double a);
+  double analytic_n_sc(double mu, double beta, double a);
 }
 
 /*** C++ only ***/

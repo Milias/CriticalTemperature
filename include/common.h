@@ -24,7 +24,7 @@ constexpr mp_prec_t prec = 64;
 
 /*** gsl_integration workspace size ***/
 
-constexpr size_t w_size = 1<<10;
+constexpr size_t w_size = 1<<3;
 
 extern "C" {
   /*** Initialization ***/
