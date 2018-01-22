@@ -1,7 +1,7 @@
 from common import *
 from c_wrap import *
 
-print(os.getpid())
+#print(os.getpid())
 
 def parallelTable(func, *args):
   p = cpu_count()
@@ -21,8 +21,8 @@ def compExcitonicDensity(mu, beta, a):
   print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
   return y
 
-N = 1<<6
-w, E, mu, beta, a = -1, 0, 0, 0.5, 1
+N = 1<<7
+w, E, mu, beta, a = -1, 1, -1, 0.1, 8
 
 """
 pole_pos = polePos(E, mu, beta, a)
@@ -53,35 +53,47 @@ exit()
 #x = linspace(2 * pole_pos if pole_pos < 0 else 2 * pole_pos - (0.5 * E - 2 * mu), 0.5 * E - 2 * mu, N)
 #x = linspace(0, 8 * mu if mu > 0 else 10, N)
 #x = linspace(-10, z0, N)
-#x = linspace(0, 8, N)
+x = linspace(0, (16 / beta + 4 * (mu + a**2)), N)
 #x = linspace(0.99 * 4 * mu, 1.01 * 4 * mu, N)
 #x = linspace(0, 0.5 * E, N)
-x = linspace(0, 1, N)
+#x = linspace(-0.5, 2.5, N)
+#x = linspace(-16 * a**2, -4*a**2, N) if a > 0 else linspace(-10, 0, N)
 #print(x)
+
+#mu_arr = itertools.repeat(mu, N)
+mu_arr = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
+#y_id_fixed = analytic_n_id(mu, beta)
 
 t0 = time.time()
 #y = sqrt(E) * array(parallelTable(poleRes, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
 #y = array(parallelTable(integrandPoleRes, x, itertools.repeat(0.5 * E - 2 * mu - pole_pos, N), itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N)))
 #y = array(parallelTable(polePos, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 #y = array(parallelTable(polePos, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
+#y = array(parallelTable(polePos, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
 
 #y = real(array(parallelTable(invTmatrixMB, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
 
 #y = array(parallelTable(integrandI2part2, x, itertools.repeat(w, N), itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(0.5 * w - 0.25 * E + mu, N)))
 #y = real(array(parallelTable(invTmatrixMB, 0.5 * x - 2 * mu, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
-#y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-y1 = array(parallelTable(integralDensityPole, itertools.repeat(mu, N), itertools.repeat(beta, N), x))
+y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+#y = array(parallelTable(integralDensityPole, mu_arr, itertools.repeat(beta, N), x))
 
 #y = array(parallelTable(invTmatrixMB_real, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 
 #y = array(parallelTable(integrandBranch, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 #y = sqrt(x) * array(parallelTable(integralBranch, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 #y = array(parallelTable(integralDensityBranch, itertools.repeat(mu, N), itertools.repeat(beta, N), x))
-y = array(parallelTable(, itertools.repeat(mu, N), itertools.repeat(beta, N), x))
+#y_id = array(parallelTable(analytic_n_id, mu_arr, itertools.repeat(beta, N)))
+#y_ex = array(parallelTable(analytic_n_ex, mu_arr, itertools.repeat(beta, N), x))
+#y_sc = array(parallelTable(analytic_n_sc, mu_arr, itertools.repeat(beta, N), x))
+#y_n = y_ex + y_sc
+
+#y = array(parallelTable(analytic_n, x, itertools.repeat(beta, N), itertools.repeat(a, N), itertools.repeat(1, N)))
+#y = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
 
 dt = time.time() - t0
 
-#print(y)
+#print(y_ex)
 
 #y = log10(abs(y))
 
@@ -96,12 +108,14 @@ dt = time.time() - t0
 
 fig, axarr, axarr0 = complexPlot(x, y, ('r.', 'b-'))
 #fig, axarr, axarr0 = complexPlot(x, y)
-axarr.plot(x, y1)
-axarr.plot(x, y + y1)
+#axarr.plot(x, y_ex, 'g-')
+#axarr.plot(x, y_sc, 'm-')
+#axarr.plot(x, y + y1)
 #axarr.plot(x, beta * y_pos)
 #axarr.plot(x, - 0.25 * E + mu + 0.5 * x)
 #axarr.plot(x, y_approx)
 #axarr.plot(x, 0.5 * x + polePos(0, mu, beta, a))
+#axarr.plot(x, 0.5 * E - 2 * mu - 2 * x**2)
 #axarr.axhline(y = invTmatrixMB_real(2 * mu, E, mu, beta, a))
 #axarr.axvline(x = pole_pos_last)
 #axarr.axvline(x = pole_pos)

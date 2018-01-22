@@ -32,6 +32,26 @@ double integrandI2part1(double x, void * params) {
   return r;
 }
 
+double integrandI2part2v2(double x, void * params) {
+  double * params_arr = (double *)params;
+  double /*w,*/ E, mu, beta, r;
+  //w = params_arr[0];
+  E = params_arr[1];
+  mu = params_arr[2];
+  beta = params_arr[3];
+
+  if (E < 1e-6) {
+    r = 1 / ((exp(beta * (x - mu)) + 1) * sqrt(x) );
+  } else {
+    double E_ex = 0.25 * E - mu + x;
+    double Ep = beta * (E_ex + sqrt( E * x )), Em = beta * (E_ex - sqrt( E * x ));
+
+    r = 1 / sqrt(x) + (logExp_mpfr(Em) - logExp_mpfr(Ep)) / ( 2 * beta * sqrt(E) * x);
+  }
+
+  return r;
+}
+
 double integrandI2part2(double x, void * params) {
   double * params_arr = (double *)params;
 
@@ -54,6 +74,13 @@ double integralI2Real(double w, double E, double mu, double beta) {
     size_t neval;
     gsl_integration_qng(&integrand_part2, 0, E, 0, 1e-10, result, error, &neval);
     gsl_integration_qagiu(&integrand_part2, E, 0, error[0], local_w_size, ws, result + 1, error + 1);
+  } else if (params_arr[4] == 0) {
+    gsl_function integrand_part1;
+    integrand_part1.function = &integrandI2part2v2;
+    integrand_part1.params = params_arr;
+
+    gsl_integration_qags(&integrand_part1, 0, 1, 0, 1e-10, local_w_size, ws, result, error);
+    gsl_integration_qagiu(&integrand_part2, 1, 0, error[0], local_w_size, ws, result + 1, error + 1);
   } else {
     gsl_function integrand_part1;
     integrand_part1.function = &integrandI2part1;
@@ -62,7 +89,7 @@ double integralI2Real(double w, double E, double mu, double beta) {
     double x_max = 4 * fmax(1e-4, params_arr[4]);
 
     gsl_integration_qawc(&integrand_part1, 0, x_max, params_arr[4], 0, 1e-10, local_w_size, ws, result, error);
-    gsl_integration_qagiu(&integrand_part2, x_max, 0, error[0], local_w_size, ws, result + 1, error + 1);
+    gsl_integration_qagiu(&integrand_part2, 0, 0, error[0], local_w_size, ws, result + 1, error + 1);
   }
 
   gsl_integration_workspace_free(ws);
@@ -107,9 +134,9 @@ double invTmatrixMB_real(double w, void * params) {
   double y2 = - 0.25 * E + mu + 0.5 * w;
 
   if (y2 >= 0) {
-    r = a;// + integralI2Real(w, E, mu, beta);
+    r = a + integralI2Real(w, E, mu, beta);
   } else {
-    r = a + I1(-y2);// + integralI2Real(w, E, mu, beta);
+    r = a + I1(-y2) + integralI2Real(w, E, mu, beta);
   }
 
   //printf("invTmatrixMB_real: %.10f, %.10f, %.10f, %.10f, %.10f\n", y2, w, E, a, r);
@@ -287,31 +314,18 @@ double integralPoleRes(double E, double mu, double beta, double z0) {
 }
 
 double poleRes(double E, double mu, double beta, double a) {
-  double z1 = 0.5 * E - 2 * mu;
   double z0 = polePos(E, mu, beta, a);
 
   if (isnan(z0)) { return 0; }
 
   //assert(z1 >= z0 && "z1 has to be larger or equal than z0");
 
-  double r, z2 = 2 * ( z1 - z0 );
+  double r, z2 = 0.25 * E - mu - 0.5 * z0;
 
   //printf("%.10f, %.10f, %.10f, %.10f\n", E, 1 / sqrt(2 * ( z1 - z0 )), integralPoleRes(E, mu, beta, z0), (I1dmu(z2)) / (exp(beta * z0) + 1));
   //printf("%.10f, %.10f, %.10f, %.10f, %.10f\n", E, mu, beta, a, z0);
 
-  r = (I1dmu(z2)) / (exp(beta * z0) + 1) / ( I1dmu(z2) - integralPoleRes(E, mu, beta, z0) / M_PI );
-
-  return r;
-}
-
-double poleRes_pole(double E, double mu, double beta, double /*a*/, double z0) {
-  double z1 = 0.5 * E - 2 * mu;
-
-  //assert(z1 >= z0 && "z1 has to be larger or equal than z0");
-
-  double r, z2 = 2 * ( z1 - z0 );
-
-  r = (I1dmu(z2)) / (exp(beta * z0) + 1) / ( I1dmu(z2) - integralPoleRes(E, mu, beta, z0) / M_PI );
+  r = - (I1dmu(z2)) / (exp(beta * z0) + 1) / ( 0.25 / I1(z2) - integralPoleRes(E, mu, beta, z0) / M_PI );
 
   return r;
 }
@@ -419,40 +433,29 @@ double integralDensityPole(double mu, double beta, double a) {
   integrand.function = &integrandDensityPole;
   integrand.params = params_arr;
 
-  //auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
 
   if (a <= 0) {
     double E_max = findLastPos(mu, beta, a);
     //printf("limit: %.10f, %.10f\n", a, E_max);
 
     if (!isnan(E_max)) {
-      //E_max -= 1e-10;
-      /*
       gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-      gsl_integration_qag(&integrand, 0, E_max, 0, 1e-10, w_size, GSL_INTEG_GAUSS15, ws, result, &error);
+      gsl_integration_qag(&integrand, 0, E_max, 0, 1e-10, w_size, GSL_INTEG_GAUSS31, ws, result, error);
       gsl_integration_workspace_free(ws);
-      */
-
-      size_t neval = 0;
-      gsl_integration_qng(&integrand, 0, E_max, 0, 1e-10, result, error, &neval);
     }
   } else {
-    double x_max = 16 / beta + 4 * (mu + a*a);
-
-    ///*
-    size_t neval = 0;
-    gsl_integration_qng(&integrand, 0, x_max, 0, 1e-10, result, error, &neval);
-    //*/
+    double E_max = 16 / beta + 4 * (mu + a*a);
 
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
-    //gsl_integration_qag(&integrand, 0, x_max, 0, 1e-10, w_size, GSL_INTEG_GAUSS31, ws, result, &error);
-    gsl_integration_qagiu(&integrand, x_max, 0, 0.5 * error[0], w_size, ws, result + 1, error + 1);
+    gsl_integration_qag(&integrand, 0, E_max, 0, 1e-10, w_size, GSL_INTEG_GAUSS51, ws, result, error);
+    gsl_integration_qagiu(&integrand, E_max, 0, 1e-10, w_size, ws, result + 1, error+ 1);
     gsl_integration_workspace_free(ws);
   }
 
-  //auto end = std::chrono::high_resolution_clock::now();
-  //std::chrono::duration<double> dt = end-start;
-  //printf("integralDensityPole: %.10f, %.10f, %.10f, %.3e, %.3e, %.3f s\n", a, result[0], result[1], error[0], error[1], dt.count());
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> dt = end-start;
+  printf("integralDensityPole: %.10f, %.10f, %.10f, %.3e, %.3e, %.3f s\n", a, result[0], result[1], error[0], error[1], dt.count());
 
   return (result[0] + result[1]) / (4 * M_PI * M_PI);
 }
@@ -510,28 +513,83 @@ double integralDensityBranch(double mu, double beta, double a) {
 }
 
 double analytic_n_id(double mu, double beta) {
-  return polylogExpM(1.5, beta * mu) / std::pow(4 * M_PI * beta, 1.5);
+  return -polylogExpM(1.5, beta * mu) * 0.75 * std::sqrt(M_PI) / std::pow(beta, 1.5);
 }
 
 double analytic_n_ex(double mu, double beta, double a) {
-  if (a < 0) {
-    return 0;
-  }
-
-  return 4 * polylogExp(1.5, beta * (2 * a*a + 2 * mu)) / std::pow(4 * M_PI * beta, 1.5);
+  if (a < 0) { return 0; }
+  return polylogExp(1.5, beta * (8 * a*a + 2 * mu)) * 1.5 * std::sqrt(M_PI) / std::pow(beta, 1.5);
 }
 
 double integrandAnalytic_n_sc(double y, void * params) {
-  double * arr_params = (double*)params;
-  double mu = arr_params[0];
-  double beta = arr_params[1];
-  double a = arr_params[2];
+  double * params_arr = (double*)params;
+  double mu = params_arr[0];
+  double beta = params_arr[1];
+  double a = params_arr[2];
 
-  return polylogExp(1.5, beta * (-0.5*y*y + 2 * mu)) / (y*y + std::pow(4 / a, 2));
+  return polylogExp(1.5, beta * (-0.5*y*y + 2 * mu)) / (y*y + 16 * a*a);
 }
 
 double analytic_n_sc(double mu, double beta, double a) {
-  double result = integralTemplate(&integrandAnalytic_n_sc, mu, beta, a);
-  return - 2 * a / std::pow(M_PI, 3) * result;
+  double result = integralTemplate(&integrandAnalytic_n_sc, 0, mu, beta, a);
+  return - 6 / std::sqrt(M_PI) * a * result / std::pow(beta, 1.5);
+}
+
+double analytic_n(double mu, void * params) {
+  double * params_arr = (double*)params;
+  double beta = params_arr[0];
+  double a = params_arr[1];
+  // n_total should be 1.
+  double n_total = params_arr[2];
+
+  return - n_total + analytic_n_id(mu, beta) + analytic_n_ex(mu, beta, a) + analytic_n_sc(mu, beta, a);
+}
+
+double analytic_mu(double beta, double a) {
+  double params_arr[] = {beta, a, 1};
+
+  double w_lo = a > 0 ? - 4 * a*a : 0, w_hi = a > 0 ? - 8 * a*a : -1, r = 0;
+  double w_max = 1e10;
+  bool found = false;
+
+  // Find a proper bound using exponential sweep.
+  for(; w_hi < w_max; w_hi *= 2) {
+    if (analytic_n(w_hi, params_arr) < 0) {
+      found = true;
+      break;
+    }
+
+    w_lo = w_hi;
+  }
+
+  if (found) {
+    int status = GSL_CONTINUE;
+
+    gsl_function T_mat;
+    T_mat.function = &analytic_n;
+    T_mat.params = params_arr;
+
+    const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+    gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+    gsl_root_fsolver_set(s, &T_mat, w_hi, w_lo);
+
+    for (; status == GSL_CONTINUE; ) {
+      status = gsl_root_fsolver_iterate(s);
+      r = gsl_root_fsolver_root(s);
+      w_lo = gsl_root_fsolver_x_lower(s);
+      w_hi = gsl_root_fsolver_x_upper(s);
+      status = gsl_root_test_interval(w_lo, w_hi, 0, 1e-10);
+    }
+
+    gsl_root_fsolver_free (s);
+
+  } else {
+    r = NAN;
+  }
+
+  //printf("%.10f, %.10f\n", a, r);
+
+  return r;
 }
 

@@ -13,6 +13,7 @@ extern "C" {
 
   double integrandI2part1(double x, void * params);
   double integrandI2part2(double x, void * params);
+  double integrandI2part2v2(double x, void * params);
   double integralI2Real(double w, double E, double mu, double beta);
   double integralI2Imag(double w, double E, double mu, double beta);
 
@@ -31,7 +32,6 @@ extern "C" {
   double integrandPoleRes(double x, void * params);
   double integralPoleRes(double E, double mu, double beta, double z0);
   double poleRes(double E, double mu, double beta, double a);
-  double poleRes_pole(double E, double mu, double beta, double a, double z0);
 
   /*** Matsubara sum: branch contribution ***/
 
@@ -52,6 +52,9 @@ extern "C" {
   double analytic_n_id(double mu, double beta);
   double analytic_n_ex(double mu, double beta, double a);
   double analytic_n_sc(double mu, double beta, double a);
+
+  double analytic_n(double mu, void * params);
+  double analytic_mu(double beta, double a);
 }
 
 /*** C++ only ***/

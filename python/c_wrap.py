@@ -47,8 +47,6 @@ poleRes_functor = genericFunctor(integrals_so, "poleRes", [ ctypes.c_double,  ct
 
 findLastPos_functor = genericFunctor(integrals_so, "findLastPos", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
-poleRes_pole_functor = genericFunctor(integrals_so, "poleRes_pole", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
-
 integrandBranch_functor = genericFunctor(integrals_so, "integrandBranch", [ ctypes.c_double, ctypes.c_void_p ], ctypes.c_double)
 
 integralBranch_functor = genericFunctor(integrals_so, "integralBranch", [ ctypes.c_double,  ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
@@ -64,6 +62,10 @@ analytic_n_id_functor = genericFunctor(integrals_so, "analytic_n_id", [ ctypes.c
 analytic_n_ex_functor = genericFunctor(integrals_so, "analytic_n_ex", [ ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 analytic_n_sc_functor = genericFunctor(integrals_so, "analytic_n_sc", [ ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+analytic_n_functor = genericFunctor(integrals_so, "analytic_n", [ ctypes.c_double,  ctypes.c_void_p ], ctypes.c_double)
+
+analytic_mu_functor = genericFunctor(integrals_so, "analytic_mu", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 def I1(x):
   return I1_functor(x)
@@ -162,4 +164,15 @@ def analytic_n_ex(mu, beta, a):
 
 def analytic_n_sc(mu, beta, a):
   return analytic_n_sc_functor(mu, beta, a)
+
+def analytic_n(mu, *args):
+  params = (ctypes.c_double * 3)()
+
+  for i in range(len(args)):
+    params[i] = args[i]
+
+  return analytic_n_functor(mu, ctypes.cast(params, ctypes.c_void_p))
+
+def analytic_mu(beta, a):
+  return analytic_mu_functor(beta, a)
 
