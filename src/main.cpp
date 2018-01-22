@@ -1,12 +1,14 @@
+#include "common.h"
 #include "integrals.h"
 
 int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  double w = 3, E = 0, mu = 1, beta = 1, a = -1;
+  double w = 0.5, E = 2, mu = 1, beta = 1, a = -1;
 
-  std::cout << findLastPos(mu, beta, a) << std::endl;
+  printf("%.16f, %.16f\n", erf_r(w, 0), erf_i(w, 0));
+  printf("%.16f, %.16f\n", erf_r(w, E), erf_i(w, E));
 
   return 0;
 

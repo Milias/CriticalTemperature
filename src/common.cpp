@@ -116,3 +116,52 @@ double polylogExpM(double s, double z) {
   return r;
 }
 
+double erf_fk(double x, double y, uint32_t k) {
+  return 2 * x * ( 1 - std::cos(2 * x * y) * std::cosh(k * y) + k * std::sin(2 * x * y) * std::sinh(k * y) );
+}
+
+double erf_gk(double x, double y, uint32_t k) {
+  return 2 * x * std::sin(2 * x * y) * std::cosh(k * y) + k * std::cos(2 * x * y) * std::sinh(k * y);
+}
+
+double erf_sterm_r(double x, double y, double k) {
+  return std::exp(- 0.25 * k*k) * erf_fk(x, y, k) / ( k*k + 4 * x*x);
+}
+
+double erf_sterm_i(double x, double y, double k) {
+  return std::exp(- 0.25 * k*k) * erf_gk(x,y,k) / ( k*k + 4 * x*x);
+}
+
+double erf_r(double x, double y, uint32_t n, double eps) {
+  double constant_add = std::erf(x) + std::exp(-x*x) / ( 2 * M_PI * x) * ( 1 - std::cos(2 * x * y) );
+  double constant_prod = 2 * std::exp(-x*x) / M_PI;
+  double val_prev = 0, val_curr, err = 1;
+
+  val_curr = constant_prod * erf_sterm_r(x, y, 1);
+
+  for(uint32_t k = 2; k < n && err > eps; k++) {
+    val_prev += val_curr;
+    val_curr = constant_prod * erf_sterm_r(x, y, k);
+
+    err = std::abs(val_curr - val_prev);
+  }
+
+  return constant_add + val_curr + val_prev;
+}
+
+double erf_i(double x, double y, uint32_t n, double eps) {
+  double constant_add = std::exp(-x*x) / ( 2 * M_PI * x) * std::sin(2 * x * y);
+  double constant_prod = 2 * std::exp(-x*x) / M_PI;
+  double val_prev = 0, val_curr, err = 1;
+
+  val_curr = constant_prod * erf_sterm_i(x, y, 1);
+
+  for(uint32_t k = 2; k < n && err > eps; k++) {
+    val_prev += val_curr;
+    val_curr = constant_prod * erf_sterm_i(x, y, k);
+
+    err = std::abs(val_curr - val_prev);
+  }
+
+  return constant_add + val_curr + val_prev;
+}

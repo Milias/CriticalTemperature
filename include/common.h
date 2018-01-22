@@ -41,5 +41,16 @@ extern "C" {
 
   // real(Li_s(-exp(z)))
   double polylogExpM(double s, double z);
-}
 
+  // https://math.stackexchange.com/questions/712434/erfaib-error-function-separate-into-real-and-imaginary-part
+  double erf_fk(double x, double y, uint32_t k);
+  double erf_gk(double x, double y, uint32_t k);
+
+  double erf_sterm_r(double x, double y, double k);
+  double erf_sterm_i(double x, double y, double k);
+
+  // real(erf(x + i * y))
+  double erf_r(double x, double y, uint32_t n = 64, double eps = 1e-15);
+  // imag(erf(x + i * y))
+  double erf_i(double x, double y, uint32_t n = 64, double eps = 1e-15);
+}
