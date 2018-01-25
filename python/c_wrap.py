@@ -67,6 +67,19 @@ analytic_n_functor = genericFunctor(integrals_so, "analytic_n", [ ctypes.c_doubl
 
 analytic_mu_functor = genericFunctor(integrals_so, "analytic_mu", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
+### classical.h
+
+integralSuscp_cr_functor = genericFunctor(integrals_so, "integralSuscp_cr", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+integralSuscp_ci_functor = genericFunctor(integrals_so, "integralSuscp_ci", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+suscp_cr_functor = genericFunctor(integrals_so, "suscp_cr", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+suscp_ci_functor = genericFunctor(integrals_so, "suscp_ci", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+suscp_czr_functor = genericFunctor(integrals_so, "suscp_czr", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+suscp_czi_functor = genericFunctor(integrals_so, "suscp_czi", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+
 def I1(x):
   return I1_functor(x)
 
@@ -175,4 +188,31 @@ def analytic_n(mu, *args):
 
 def analytic_mu(beta, a):
   return analytic_mu_functor(beta, a)
+
+def integralSuscp_cr(w, E, mu_ph, m_i, m_r):
+  return integralSuscp_cr_functor(w, E, mu_ph, m_i, m_r)
+
+def integralSuscp_ci(w, E, mu_ph, m_i, m_r):
+  return integralSuscp_ci_functor(w, E, mu_ph, m_i, m_r)
+
+def integralSuscp_cc(w, E, mu_ph, m_i, m_r):
+  return complex(integralSuscp_cr_functor(w, E, mu_ph, m_i, m_r), integralSuscp_ci_functor(w, E, mu_ph, m_i, m_r))
+
+def suscp_cr(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return suscp_cr_functor(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0)
+
+def suscp_ci(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return suscp_ci_functor(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0)
+
+def suscp_cc(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return complex(suscp_cr_functor(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0), suscp_ci_functor(w, p, mu_1, mu_2, m_1, m_2, m_r, beta, V_0))
+
+def suscp_czr(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return suscp_czr_functor(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0)
+
+def suscp_czi(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return suscp_czi_functor(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0)
+
+def suscp_czc(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0):
+  return complex(suscp_czr_functor(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0), suscp_czi_functor(w, mu_1, mu_2, m_1, m_2, m_r, beta, V_0))
 

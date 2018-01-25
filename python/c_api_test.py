@@ -21,8 +21,13 @@ def compExcitonicDensity(mu, beta, a):
   print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
   return y
 
-N = 1<<7
-w, E, mu, beta, a = -1, 1, -1, 0.1, 8
+N = 1<<5
+w, E, mu, beta, a = -1, 0, -1, 0.1, 10
+p = 0
+mu_1, mu_2 = -20, -20
+mu_ph = mu_1 + mu_2
+m_1, m_2 = 0.28, 0.59
+m_r = 1.0 / (1.0 / m_1 + 1.0 / m_2)
 
 """
 pole_pos = polePos(E, mu, beta, a)
@@ -58,6 +63,7 @@ x = linspace(0, (16 / beta + 4 * (mu + a**2)), N)
 #x = linspace(0, 0.5 * E, N)
 #x = linspace(-0.5, 2.5, N)
 #x = linspace(-16 * a**2, -4*a**2, N) if a > 0 else linspace(-10, 0, N)
+x = linspace(-1e3, 1e3, N)
 #print(x)
 
 #mu_arr = itertools.repeat(mu, N)
@@ -75,7 +81,7 @@ t0 = time.time()
 
 #y = array(parallelTable(integrandI2part2, x, itertools.repeat(w, N), itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(0.5 * w - 0.25 * E + mu, N)))
 #y = real(array(parallelTable(invTmatrixMB, 0.5 * x - 2 * mu, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
-y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+#y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
 #y = array(parallelTable(integralDensityPole, mu_arr, itertools.repeat(beta, N), x))
 
 #y = array(parallelTable(invTmatrixMB_real, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
@@ -90,6 +96,9 @@ y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), iterto
 
 #y = array(parallelTable(analytic_n, x, itertools.repeat(beta, N), itertools.repeat(a, N), itertools.repeat(1, N)))
 #y = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
+
+#y = array(parallelTable(integralSuscp_cc, x, itertools.repeat(E, N), itertools.repeat(mu_ph, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N)))
+#y = imag(array(parallelTable(suscp_czc, x, itertools.repeat(mu_1, N), itertools.repeat(mu_2, N), itertools.repeat(m_1, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
 
 dt = time.time() - t0
 
@@ -106,7 +115,7 @@ dt = time.time() - t0
 
 #print(y)
 
-fig, axarr, axarr0 = complexPlot(x, y, ('r.', 'b-'))
+fig, axarr, axarr0 = complexPlot(x, y, ('r-', 'b-'))
 #fig, axarr, axarr0 = complexPlot(x, y)
 #axarr.plot(x, y_ex, 'g-')
 #axarr.plot(x, y_sc, 'm-')

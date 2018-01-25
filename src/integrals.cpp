@@ -593,3 +593,53 @@ double analytic_mu(double beta, double a) {
   return r;
 }
 
+int rosenbrock_f(const gsl_vector * x, void * params, gsl_vector * f) {
+  double * params_arr = (double*)params;
+  double a = params_arr[0];
+  double b = params_arr[1];
+
+  const double x0 = gsl_vector_get(x, 0);
+  const double x1 = gsl_vector_get(x, 1);
+
+  const double y0 = a * ( 1 - x0 );
+  const double y1 = b * (x1 - x0 * x0);
+
+  gsl_vector_set(f, 0, y0);
+  gsl_vector_set(f, 1, y1);
+
+  return GSL_SUCCESS;
+}
+
+double * solve_rosenbrock(double a, double b) {
+  const size_t n = 2;
+  double params_arr[] = {a, b};
+  gsl_multiroot_function f = {&rosenbrock_f, n, params_arr};
+
+  double x_init[] = {-10, -5};
+  gsl_vector * x = gsl_vector_alloc(n);
+
+  for(size_t i = 0; i < n; i++) { gsl_vector_set(x, i, x_init[i]); }
+
+  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
+  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n);
+  //n = number of equations, in this case same as inputs.
+  gsl_multiroot_fsolver_set(s, &f, x);
+
+  for (int status = GSL_CONTINUE; status == GSL_CONTINUE;) {
+    status = gsl_multiroot_fsolver_iterate(s);
+
+    if (status) { break; }
+
+    status = gsl_multiroot_test_residual(s->f, 1e-10);
+  }
+
+  double * r = new double[n];
+
+  for(size_t i = 0; i < n; i++) { r[i] = gsl_vector_get(s->x, i); }
+
+  gsl_multiroot_fsolver_free(s);
+  gsl_vector_free(x);
+
+  return r;
+}
+

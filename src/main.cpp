@@ -5,12 +5,12 @@ int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  double w = 0.5, E = 2, mu = 1, beta = 1, a = -1;
+  double w = 0.5, E = 0.01, mu = 1, beta = 1, a = -1;
 
-  printf("%.16f, %.16f\n", erf_r(w, 0), erf_i(w, 0));
-  printf("%.16f, %.16f\n", erf_r(w, E), erf_i(w, E));
+  double x = invPolylogExp(0.5, 1);
+  printf("%.10f\n", x);
 
-  return 0;
+  //return 0;
 
   uint32_t N = 1<<10;
 
@@ -39,11 +39,17 @@ int main(/*int argc, char ** argv*/)
   for (uint32_t i = 0; i < N; i++) {
     r = integralDensityPole(mu, beta, a);
   }
-  */
 
   std::complex<double> r;
   for (uint32_t i = 0; i < N; i++) {
     r = integralBranch(E, mu, beta, a);
+  }
+  */
+
+  double r;
+  for (uint32_t i = 0; i < N; i++) {
+    r = invPolylogExp(0.5, 1e2);
+    //r = polylogExpM(1.5, 1);
   }
 
   auto end = std::chrono::high_resolution_clock::now();

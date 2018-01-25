@@ -107,13 +107,114 @@ double polylogExpM(double s, double z) {
 
   arb_polylog(arb_x, arb_s, arb_z, prec);
 
-  double r = arf_get_d(arb_midref(arb_x), ARF_RND_NEAR);
+  double r = -arf_get_d(arb_midref(arb_x), ARF_RND_NEAR);
 
   arb_clear(arb_x);
   arb_clear(arb_s);
   arb_clear(arb_z);
 
   return r;
+}
+
+double invPolylogExp_f(double z, void * params) {
+  double s = ((double*)params)[0];
+  double a = ((double*)params)[1];
+  return polylogExp(s, z) - a;
+}
+
+double invPolylogExp_df(double z, void * params) {
+  return polylogExp(((double*)params)[0] - 1.0, z);
+}
+
+void invPolylogExp_fdf(double z, void * params, double * f, double * df) {
+  double s = ((double*)params)[0];
+  double a = ((double*)params)[1];
+  f[0] = polylogExp(s, z) - a;
+  df[0] = polylogExp(s - 1.0, z);
+}
+
+double invPolylogExp(double p_s, double a) {
+  // Can't be higher than zeta(p_s) == Li(p_s, exp(0))
+  if (a < 0) { return NAN; }
+  if (a == 0) { return -std::numeric_limits<double>::infinity(); }
+
+  if (p_s > 1) {
+    double zeta_val = gsl_sf_zeta(p_s);
+    if (a > zeta_val) { return NAN; }
+    if (a == zeta_val) { return 0; }
+  }
+
+  double params_arr[] = {p_s, a};
+  // TODO: approximate answer for very large or very small a!
+  double x0, x = -1e-5;
+
+  gsl_function_fdf T_mat;
+  T_mat.f = &invPolylogExp_f;
+  T_mat.df = &invPolylogExp_df;
+  T_mat.fdf = &invPolylogExp_fdf;
+  T_mat.params = params_arr;
+
+  const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
+  gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
+
+  gsl_root_fdfsolver_set(s, &T_mat, x);
+
+  for (int status = GSL_CONTINUE; status == GSL_CONTINUE; ) {
+    status = gsl_root_fdfsolver_iterate(s);
+    x0 = x;
+    x = gsl_root_fdfsolver_root(s);
+    status = gsl_root_test_delta (x, x0, 0, 1e-10);
+  }
+
+  gsl_root_fdfsolver_free (s);
+  return x;
+}
+
+double invPolylogExpM_f(double z, void * params) {
+  double s = ((double*)params)[0];
+  double a = ((double*)params)[1];
+  return polylogExpM(s, z) - a;
+}
+
+double invPolylogExpM_df(double z, void * params) {
+  return polylogExpM(((double*)params)[0] - 1.0, z);
+}
+
+void invPolylogExpM_fdf(double z, void * params, double * f, double * df) {
+  double s = ((double*)params)[0];
+  double a = ((double*)params)[1];
+  f[0] = polylogExpM(s, z) - a;
+  df[0] = polylogExpM(s - 1.0, z);
+}
+
+double invPolylogExpM(double p_s, double a) {
+  // Can't be negative.
+  if (a < 0) { return NAN; }
+  if (a == 0) { return -std::numeric_limits<double>::infinity(); }
+
+  double params_arr[] = {p_s, a};
+  double x0, x = 0;
+
+  gsl_function_fdf T_mat;
+  T_mat.f = &invPolylogExpM_f;
+  T_mat.df = &invPolylogExpM_df;
+  T_mat.fdf = &invPolylogExpM_fdf;
+  T_mat.params = params_arr;
+
+  const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
+  gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
+
+  gsl_root_fdfsolver_set(s, &T_mat, x);
+
+  for (int status = GSL_CONTINUE; status == GSL_CONTINUE; ) {
+    status = gsl_root_fdfsolver_iterate(s);
+    x0 = x;
+    x = gsl_root_fdfsolver_root(s);
+    status = gsl_root_test_delta (x, x0, 0, 1e-10);
+  }
+
+  gsl_root_fdfsolver_free (s);
+  return x;
 }
 
 double erf_fk(double x, double y, uint32_t k) {
@@ -165,3 +266,8 @@ double erf_i(double x, double y, uint32_t n, double eps) {
 
   return constant_add + val_curr + val_prev;
 }
+
+std::complex<double> erf_c(std::complex<double> & z) {
+  return std::complex<double>(erf_r(z.real(), z.imag()), erf_i(z.real(), z.imag()));
+}
+
