@@ -5,14 +5,14 @@ int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  double w = 0.5, E = 0.01, mu = 1, beta = 1, a = -1;
+  double w = 1, E = 1, mu = 1, beta = 1, a = -1;
 
-  double x = invPolylogExp(0.5, 1);
+  double x = wavefunction_int(w, E, mu);
   printf("%.10f\n", x);
 
-  //return 0;
+  return 0;
 
-  uint32_t N = 1<<10;
+  uint32_t N = 1<<12;
 
   //double z0 = polePos(E, mu, beta, a);
 
@@ -48,7 +48,8 @@ int main(/*int argc, char ** argv*/)
 
   double r;
   for (uint32_t i = 0; i < N; i++) {
-    r = invPolylogExp(0.5, 1e2);
+    //r = invPolylogExp(0.5, 1e-2);
+    r = wavefunction_int(1, 1e2, 1e3);
     //r = polylogExpM(1.5, 1);
   }
 

@@ -67,6 +67,15 @@ analytic_n_functor = genericFunctor(integrals_so, "analytic_n", [ ctypes.c_doubl
 
 analytic_mu_functor = genericFunctor(integrals_so, "analytic_mu", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
+## Scattering length: ODE
+
+wavefunction_int_functor = genericFunctor(integrals_so, "wavefunction_int", [ ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+## Scattering length: ideal gas mu
+
+mu_ideal_functor = genericFunctor(integrals_so, "mu_ideal", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+mu_ideal_dn_functor = genericFunctor(integrals_so, "mu_ideal_dn", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
 ### classical.h
 
 integralSuscp_cr_functor = genericFunctor(integrals_so, "integralSuscp_cr", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
@@ -78,7 +87,6 @@ suscp_ci_functor = genericFunctor(integrals_so, "suscp_ci", [ ctypes.c_double, c
 
 suscp_czr_functor = genericFunctor(integrals_so, "suscp_czr", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 suscp_czi_functor = genericFunctor(integrals_so, "suscp_czi", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
-
 
 def I1(x):
   return I1_functor(x)
@@ -188,6 +196,21 @@ def analytic_n(mu, *args):
 
 def analytic_mu(beta, a):
   return analytic_mu_functor(beta, a)
+
+## Scattering length: ODE
+
+def wavefunction_int(eps_r, e_ratio, lambda_s):
+  return wavefunction_int_functor(eps_r, e_ratio, lambda_s)
+
+## Scattering length: ideal gas mu
+
+def mu_ideal(n_dless, m_ratio):
+  return mu_ideal_functor(n_dless, m_ratio)
+
+def mu_ideal_dn(n_dless, m_ratio):
+  return mu_ideal_dn_functor(n_dless, m_ratio)
+
+### classical.h
 
 def integralSuscp_cr(w, E, mu_ph, m_i, m_r):
   return integralSuscp_cr_functor(w, E, mu_ph, m_i, m_r)

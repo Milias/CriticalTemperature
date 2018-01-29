@@ -21,13 +21,26 @@ def compExcitonicDensity(mu, beta, a):
   print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
   return y
 
-N = 1<<5
+k_B = 8.6173303e-5 # eV K^-1
+m_electron = 0.5109989461e6 # eV
+hbar = 6.582119514e-16 # eV s
+c = 299792458 # m s^-1
+
+N = 1<<10
 w, E, mu, beta, a = -1, 0, -1, 0.1, 10
 p = 0
 mu_1, mu_2 = -20, -20
 mu_ph = mu_1 + mu_2
-m_1, m_2 = 0.28, 0.59
-m_r = 1.0 / (1.0 / m_1 + 1.0 / m_2)
+m_1, m_2 = 0.28 * m_electron, 0.59 * m_electron # eV
+m_r = 1.0 / (1.0 / m_1 + 1.0 / m_2) # eV
+
+T = 300 # K
+beta = 1 / (k_B * T) # eV^-1
+lambda_th = c * hbar * sqrt(2 * pi * beta / m_r) # m
+energy_th = 1 / ( 4 * pi * beta )
+eps_r, e_ratio = 6.56, m_r / energy_th
+
+print('%f nm, %f meV, %.2e' % (lambda_th*1e9, energy_th * 1e3, m_r / energy_th))
 
 """
 pole_pos = polePos(E, mu, beta, a)
@@ -58,16 +71,20 @@ exit()
 #x = linspace(2 * pole_pos if pole_pos < 0 else 2 * pole_pos - (0.5 * E - 2 * mu), 0.5 * E - 2 * mu, N)
 #x = linspace(0, 8 * mu if mu > 0 else 10, N)
 #x = linspace(-10, z0, N)
-x = linspace(0, (16 / beta + 4 * (mu + a**2)), N)
+#x = linspace(0, (16 / beta + 4 * (mu + a**2)), N)
 #x = linspace(0.99 * 4 * mu, 1.01 * 4 * mu, N)
 #x = linspace(0, 0.5 * E, N)
-#x = linspace(-0.5, 2.5, N)
+#x = linspace(-2.5, 2.5, N)
 #x = linspace(-16 * a**2, -4*a**2, N) if a > 0 else linspace(-10, 0, N)
-x = linspace(-1e3, 1e3, N)
+#x = linspace(-1e3, 1e3, N)
+#x = linspace(1e-3, 1e3, N)
+x = logspace(16, 22, N) * lambda_th**3
 #print(x)
 
+lambda_s = 1/sqrt(1/array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_1, N))) + 1/array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_2, N))))
+
 #mu_arr = itertools.repeat(mu, N)
-mu_arr = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
+#mu_arr = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
 #y_id_fixed = analytic_n_id(mu, beta)
 
 t0 = time.time()
@@ -97,6 +114,10 @@ t0 = time.time()
 #y = array(parallelTable(analytic_n, x, itertools.repeat(beta, N), itertools.repeat(a, N), itertools.repeat(1, N)))
 #y = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
 
+y = array(parallelTable(wavefunction_int, itertools.repeat(eps_r, N), itertools.repeat(e_ratio, N), lambda_s))
+#y = array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_1, N))) + array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_2, N)))
+#y = (array(parallelTable(mu_ideal, x, itertools.repeat(m_r/m_1, N))) + array(parallelTable(mu_ideal, x, itertools.repeat(m_r/m_2, N)))) * energy_th
+
 #y = array(parallelTable(integralSuscp_cc, x, itertools.repeat(E, N), itertools.repeat(mu_ph, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N)))
 #y = imag(array(parallelTable(suscp_czc, x, itertools.repeat(mu_1, N), itertools.repeat(mu_2, N), itertools.repeat(m_1, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
 
@@ -104,7 +125,7 @@ dt = time.time() - t0
 
 #print(y_ex)
 
-#y = log10(abs(y))
+#y = -log10(abs(y))
 
 #y_pos = 0.5 * x - 2 * mu - 2 * a**2
 
@@ -115,7 +136,9 @@ dt = time.time() - t0
 
 #print(y)
 
-fig, axarr, axarr0 = complexPlot(x, y, ('r-', 'b-'))
+fig, axarr, axarr0 = complexPlot(x * lambda_th**-3, y, ('r-', 'b-'), 'semilogx')
+axarr.autoscale(enable = True, axis = 'x', tight = True)
+#fig, axarr, axarr0 = realPlot(x, y, ('r-',))
 #fig, axarr, axarr0 = complexPlot(x, y)
 #axarr.plot(x, y_ex, 'g-')
 #axarr.plot(x, y_sc, 'm-')
@@ -136,14 +159,17 @@ fig, axarr, axarr0 = complexPlot(x, y, ('r-', 'b-'))
 #if 2 * w + 4 * mu > 0:
 #  axarr.axvline(x = 2 * w + 4 * mu)
 #axarr.axvline(x = 0.5 * E - 2 * mu)
-#axarr.set_ylim(-3, 1.5)
+axarr.set_ylim(-1e2, 1e2)
 
 #axarr.set_title('%f' % invTmatrixMB_real(0.5 * E - 2 * mu, E, mu, beta, a))
 #axarr.set_title('%f' % pole_pos)
+#axarr.set_title('Chemical potential')
 
-#axarr.set_xlabel(r'$\mu$')
-#axarr.set_ylabel(r'$n_{ex}$')
+#axarr.set_xlabel(r'$1 / a$')
+#axarr.set_ylabel(r'$\mu$')
 #axarr.set_title('Excitonic density contribution, T = %.2f, a = %.2f' % (1/beta, 1/a))
+
+#fig.savefig('python/graphs/chem_pot_analytic.eps')
 
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 plt.show()

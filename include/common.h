@@ -14,7 +14,9 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_sf_zeta.h>
+#include <gsl/gsl_deriv.h>
 #include <mpfr.h>
+#include <boost/numeric/odeint.hpp>
 
 #include <arf.h>
 #include <arb.h>
@@ -65,6 +67,11 @@ extern "C" {
 }
 
 std::complex<double> erf_c(std::complex<double> & z);
+
+double invPolylogExp_f(double z, void * params);
+double invPolylogExp_df(double z, void * params);
+double invPolylogExpM_f(double z, void * params);
+double invPolylogExpM_df(double z, void * params);
 
 int rosenbrock_f(const gsl_vector * x, void * params, gsl_vector * f);
 double * solve_rosenbrock(double a, double b);

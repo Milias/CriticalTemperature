@@ -23,11 +23,19 @@ from matplotlib.ticker import MaxNLocator
 mp.dps = 100
 mp.pretty = True
 
-def complexPlot(x, y, line_styles = [ 'r-', 'b-' ]):
+def complexPlot(x, y, line_styles = [ 'r-', 'b-' ], plot_type = 'plot'):
   fig, axarr = plt.subplots(1, 1)
   yValues = [real(y), imag(y)]
 
-  axplots = [ axarr.plot(x, yValues[i], line_styles[i]) for i in range(2) ]
+  axplots = [ getattr(axarr, plot_type)(x, yValues[i], line_styles[i]) for i in range(2) ]
+
+  return fig, axarr, axplots
+
+def realPlot(x, y, line_styles = [ 'r-' ], plot_type = 'plot'):
+  fig, axarr = plt.subplots(1, 1)
+  yValues = [real(y)]
+
+  axplots = [ getattr(axarr, plot_type)(x, yValues[i], line_styles[i]) for i in range(1) ]
 
   return fig, axarr, axplots
 

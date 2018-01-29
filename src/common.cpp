@@ -145,7 +145,7 @@ double invPolylogExp(double p_s, double a) {
   }
 
   double params_arr[] = {p_s, a};
-  // TODO: approximate answer for very large or very small a!
+  // TODO: approximate answer for very large or very small a.
   double x0, x = -1e-5;
 
   gsl_function_fdf T_mat;
@@ -212,6 +212,8 @@ double invPolylogExpM(double p_s, double a) {
     x = gsl_root_fdfsolver_root(s);
     status = gsl_root_test_delta (x, x0, 0, 1e-10);
   }
+
+  //printf("%.10f, %.10f, %.3e\n", a, x, x - x0);
 
   gsl_root_fdfsolver_free (s);
   return x;

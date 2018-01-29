@@ -643,3 +643,76 @@ double * solve_rosenbrock(double a, double b) {
   return r;
 }
 
+double yukawa_pot(double x, double eps_r, double e_ratio, double lambda_s) {
+  /* e_ratio = m_r * c^2 / e_th */
+  // alpha = fine-structure constant
+  const double alpha{7.2973525664e-3};
+  return - alpha / eps_r * std::sqrt(e_ratio) * std::exp(-std::sqrt(alpha * e_ratio / eps_r) * x / lambda_s) / x;
+}
+
+wavefunction_ode::wavefunction_ode(double eps_r, double e_ratio, double lambda_s) : eps_r(eps_r), e_ratio(e_ratio), lambda_s(lambda_s) {}
+
+void wavefunction_ode::operator()(const std::array<double, 2> &y, std::array<double, 2> &dy, double x) {
+  dy[0] = y[1];
+  dy[1] = yukawa_pot(x, eps_r, e_ratio, lambda_s) * y[0];
+}
+
+double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
+  std::array<double, 2> y{{0.0, 1.0}};
+  double x0{1e-10}, x1{1<<8};
+  double a0{x1}, a1;
+  const double err = 1e-10;
+
+  typedef boost::numeric::odeint::runge_kutta_cash_karp54< std::array<double, 2> > error_stepper_type;
+  typedef boost::numeric::odeint::controlled_runge_kutta< error_stepper_type > controlled_stepper_type;
+
+  controlled_stepper_type controlled_stepper;
+  wavefunction_ode wf(eps_r, e_ratio, lambda_s);
+
+  for(uint8_t i = 0, status = 0; status == 0 && i < 32; i++) {
+    integrate_adaptive(controlled_stepper, wf, y, x0, x1, 0.01);
+
+    a1 = x1 - y[0] / y[1];
+
+    //printf("%.2f, %.10f, %.10f, %.2e\n", lambda_s, a1, a0, a1 - a0);
+
+    if (std::abs(a1 - a0) > err) {
+      x0 = x1;
+      x1 *= 2;
+
+      a0 = a1;
+    } else {
+      break;
+    }
+  }
+
+  return a1;
+}
+
+double mu_ideal(double n_dless, double m_ratio) {
+  // m_ratio = m_r / m_i
+  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, 1.5));
+}
+
+double __invPolylogExpM(double z, void * params) {
+  return invPolylogExpM(((double*)params)[0], z);
+}
+
+double mu_ideal_dn(double n_dless, double m_ratio) {
+  // m_ratio = m_r / m_i
+  double arg{0.5 * std::pow(m_ratio, 1.5)};
+
+  gsl_function F;
+  double r, err;
+  double params_arr[] = {1.5};
+
+  F.function = &__invPolylogExpM;
+  F.params = params_arr;
+
+  gsl_deriv_forward(&F, n_dless, n_dless * 1e-6, &r, &err);
+
+  //printf("%.3e, %.3e, %.3e\n", n_dless, 4 * M_PI * arg * r, err);
+
+  return 4 * M_PI * arg * r;
+}
+
