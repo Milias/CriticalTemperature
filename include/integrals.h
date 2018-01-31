@@ -50,12 +50,13 @@ extern "C" {
 
   /*** Density: analytic solution ***/
 
-  double analytic_n_id(double mu, double beta);
-  double analytic_n_ex(double mu, double beta, double a);
-  double analytic_n_sc(double mu, double beta, double a);
+  double analytic_n_id(double mu, double m_ratio);
+  double analytic_n_ex(double mu, double m_ratio, double a);
+  double analytic_n_sc(double mu, double m_ratio, double a);
 
-  double analytic_n(double mu, void * params);
-  double analytic_mu(double beta, double a);
+  double * analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a);
+  double * analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a);
+  double * analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio);
 
   /*** Scattering length: ODE ***/
 
@@ -64,8 +65,8 @@ extern "C" {
 
   /*** Scattering length: ideal gas chemical potential ***/
 
-  double mu_ideal(double n_dless, double m_ratio);
-  double mu_ideal_dn(double n_dless, double m_ratio);
+  double ideal_mu(double n_dless, double m_ratio);
+  double ideal_mu_dn(double n_dless, double m_ratio);
 }
 
 /*** C++ only ***/

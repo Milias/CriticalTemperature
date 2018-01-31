@@ -6,6 +6,7 @@
 *.sync-conflict*
 
 bin/*
+*.o-*
 *.o
 
 *__pycache__*

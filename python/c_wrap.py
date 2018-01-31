@@ -1,6 +1,9 @@
 import ctypes
 import time
 
+from numpy.ctypeslib import ndpointer
+from numpy import *
+
 ### Global
 
 class genericFunctor:
@@ -63,18 +66,22 @@ analytic_n_ex_functor = genericFunctor(integrals_so, "analytic_n_ex", [ ctypes.c
 
 analytic_n_sc_functor = genericFunctor(integrals_so, "analytic_n_sc", [ ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
-analytic_n_functor = genericFunctor(integrals_so, "analytic_n", [ ctypes.c_double,  ctypes.c_void_p ], ctypes.c_double)
-
-analytic_mu_functor = genericFunctor(integrals_so, "analytic_mu", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
-
 ## Scattering length: ODE
 
 wavefunction_int_functor = genericFunctor(integrals_so, "wavefunction_int", [ ctypes.c_double, ctypes.c_double, ctypes.c_double ], ctypes.c_double)
 
 ## Scattering length: ideal gas mu
 
-mu_ideal_functor = genericFunctor(integrals_so, "mu_ideal", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
-mu_ideal_dn_functor = genericFunctor(integrals_so, "mu_ideal_dn", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+ideal_mu_functor = genericFunctor(integrals_so, "ideal_mu", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+ideal_mu_dn_functor = genericFunctor(integrals_so, "ideal_mu_dn", [ ctypes.c_double, ctypes.c_double ], ctypes.c_double)
+
+## Analytic mu
+
+analytic_mu_param_functor = genericFunctor(integrals_so, "analytic_mu_param", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ndpointer(dtype = float64, ndim = 1, shape = (2,), flags = 'C_CONTIGUOUS'))
+
+analytic_mu_param_dn_functor = genericFunctor(integrals_so, "analytic_mu_param_dn", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ndpointer(dtype = float64, ndim = 1, shape = (2,), flags = 'C_CONTIGUOUS'))
+
+analytic_mu_functor = genericFunctor(integrals_so, "analytic_mu", [ ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double ], ndpointer(dtype = float64, ndim = 1, shape = (3,), flags = 'C_CONTIGUOUS'))
 
 ### classical.h
 
@@ -186,17 +193,6 @@ def analytic_n_ex(mu, beta, a):
 def analytic_n_sc(mu, beta, a):
   return analytic_n_sc_functor(mu, beta, a)
 
-def analytic_n(mu, *args):
-  params = (ctypes.c_double * 3)()
-
-  for i in range(len(args)):
-    params[i] = args[i]
-
-  return analytic_n_functor(mu, ctypes.cast(params, ctypes.c_void_p))
-
-def analytic_mu(beta, a):
-  return analytic_mu_functor(beta, a)
-
 ## Scattering length: ODE
 
 def wavefunction_int(eps_r, e_ratio, lambda_s):
@@ -204,11 +200,22 @@ def wavefunction_int(eps_r, e_ratio, lambda_s):
 
 ## Scattering length: ideal gas mu
 
-def mu_ideal(n_dless, m_ratio):
-  return mu_ideal_functor(n_dless, m_ratio)
+def ideal_mu(n_dless, m_ratio):
+  return ideal_mu_functor(n_dless, m_ratio)
 
-def mu_ideal_dn(n_dless, m_ratio):
-  return mu_ideal_dn_functor(n_dless, m_ratio)
+def ideal_mu_dn(n_dless, m_ratio):
+  return ideal_mu_dn_functor(n_dless, m_ratio)
+
+# Analytic mu
+
+def analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a):
+  return analytic_mu_param_functor(n_dless, m_ratio_e, m_ratio_h, a)
+
+def analytic_mu_param_dn(n_dless, m_ratio_e, m_ratio_h, a):
+  return analytic_mu_param_dn_functor(n_dless, m_ratio_e, m_ratio_h, a)
+
+def analytic_mu(n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio):
+  return analytic_mu_functor(n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio)
 
 ### classical.h
 

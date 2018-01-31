@@ -512,124 +512,186 @@ double integralDensityBranch(double mu, double beta, double a) {
   return result[0] + result[1];
 }
 
-double analytic_n_id(double mu, double beta) {
-  return -polylogExpM(1.5, beta * mu) * 0.75 * std::sqrt(M_PI) / std::pow(beta, 1.5);
+double analytic_n_id(double mu_i, double m_ratio) {
+  // m_ratio = m_i / m_r
+  return 2 * std::pow(m_ratio, 1.5) * polylogExpM(1.5, mu_i / (4 * M_PI));
 }
 
-double analytic_n_ex(double mu, double beta, double a) {
+double analytic_n_ex(double mu, double m_ratio, double a) {
+  // m_ratio = m_1 / m_r + m_2 / m_r
+  // mu = mu_1 + mu_2
   if (a < 0) { return 0; }
-  return polylogExp(1.5, beta * (8 * a*a + 2 * mu)) * 1.5 * std::sqrt(M_PI) / std::pow(beta, 1.5);
+  return 4 * std::pow(m_ratio, 1.5) * polylogExp(1.5, (mu + a*a / 4) / (4 * M_PI));
 }
 
-double integrandAnalytic_n_sc(double y, void * params) {
+double analytic_n_sc_f(double y, void * params) {
+  // mu = mu_1 + mu_2
   double * params_arr = (double*)params;
   double mu = params_arr[0];
-  double beta = params_arr[1];
-  double a = params_arr[2];
-
-  return polylogExp(1.5, beta * (-0.5*y*y + 2 * mu)) / (y*y + 16 * a*a);
-}
-
-double analytic_n_sc(double mu, double beta, double a) {
-  double result = integralTemplate(&integrandAnalytic_n_sc, 0, mu, beta, a);
-  return - 6 / std::sqrt(M_PI) * a * result / std::pow(beta, 1.5);
-}
-
-double analytic_n(double mu, void * params) {
-  double * params_arr = (double*)params;
-  double beta = params_arr[0];
   double a = params_arr[1];
-  // n_total should be 1.
-  double n_total = params_arr[2];
 
-  return - n_total + analytic_n_id(mu, beta) + analytic_n_ex(mu, beta, a) + analytic_n_sc(mu, beta, a);
+  return polylogExp(1.5, mu / (4 * M_PI) - y*y) / (y*y + a*a / (16 * M_PI));
 }
 
-double analytic_mu(double beta, double a) {
-  double params_arr[] = {beta, a, 1};
+double analytic_n_sc(double mu, double m_ratio, double a) {
+  // m_ratio = m_1 / m_r + m_2 / m_r
+  // mu = mu_1 + mu_2
+  constexpr uint32_t local_ws_size = 1<<8;
+  double result[2] = {0}, err[2] = {0};
+  double params_arr[] = {mu, a};
 
-  double w_lo = a > 0 ? - 4 * a*a : 0, w_hi = a > 0 ? - 8 * a*a : -1, r = 0;
-  double w_max = 1e10;
-  bool found = false;
+  double x_max = 0;
 
-  // Find a proper bound using exponential sweep.
-  for(; w_hi < w_max; w_hi *= 2) {
-    if (analytic_n(w_hi, params_arr) < 0) {
-      found = true;
-      break;
-    }
+  if (a < 1e-4) {
+    x_max = 1e-5;
 
-    w_lo = w_hi;
+    gsl_function integrand;
+    integrand.function = &analytic_n_sc_f;
+    integrand.params = params_arr;
+
+    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(w_size);
+    gsl_integration_qags(&integrand, 0, x_max, 0, 1e-10, w_size, ws, result, err);
+    gsl_integration_workspace_free(ws);
   }
 
-  if (found) {
-    int status = GSL_CONTINUE;
-
-    gsl_function T_mat;
-    T_mat.function = &analytic_n;
-    T_mat.params = params_arr;
-
-    const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
-    gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
-
-    gsl_root_fsolver_set(s, &T_mat, w_hi, w_lo);
-
-    for (; status == GSL_CONTINUE; ) {
-      status = gsl_root_fsolver_iterate(s);
-      r = gsl_root_fsolver_root(s);
-      w_lo = gsl_root_fsolver_x_lower(s);
-      w_hi = gsl_root_fsolver_x_upper(s);
-      status = gsl_root_test_interval(w_lo, w_hi, 0, 1e-10);
-    }
-
-    gsl_root_fsolver_free (s);
-
-  } else {
-    r = NAN;
-  }
-
-  //printf("%.10f, %.10f\n", a, r);
-
-  return r;
+  result[1] = integralTemplate<local_ws_size>(&analytic_n_sc_f, x_max, mu, a);
+  return - a * std::pow(m_ratio / M_PI, 1.5) * (result[0] + result[1]);
 }
 
-int rosenbrock_f(const gsl_vector * x, void * params, gsl_vector * f) {
+int analytic_mu_param_f(const gsl_vector * x, void * params, gsl_vector * f) {
+  /*
+    Here we need to solve two equations,
+
+    |  n = n_id + n_ex + n_sc
+    |  n_e,id = n_h,id
+
+    solving for mu_e and mu_h in the
+    process, for a fixed value of a.
+  */
+  constexpr uint32_t n_eq = 2;
+
   double * params_arr = (double*)params;
-  double a = params_arr[0];
-  double b = params_arr[1];
+  double n_dless = params_arr[0];
+  double m_ratio_e = params_arr[1];
+  double m_ratio_h = params_arr[2];
+  double a = params_arr[3];
 
-  const double x0 = gsl_vector_get(x, 0);
-  const double x1 = gsl_vector_get(x, 1);
+  double mu_e = gsl_vector_get(x, 0);
+  double mu_h = gsl_vector_get(x, 1);
 
-  const double y0 = a * ( 1 - x0 );
-  const double y1 = b * (x1 - x0 * x0);
+  double mu = mu_e + mu_h, m_ratio = m_ratio_e + m_ratio_h;
 
-  gsl_vector_set(f, 0, y0);
-  gsl_vector_set(f, 1, y1);
+  double yv[n_eq] = {0};
+
+  double n_id[] = {analytic_n_id(mu_e, m_ratio_e), analytic_n_id(mu_h, m_ratio_h)};
+
+  yv[0] = - n_dless + n_id[0] + n_id[1] + analytic_n_ex(mu, m_ratio, a) + analytic_n_sc(mu, m_ratio, a);
+  yv[1] = n_id[0] - n_id[1];
+
+  for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
 
   return GSL_SUCCESS;
 }
 
-double * solve_rosenbrock(double a, double b) {
-  const size_t n = 2;
-  double params_arr[] = {a, b};
-  gsl_multiroot_function f = {&rosenbrock_f, n, params_arr};
+double * analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
+  // n = number of equations
+  constexpr size_t n = 2;
+  double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, a};
+  gsl_multiroot_function f = {&analytic_mu_param_f, n, params_arr};
 
-  double x_init[] = {-10, -5};
+  double x_init[] = {ideal_mu(n_dless, m_ratio_e), ideal_mu(n_dless, m_ratio_h)};
   gsl_vector * x = gsl_vector_alloc(n);
 
   for(size_t i = 0; i < n; i++) { gsl_vector_set(x, i, x_init[i]); }
 
   const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
   gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n);
-  //n = number of equations, in this case same as inputs.
   gsl_multiroot_fsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE; status == GSL_CONTINUE;) {
     status = gsl_multiroot_fsolver_iterate(s);
-
     if (status) { break; }
+    status = gsl_multiroot_test_residual(s->f, 1e-10);
+  }
 
+  double * r = new double[n];
+
+  for(size_t i = 0; i < n; i++) { r[i] = gsl_vector_get(s->x, i); }
+
+  gsl_multiroot_fsolver_free(s);
+  gsl_vector_free(x);
+
+  return r;
+}
+
+double * analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
+  return derivative_c2<2>(&analytic_mu_param, n_dless, n_dless * 1e-6, m_ratio_e, m_ratio_h, a);
+}
+
+int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
+  /*
+    Here we need to solve two equations,
+
+    | n = n_id + n_ex + n_sc
+    | a(n_dless, mu_param) == a_param
+
+    solving for a and mu_i in the
+    process.
+  */
+  constexpr uint32_t n_eq = 3;
+
+  double * params_arr = (double*)params;
+  double n_dless = params_arr[0];
+  double m_ratio_e = params_arr[1];
+  double m_ratio_h = params_arr[2];
+  double eps_r = params_arr[3];
+  double e_ratio = params_arr[4];
+
+  double mu_e = gsl_vector_get(x, 0);
+  double mu_h = gsl_vector_get(x, 1);
+  double a = gsl_vector_get(x, 2);
+
+  double yv[n_eq] = {0};
+  double * mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
+  double * lambda_i = analytic_mu_param_dn(n_dless, m_ratio_e, m_ratio_h, a);
+  double lambda_s = 1 / std::sqrt(std::abs(1 / lambda_i[0] + 1 / lambda_i[1]));
+  //printf("%.10f, %.10f,  %.10f\n", n_dless, lambda_i[0], lambda_i[1]);
+  delete[] lambda_i;
+
+  yv[0] = mu_i[0] - mu_e;
+  yv[1] = mu_i[1] - mu_h;
+  yv[2] = 1/wavefunction_int(eps_r, e_ratio, lambda_s) - a;
+
+  delete[] mu_i;
+
+  for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
+
+  return GSL_SUCCESS;
+}
+
+double * analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio) {
+  // n = number of equations
+  constexpr size_t n = 3;
+  double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio};
+  gsl_multiroot_function f = {&analytic_mu_f, n, params_arr};
+
+  constexpr double a = -1;
+  double * mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
+  double x_init[] = { mu_i[0], mu_i[1], a };
+
+  delete[] mu_i;
+
+  gsl_vector * x = gsl_vector_alloc(n);
+
+  for(size_t i = 0; i < n; i++) { gsl_vector_set(x, i, x_init[i]); }
+
+  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
+  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n);
+  gsl_multiroot_fsolver_set(s, &f, x);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE &&  iter < 32; iter++) {
+    status = gsl_multiroot_fsolver_iterate(s);
+    if (status) { break; }
     status = gsl_multiroot_test_residual(s->f, 1e-10);
   }
 
@@ -645,9 +707,9 @@ double * solve_rosenbrock(double a, double b) {
 
 double yukawa_pot(double x, double eps_r, double e_ratio, double lambda_s) {
   /* e_ratio = m_r * c^2 / e_th */
-  // alpha = fine-structure constant
+  // alpha = fine-structure constant ~ 1 / 137
   const double alpha{7.2973525664e-3};
-  return - alpha / eps_r * std::sqrt(e_ratio) * std::exp(-std::sqrt(alpha * e_ratio / eps_r) * x / lambda_s) / x;
+  return - alpha / eps_r * std::sqrt(2 * e_ratio) * std::exp(- 4 * std::sqrt(alpha * M_PI / eps_r * std::sqrt(e_ratio / 8)) * x / lambda_s) / x;
 }
 
 wavefunction_ode::wavefunction_ode(double eps_r, double e_ratio, double lambda_s) : eps_r(eps_r), e_ratio(e_ratio), lambda_s(lambda_s) {}
@@ -670,13 +732,13 @@ double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
   wavefunction_ode wf(eps_r, e_ratio, lambda_s);
 
   for(uint8_t i = 0, status = 0; status == 0 && i < 32; i++) {
-    integrate_adaptive(controlled_stepper, wf, y, x0, x1, 0.01);
+    integrate_adaptive(controlled_stepper, wf, y, x0, x1, x1 * 1e-3);
 
     a1 = x1 - y[0] / y[1];
 
     //printf("%.2f, %.10f, %.10f, %.2e\n", lambda_s, a1, a0, a1 - a0);
 
-    if (std::abs(a1 - a0) > err) {
+    if (2 * std::abs(a1 - a0) / (a0 + a1) > err) {
       x0 = x1;
       x1 *= 2;
 
@@ -689,24 +751,24 @@ double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
   return a1;
 }
 
-double mu_ideal(double n_dless, double m_ratio) {
-  // m_ratio = m_r / m_i
-  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, 1.5));
+double ideal_mu(double n_dless, double m_ratio) {
+  // m_ratio = m_i / m_r
+  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, -1.5));
 }
 
-double __invPolylogExpM(double z, void * params) {
+double ideal_mu_dn_f(double z, void * params) {
   return invPolylogExpM(((double*)params)[0], z);
 }
 
-double mu_ideal_dn(double n_dless, double m_ratio) {
-  // m_ratio = m_r / m_i
-  double arg{0.5 * std::pow(m_ratio, 1.5)};
+double ideal_mu_dn(double n_dless, double m_ratio) {
+  // m_ratio = m_i / m_r
+  double arg{0.5 * std::pow(m_ratio, -1.5)};
 
   gsl_function F;
   double r, err;
   double params_arr[] = {1.5};
 
-  F.function = &__invPolylogExpM;
+  F.function = &ideal_mu_dn_f;
   F.params = params_arr;
 
   gsl_deriv_forward(&F, n_dless, n_dless * 1e-6, &r, &err);

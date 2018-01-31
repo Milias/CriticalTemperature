@@ -26,11 +26,9 @@ m_electron = 0.5109989461e6 # eV
 hbar = 6.582119514e-16 # eV s
 c = 299792458 # m s^-1
 
-N = 1<<10
-w, E, mu, beta, a = -1, 0, -1, 0.1, 10
-p = 0
-mu_1, mu_2 = -20, -20
-mu_ph = mu_1 + mu_2
+N = 1<<8
+w, E, mu, beta, a = -1, 0, -1, 0.1, -1
+
 m_1, m_2 = 0.28 * m_electron, 0.59 * m_electron # eV
 m_r = 1.0 / (1.0 / m_1 + 1.0 / m_2) # eV
 
@@ -39,8 +37,10 @@ beta = 1 / (k_B * T) # eV^-1
 lambda_th = c * hbar * sqrt(2 * pi * beta / m_r) # m
 energy_th = 1 / ( 4 * pi * beta )
 eps_r, e_ratio = 6.56, m_r / energy_th
+m_ratio_e = m_1 / m_r
+m_ratio_h = m_2 / m_r
 
-print('%f nm, %f meV, %.2e' % (lambda_th*1e9, energy_th * 1e3, m_r / energy_th))
+print('%f nm, %f meV' % (lambda_th * 1e9, energy_th * 1e3))
 
 """
 pole_pos = polePos(E, mu, beta, a)
@@ -48,7 +48,6 @@ pole_pos_last = findLastPos(mu, beta, a) - 1e-10
 dz = 0.5 * E - 2 * mu - pole_pos
 print(pole_pos)
 """
-z0 = 0.5 * E - 2 * mu
 
 """
 t0 = time.time()
@@ -64,131 +63,69 @@ print("result: (%.10f, %.10f)" % (real(r), imag(r)));
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 exit()
 """
-#"""
-#x = linspace(0, pole_pos_last if not isnan(pole_pos_last) and pole_pos_last < 100 else 50, N)
-#x = linspace(4 * mu if mu > 0 else 0, 40, N)
-#x = linspace(2 * dz, 1, N)
-#x = linspace(2 * pole_pos if pole_pos < 0 else 2 * pole_pos - (0.5 * E - 2 * mu), 0.5 * E - 2 * mu, N)
-#x = linspace(0, 8 * mu if mu > 0 else 10, N)
-#x = linspace(-10, z0, N)
-#x = linspace(0, (16 / beta + 4 * (mu + a**2)), N)
-#x = linspace(0.99 * 4 * mu, 1.01 * 4 * mu, N)
-#x = linspace(0, 0.5 * E, N)
-#x = linspace(-2.5, 2.5, N)
-#x = linspace(-16 * a**2, -4*a**2, N) if a > 0 else linspace(-10, 0, N)
-#x = linspace(-1e3, 1e3, N)
-#x = linspace(1e-3, 1e3, N)
-x = logspace(16, 22, N) * lambda_th**3
-#print(x)
-
-lambda_s = 1/sqrt(1/array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_1, N))) + 1/array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_2, N))))
-
-#mu_arr = itertools.repeat(mu, N)
-#mu_arr = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
-#y_id_fixed = analytic_n_id(mu, beta)
+x = logspace(log10(7e23), log10(3e24), N) * lambda_th**3
 
 t0 = time.time()
-#y = sqrt(E) * array(parallelTable(poleRes, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
-#y = array(parallelTable(integrandPoleRes, x, itertools.repeat(0.5 * E - 2 * mu - pole_pos, N), itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N)))
-#y = array(parallelTable(polePos, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-#y = array(parallelTable(polePos, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
-#y = array(parallelTable(polePos, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), x))
 
-#y = real(array(parallelTable(invTmatrixMB, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
+mu_arr = array(parallelTable(analytic_mu, x, itertools.repeat(m_ratio_e, N), itertools.repeat(m_ratio_h, N), itertools.repeat(eps_r, N), itertools.repeat(e_ratio, N)))
 
-#y = array(parallelTable(integrandI2part2, x, itertools.repeat(w, N), itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(0.5 * w - 0.25 * E + mu, N)))
-#y = real(array(parallelTable(invTmatrixMB, 0.5 * x - 2 * mu, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
-#y = array(parallelTable(integrandDensityPole, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-#y = array(parallelTable(integralDensityPole, mu_arr, itertools.repeat(beta, N), x))
+ideal_mu_arr_e = array(parallelTable(ideal_mu, x, itertools.repeat(m_ratio_e, N)))
+ideal_mu_arr_h = array(parallelTable(ideal_mu, x, itertools.repeat(m_ratio_h, N)))
 
-#y = array(parallelTable(invTmatrixMB_real, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
+mu_total = mu_arr[:,0] + mu_arr[:,1]
+ideal_mu_total = ideal_mu_arr_e + ideal_mu_arr_h
 
-#y = array(parallelTable(integrandBranch, x, itertools.repeat(E, N), itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-#y = sqrt(x) * array(parallelTable(integralBranch, x, itertools.repeat(mu, N), itertools.repeat(beta, N), itertools.repeat(a, N)))
-#y = array(parallelTable(integralDensityBranch, itertools.repeat(mu, N), itertools.repeat(beta, N), x))
-#y_id = array(parallelTable(analytic_n_id, mu_arr, itertools.repeat(beta, N)))
-#y_ex = array(parallelTable(analytic_n_ex, mu_arr, itertools.repeat(beta, N), x))
-#y_sc = array(parallelTable(analytic_n_sc, mu_arr, itertools.repeat(beta, N), x))
-#y_n = y_ex + y_sc
+y_id = array(parallelTable(analytic_n_id, mu_arr[:,0], itertools.repeat(m_ratio_e, N))) + array(parallelTable(analytic_n_id, mu_arr[:,1], itertools.repeat(m_ratio_h, N)))
 
-#y = array(parallelTable(analytic_n, x, itertools.repeat(beta, N), itertools.repeat(a, N), itertools.repeat(1, N)))
-#y = array(parallelTable(analytic_mu, itertools.repeat(beta, N), x))
-
-y = array(parallelTable(wavefunction_int, itertools.repeat(eps_r, N), itertools.repeat(e_ratio, N), lambda_s))
-#y = array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_1, N))) + array(parallelTable(mu_ideal_dn, x, itertools.repeat(m_r/m_2, N)))
-#y = (array(parallelTable(mu_ideal, x, itertools.repeat(m_r/m_1, N))) + array(parallelTable(mu_ideal, x, itertools.repeat(m_r/m_2, N)))) * energy_th
-
-#y = array(parallelTable(integralSuscp_cc, x, itertools.repeat(E, N), itertools.repeat(mu_ph, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N)))
-#y = imag(array(parallelTable(suscp_czc, x, itertools.repeat(mu_1, N), itertools.repeat(mu_2, N), itertools.repeat(m_1, N), itertools.repeat(m_2, N), itertools.repeat(m_r, N), itertools.repeat(beta, N), itertools.repeat(a, N))))
+y_ex = array(parallelTable(analytic_n_ex, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:,2]))
+y_sc = array(parallelTable(analytic_n_sc, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:,2]))
+y_ex_norm = y_ex / (y_id + y_sc + y_ex)
+y = (y_sc + y_ex) / (y_id + y_sc + y_ex)
 
 dt = time.time() - t0
 
-#print(y_ex)
+x *= lambda_th**-3
 
-#y = -log10(abs(y))
+xi_vline = argmin((mu_arr[:, 2])**2)
+x_vline = x[xi_vline]
 
-#y_pos = 0.5 * x - 2 * mu - 2 * a**2
+y_ex_norm[xi_vline] = float('nan')
+mu_arr[xi_vline, 2] = float('nan')
 
-#print(y_approx)
+#plt.style.use('dark_background')
 
-#print(amax(abs(2*(y-y_approx)/(y + y_approx))))
-#y = log10(abs(2*(y - y_approx)/(y + y_approx)))
+plot_type = 'semilogx'
 
-#print(y)
+axplots = []
+fig, axarr = plt.subplots(3, 1, sharex = True, figsize = (8, 12), dpi = 96)
+fig.subplots_adjust(hspace=0)
+#fig.tight_layout()
 
-fig, axarr, axarr0 = complexPlot(x * lambda_th**-3, y, ('r-', 'b-'), 'semilogx')
-axarr.autoscale(enable = True, axis = 'x', tight = True)
-#fig, axarr, axarr0 = realPlot(x, y, ('r-',))
-#fig, axarr, axarr0 = complexPlot(x, y)
-#axarr.plot(x, y_ex, 'g-')
-#axarr.plot(x, y_sc, 'm-')
-#axarr.plot(x, y + y1)
-#axarr.plot(x, beta * y_pos)
-#axarr.plot(x, - 0.25 * E + mu + 0.5 * x)
-#axarr.plot(x, y_approx)
-#axarr.plot(x, 0.5 * x + polePos(0, mu, beta, a))
-#axarr.plot(x, 0.5 * E - 2 * mu - 2 * x**2)
-#axarr.axhline(y = invTmatrixMB_real(2 * mu, E, mu, beta, a))
-#axarr.axvline(x = pole_pos_last)
-#axarr.axvline(x = pole_pos)
-#axarr.axvline(x = 0.25 * E)
-#axarr.axvline(x = z0)
-#if mu >= 0: axarr.axvline(x = 4 * mu)
-#axarr.axvline(x = 4 * (mu + a**2))
-#axarr.axvline(x = 4 / beta + 4 * (mu + a**2))
-#if 2 * w + 4 * mu > 0:
-#  axarr.axvline(x = 2 * w + 4 * mu)
-#axarr.axvline(x = 0.5 * E - 2 * mu)
-axarr.set_ylim(-1e2, 1e2)
+axplots.append(getattr(axarr[0], plot_type)(x, y, 'r-', label = r'$(n_{ex} + n_{sc})/n$'))
+axarr[0].autoscale(enable = True, axis = 'x', tight = True)
+axarr[0].plot(x, y_ex_norm, 'm--', label = '$n_{ex}/n$')
+axarr[0].set_ylabel('Density contributions, T = %.1f' % T)
+axarr[0].legend(loc = 0)
+axarr[0].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-#axarr.set_title('%f' % invTmatrixMB_real(0.5 * E - 2 * mu, E, mu, beta, a))
-#axarr.set_title('%f' % pole_pos)
-#axarr.set_title('Chemical potential')
+axplots.append(getattr(axarr[1], plot_type)(x, mu_arr[:, 0], 'r-', label = r'$m_e$'))
+axarr[1].autoscale(enable = True, axis = 'x', tight = True)
+axarr[1].plot(x, mu_arr[:, 1], 'b-', label = r'$m_h$')
+axarr[1].plot(x, ideal_mu_arr_e, 'r--', label = r'$m_e$ (ideal)')
+axarr[1].plot(x, ideal_mu_arr_h, 'b--', label = r'$m_h$ (ideal)')
+axarr[1].set_ylabel(r'Chemical potential --- $\mu/\varepsilon_{th}$')
+axarr[1].legend(loc = 0)
+axarr[1].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-#axarr.set_xlabel(r'$1 / a$')
-#axarr.set_ylabel(r'$\mu$')
-#axarr.set_title('Excitonic density contribution, T = %.2f, a = %.2f' % (1/beta, 1/a))
+axplots.append(getattr(axarr[2], plot_type)(x, 1/mu_arr[:, 2], 'g-'))
+axarr[2].autoscale(enable = True, axis = 'x', tight = True)
+axarr[2].set_xlabel(r'$n$ (m$^{-3}$)')
+axarr[2].set_ylabel(r'Scattering length --- $a/\Lambda_{th}$')
+axarr[2].set_ylim(-50, 50)
+axarr[2].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-#fig.savefig('python/graphs/chem_pot_analytic.eps')
+fig.savefig('python/graphs/analytic_n_ex_sc_v2.eps')
 
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 plt.show()
-exit()
-#"""
 
-v = [ -1, -0.5, 0, 0.5, 1 ]
-mu = [linspace(v[i], v[i + 1] - (abs(v[i+1] - v[i])/N if i + 2 < len(v) else 0), N) for i in range(len(v) - 1)]
-x = array(mu).reshape(len(mu) * N)
-
-t0 = time.time()
-y = array([ compExcitonicDensity(mu_ele, beta, a) for mu_ele in mu ]).reshape(x.size)
-dt = time.time() - t0
-print("(%d) %.3f μs, %.3f s" % (x.size, dt * 1e6 / x.size, dt));
-
-fig, axarr, axarr0 = complexPlot(x, y)
-
-axarr.set_xlabel(r'$\mu$')
-axarr.set_ylabel(r'$n_{ex}$')
-axarr.set_title('Excitonic density contribution, T = %.2f, a = %.2f' % (1/beta, 1/a))
-
-plt.show()
