@@ -8,7 +8,6 @@ def parallelTable(func, *args):
   x = map(tuple, zip(*args))
 
   with Pool(p) as workers:
-    #y = workers.starmap(func, x, int(ceil(len(args[0]) / p)))
     y = workers.starmap(func, x, 1)
 
   return y
@@ -63,7 +62,8 @@ print("result: (%.10f, %.10f)" % (real(r), imag(r)));
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 exit()
 """
-x = logspace(log10(7e23), log10(3e24), N) * lambda_th**3
+
+x = logspace(log10(3e23), log10(3e24), N) * lambda_th**3
 
 t0 = time.time()
 
@@ -72,19 +72,23 @@ mu_arr = array(parallelTable(analytic_mu, x, itertools.repeat(m_ratio_e, N), ite
 ideal_mu_arr_e = array(parallelTable(ideal_mu, x, itertools.repeat(m_ratio_e, N)))
 ideal_mu_arr_h = array(parallelTable(ideal_mu, x, itertools.repeat(m_ratio_h, N)))
 
-mu_total = mu_arr[:,0] + mu_arr[:,1]
+mu_total = mu_arr[:, 0] + mu_arr[:, 1]
 ideal_mu_total = ideal_mu_arr_e + ideal_mu_arr_h
 
 y_id = array(parallelTable(analytic_n_id, mu_arr[:,0], itertools.repeat(m_ratio_e, N))) + array(parallelTable(analytic_n_id, mu_arr[:,1], itertools.repeat(m_ratio_h, N)))
 
-y_ex = array(parallelTable(analytic_n_ex, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:,2]))
-y_sc = array(parallelTable(analytic_n_sc, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:,2]))
+y_ex = array(parallelTable(analytic_n_ex, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:, 2]))
+y_sc = array(parallelTable(analytic_n_sc, mu_total, itertools.repeat(m_ratio_e + m_ratio_h, N), mu_arr[:, 2]))
 y_ex_norm = y_ex / (y_id + y_sc + y_ex)
 y = (y_sc + y_ex) / (y_id + y_sc + y_ex)
 
 dt = time.time() - t0
 
 x *= lambda_th**-3
+
+mu_arr[:, 0:2] *= energy_th
+ideal_mu_arr_e[:] *= energy_th
+ideal_mu_arr_h[:] *= energy_th
 
 xi_vline = argmin((mu_arr[:, 2])**2)
 x_vline = x[xi_vline]
@@ -104,7 +108,7 @@ fig.subplots_adjust(hspace=0)
 axplots.append(getattr(axarr[0], plot_type)(x, y, 'r-', label = r'$(n_{ex} + n_{sc})/n$'))
 axarr[0].autoscale(enable = True, axis = 'x', tight = True)
 axarr[0].plot(x, y_ex_norm, 'm--', label = '$n_{ex}/n$')
-axarr[0].set_ylabel('Density contributions, T = %.1f' % T)
+axarr[0].set_ylabel('Density contributions, T = %.0f K' % T)
 axarr[0].legend(loc = 0)
 axarr[0].axvline(x = x_vline, linestyle = '-', color = 'g')
 
@@ -113,7 +117,7 @@ axarr[1].autoscale(enable = True, axis = 'x', tight = True)
 axarr[1].plot(x, mu_arr[:, 1], 'b-', label = r'$m_h$')
 axarr[1].plot(x, ideal_mu_arr_e, 'r--', label = r'$m_e$ (ideal)')
 axarr[1].plot(x, ideal_mu_arr_h, 'b--', label = r'$m_h$ (ideal)')
-axarr[1].set_ylabel(r'Chemical potential --- $\mu/\varepsilon_{th}$')
+axarr[1].set_ylabel(r'Chemical potential --- $\mu$ (eV)')
 axarr[1].legend(loc = 0)
 axarr[1].axvline(x = x_vline, linestyle = '-', color = 'g')
 
@@ -124,7 +128,7 @@ axarr[2].set_ylabel(r'Scattering length --- $a/\Lambda_{th}$')
 axarr[2].set_ylim(-50, 50)
 axarr[2].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-fig.savefig('python/graphs/analytic_n_ex_sc_v2.eps')
+fig.savefig('python/graphs/analytic_n_ex_sc_v3.eps')
 
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 plt.show()

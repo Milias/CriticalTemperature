@@ -4,7 +4,7 @@ CCPP=clang++
 CFLAGS=-O3 -Wall
 
 CPPFLAGS=-std=c++17 -pedantic -Wall -O3
-CPPLIBS=-lgsl -lcblas -lm -lgmpxx -lmpfr -lgmp -ldb -larb
+CPPLIBS=-lgsl -lcblas -lm -lgmpxx -lmpfr -lgmp -larb
 CPPINCL=-Iinclude
 
 BINNAME=ctemp

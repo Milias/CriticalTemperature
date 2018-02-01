@@ -25,7 +25,7 @@ template <uint32_t N, typename F, typename ... Args> double * derivative_c2(cons
   double * f_minus = f(x0 - h, args...);
 
   for (uint32_t j = 0; j < N; j++) {
-    fp_val[j] = (f_plus[j] - f_minus[j]) / (2 * h);
+    fp_val[j] = (f_plus[j] - f_minus[j]) / (2.0 * h);
   }
 
   delete[] f_plus;

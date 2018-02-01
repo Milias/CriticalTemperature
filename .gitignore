@@ -4,10 +4,15 @@
 *.swn
 
 *.sync-conflict*
+*dblite
 
 bin/*
 *.o-*
 *.o
+*.so
+*.os
+*.so-*
+*.os-*
 
 *__pycache__*
 
