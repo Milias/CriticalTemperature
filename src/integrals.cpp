@@ -593,7 +593,7 @@ int analytic_mu_param_f(const gsl_vector * x, void * params, gsl_vector * f) {
   return GSL_SUCCESS;
 }
 
-double * analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
+std::vector<double> analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
   // n = number of equations
   constexpr size_t n = 2;
   double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, a};
@@ -614,7 +614,7 @@ double * analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, d
     status = gsl_multiroot_test_residual(s->f, 1e-10);
   }
 
-  double * r = new double[n];
+  std::vector<double> r(n);
 
   for(size_t i = 0; i < n; i++) { r[i] = gsl_vector_get(s->x, i); }
 
@@ -624,7 +624,7 @@ double * analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, d
   return r;
 }
 
-double * analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
+std::vector<double> analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
   return derivative_c2<2>(&analytic_mu_param, n_dless, n_dless * 1e-6, m_ratio_e, m_ratio_h, a);
 }
 
@@ -652,34 +652,29 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double a = gsl_vector_get(x, 2);
 
   double yv[n_eq] = {0};
-  double * mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
-  double * lambda_i = analytic_mu_param_dn(n_dless, m_ratio_e, m_ratio_h, a);
+  std::vector<double> mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
+  std::vector<double> lambda_i = analytic_mu_param_dn(n_dless, m_ratio_e, m_ratio_h, a);
   double lambda_s = 1 / std::sqrt(std::abs(1 / lambda_i[0] + 1 / lambda_i[1]));
   //printf("%.10f, %.10f,  %.10f\n", n_dless, lambda_i[0], lambda_i[1]);
-  delete[] lambda_i;
 
   yv[0] = mu_i[0] - mu_e;
   yv[1] = mu_i[1] - mu_h;
   yv[2] = 1/wavefunction_int(eps_r, e_ratio, lambda_s) - a;
-
-  delete[] mu_i;
 
   for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
 
   return GSL_SUCCESS;
 }
 
-double * analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio) {
+std::vector<double> analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio) {
   // n = number of equations
   constexpr size_t n = 3;
   double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio};
   gsl_multiroot_function f = {&analytic_mu_f, n, params_arr};
 
   constexpr double a = -1;
-  double * mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
+  std::vector<double> mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
   double x_init[] = { mu_i[0], mu_i[1], a };
-
-  delete[] mu_i;
 
   gsl_vector * x = gsl_vector_alloc(n);
 
@@ -695,7 +690,7 @@ double * analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double 
     status = gsl_multiroot_test_residual(s->f, 1e-10);
   }
 
-  double * r = new double[n];
+  std::vector<double> r(n);
 
   for(size_t i = 0; i < n; i++) { r[i] = gsl_vector_get(s->x, i); }
 

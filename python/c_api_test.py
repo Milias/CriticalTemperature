@@ -1,7 +1,21 @@
-from common import *
-from c_wrap import *
+import os
+from multiprocessing import Pool, cpu_count
 
-#print(os.getpid())
+import time
+import itertools
+
+from numpy import *
+import numpy.lib.scimath as sm
+from scipy.integrate import *
+from scipy.optimize import *
+from scipy.interpolate import *
+from scipy.special import gamma, erfc
+
+import matplotlib.pyplot as plt
+
+from integrals import *
+
+initializeMPFR_GSL()
 
 def parallelTable(func, *args):
   p = cpu_count()
@@ -12,20 +26,12 @@ def parallelTable(func, *args):
 
   return y
 
-def compExcitonicDensity(mu, beta, a):
-  t0 = time.time()
-  y = array(parallelTable(integralDensityPole, mu, itertools.repeat(beta, N), itertools.repeat(a, N)))
-  dt = time.time() - t0
-
-  print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
-  return y
-
 k_B = 8.6173303e-5 # eV K^-1
 m_electron = 0.5109989461e6 # eV
 hbar = 6.582119514e-16 # eV s
 c = 299792458 # m s^-1
 
-N = 1<<8
+N = 1<<5
 w, E, mu, beta, a = -1, 0, -1, 0.1, -1
 
 m_1, m_2 = 0.28 * m_electron, 0.59 * m_electron # eV
@@ -63,7 +69,8 @@ print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 exit()
 """
 
-x = logspace(log10(3e23), log10(3e24), N) * lambda_th**3
+#x = logspace(log10(3e23), log10(3e24), N) * lambda_th**3
+x = linspace(3e23, 6e24, N) * lambda_th**3
 
 t0 = time.time()
 
@@ -98,7 +105,7 @@ mu_arr[xi_vline, 2] = float('nan')
 
 #plt.style.use('dark_background')
 
-plot_type = 'semilogx'
+plot_type = 'plot'
 
 axplots = []
 fig, axarr = plt.subplots(3, 1, sharex = True, figsize = (8, 12), dpi = 96)
@@ -112,12 +119,12 @@ axarr[0].set_ylabel('Density contributions, T = %.0f K' % T)
 axarr[0].legend(loc = 0)
 axarr[0].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-axplots.append(getattr(axarr[1], plot_type)(x, mu_arr[:, 0], 'r-', label = r'$m_e$'))
+axplots.append(getattr(axarr[1], plot_type)(x, mu_arr[:, 0], 'r-', label = r'$\mu_e$'))
 axarr[1].autoscale(enable = True, axis = 'x', tight = True)
-axarr[1].plot(x, mu_arr[:, 1], 'b-', label = r'$m_h$')
-axarr[1].plot(x, ideal_mu_arr_e, 'r--', label = r'$m_e$ (ideal)')
-axarr[1].plot(x, ideal_mu_arr_h, 'b--', label = r'$m_h$ (ideal)')
-axarr[1].set_ylabel(r'Chemical potential --- $\mu$ (eV)')
+axarr[1].plot(x, mu_arr[:, 1], 'b-', label = r'$\mu_h$')
+axarr[1].plot(x, ideal_mu_arr_e, 'r--', label = r'$\mu_{e, id}$')
+axarr[1].plot(x, ideal_mu_arr_h, 'b--', label = r'$\mu_{h, id}$')
+axarr[1].set_ylabel(r'Chemical potential (eV)')
 axarr[1].legend(loc = 0)
 axarr[1].axvline(x = x_vline, linestyle = '-', color = 'g')
 
@@ -128,7 +135,7 @@ axarr[2].set_ylabel(r'Scattering length --- $a/\Lambda_{th}$')
 axarr[2].set_ylim(-50, 50)
 axarr[2].axvline(x = x_vline, linestyle = '-', color = 'g')
 
-fig.savefig('python/graphs/analytic_n_ex_sc_v3.eps')
+fig.savefig('bin/plots/analytic_n_ex_sc.eps')
 
 print("(%d) %.3f μs, %.3f s" % (N, dt * 1e6 / N, dt));
 plt.show()

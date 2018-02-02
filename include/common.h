@@ -38,7 +38,7 @@ extern "C" {
 
   /*** Utility functions ***/
 
-  double logExp(double x, double xmax = 1e3);
+  double logExp(double x, double xmax = 2e3);
   double logExp_mpfr(double x, double xmax = 1e3);
 
   // real(Li_s(exp(z)))
@@ -66,6 +66,8 @@ extern "C" {
   double erf_i(double x, double y, uint32_t n = 64, double eps = 1e-16);
 }
 
+#ifndef SWIG
+
 std::complex<double> erf_c(std::complex<double> & z);
 
 double invPolylogExp_f(double z, void * params);
@@ -73,6 +75,5 @@ double invPolylogExp_df(double z, void * params);
 double invPolylogExpM_f(double z, void * params);
 double invPolylogExpM_df(double z, void * params);
 
-int rosenbrock_f(const gsl_vector * x, void * params, gsl_vector * f);
-double * solve_rosenbrock(double a, double b);
+#endif
 
