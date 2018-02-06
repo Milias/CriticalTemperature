@@ -5,7 +5,7 @@ int main(/*int argc, char ** argv*/)
 {
   initializeMPFR_GSL();
 
-  double w = 0.45, E = 1, mu = 1, beta = 1, a = -1;
+  double w = 0.45/*, E = 1, mu = 1, beta = 1*/, a = -1;
   std::vector<double> rf(2);
 
   for (uint32_t i = 0; i < 10; i++) {

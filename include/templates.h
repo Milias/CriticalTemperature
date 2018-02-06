@@ -23,6 +23,7 @@ template <uint32_t N, typename F, typename ... Args> std::vector<double> derivat
   // std::vector<double> is return type of F
 
   std::vector<double> fp_val(N);
+
   std::vector<double> f_plus{f(x0 + h, args...)};
   std::vector<double> f_minus{f(x0 - h, args...)};
 
@@ -43,7 +44,39 @@ template <uint32_t N, typename F, typename ... Args> std::vector<double> derivat
   std::vector<double> f_vals(N, 0);
 
   for (uint32_t i = 0; i < n_ord; i++) {
-    f_vals = f(x0 + i * h, args...);
+    if constexpr(N > 1) {
+      f_vals = f(x0 + i * h, args...);
+    } else {
+      f_vals[0] = f(x0 + i * h, args...);
+    }
+
+    for (uint32_t j = 0; j < N; j++) {
+      fp_val[j] += pf[i] * f_vals[j];
+    }
+  }
+
+  for (uint32_t i = 0; i < N; i++) {
+    fp_val[i] /= h;
+  }
+
+  return fp_val;
+}
+
+template <uint32_t N, typename F, typename ... Args> std::vector<double> derivative_b3(const F & f, double x0, double h, Args ... args) {
+  // std::vector<double> is return type of F
+
+  constexpr uint32_t n_ord = 3;
+  constexpr double pf[n_ord] = {1.5, -2.0, 0.5};
+
+  std::vector<double> fp_val(N);
+  std::vector<double> f_vals(N, 0);
+
+  for (uint32_t i = 0; i < n_ord; i++) {
+    if constexpr(N > 1) {
+      f_vals = f(x0 - i * h, args...);
+    } else {
+      f_vals[0] = f(x0 - i * h, args...);
+    }
 
     for (uint32_t j = 0; j < N; j++) {
       fp_val[j] += pf[i] * f_vals[j];

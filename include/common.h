@@ -8,18 +8,27 @@
 
 #include <cmath>
 #include <gmp.h>
+
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
-#include <gsl/gsl_sf_zeta.h>
 #include <gsl/gsl_deriv.h>
+#include <gsl/gsl_sf_zeta.h>
+#include <gsl/gsl_sf_hyperg.h>
+#include <gsl/gsl_sf_gamma.h>
+#include <gsl/gsl_sf_dawson.h>
+#include <gsl/gsl_sum.h>
+
 #include <mpfr.h>
 #include <boost/numeric/odeint.hpp>
 
 #include <arf.h>
+
 #include <arb.h>
+#include <arb_hypgeom.h>
+
 #include <acb.h>
 
 /*** MPFR ***/

@@ -599,7 +599,7 @@ std::vector<double> analytic_mu_param(double n_dless, double m_ratio_e, double m
   double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, a};
   gsl_multiroot_function f = {&analytic_mu_param_f, n, params_arr};
 
-  double x_init[] = {ideal_mu(n_dless, m_ratio_e), ideal_mu(n_dless, m_ratio_h)};
+  double x_init[] = {ideal_mu(n_dless, 1/m_ratio_e), ideal_mu(n_dless, 1/m_ratio_h)};
   gsl_vector * x = gsl_vector_alloc(n);
 
   for(size_t i = 0; i < n; i++) { gsl_vector_set(x, i, x_init[i]); }
@@ -668,6 +668,7 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
 std::vector<double> analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio) {
   // n = number of equations
+  // TODO: check the prefactor of the chemical potential.
   constexpr size_t n = 3;
   double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio};
   gsl_multiroot_function f = {&analytic_mu_f, n, params_arr};
@@ -748,7 +749,7 @@ double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
 
 double ideal_mu(double n_dless, double m_ratio) {
   // m_ratio = m_i / m_r
-  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, -1.5));
+  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, 1.5));
 }
 
 double ideal_mu_dn_f(double z, void * params) {
@@ -756,8 +757,7 @@ double ideal_mu_dn_f(double z, void * params) {
 }
 
 double ideal_mu_dn(double n_dless, double m_ratio) {
-  // m_ratio = m_i / m_r
-  double arg{0.5 * std::pow(m_ratio, -1.5)};
+  // m_ratio = m_p / m_i
 
   gsl_function F;
   double r, err;
@@ -770,6 +770,6 @@ double ideal_mu_dn(double n_dless, double m_ratio) {
 
   //printf("%.3e, %.3e, %.3e\n", n_dless, 4 * M_PI * arg * r, err);
 
-  return 4 * M_PI * arg * r;
+  return 2 * M_PI * std::pow(m_ratio, -1.5) * r;
 }
 
