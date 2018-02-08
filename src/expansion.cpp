@@ -1,5 +1,24 @@
 #include "expansion.h"
 
+double analytic_prf(double a, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  double z0{fluct_pf(a, E, mr_ep, mr_hp, mu_e, mu_h)};
+
+  if (isnan(z0)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  return 1 / (std::exp(z0) - 1);
+}
+
+double analytic_pr(double a, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  if (a < 0) { return std::numeric_limits<double>::quiet_NaN(); }
+
+  double z1{0.25 * ( 1 - std::pow(mr_hp - mr_ep, 2)) * E - mu_e - mu_h};
+  double z0{z1 - 0.25 * a * a};
+
+  return 1 / (std::exp(z0) - 1);
+}
+
 double fluct_e_tf(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h, uint32_t n) {
   /*
     Computes the n-th term of the expansion in the fluctuations contribution.
@@ -21,19 +40,49 @@ double fluct_e_tf(double z, double E, double mr_ep, double mr_hp, double mu_e, d
 
   //printf("prefactors: %d, %.3f, %.10e, %.10e\n", n, E, prefactor_e, prefactor_h);
 
-  double val1_e{gsl_sf_beta(n - 0.5, n + 1.5) * std::pow(arg_e, 0.5 - n) * gsl_sf_hyperg_1F1(n + 1.5, 1.5 - n, arg_e)};
-  double val1_h{gsl_sf_beta(n - 0.5, n + 1.5) * std::pow(arg_h, 0.5 - n) * gsl_sf_hyperg_1F1(n + 1.5, 1.5 - n, arg_h)};
+  double beta_val{gsl_sf_beta(n - 0.5, n + 1.5)};
+  double val1_e{beta_val * std::pow(arg_e, 0.5 - n) * gsl_sf_hyperg_1F1(n + 1.5, 1.5 - n, arg_e)};
+  double val1_h{beta_val * std::pow(arg_h, 0.5 - n) * gsl_sf_hyperg_1F1(n + 1.5, 1.5 - n, arg_h)};
 
   //printf("val1: %d, %.3f, %.10e, %.10e\n", n, E, val1_e, val1_h);
 
-  double val2_e{gsl_sf_gamma(0.5 - n) * gsl_sf_hyperg_1F1(2 * n + 1, n + 0.5, arg_e)};
-  double val2_h{gsl_sf_gamma(0.5 - n) * gsl_sf_hyperg_1F1(2 * n + 1, n + 0.5, arg_h)};
+  double gamma_val{gsl_sf_gamma(0.5 - n)};
+  double val2_e{gamma_val * gsl_sf_hyperg_1F1(2 * n + 1, n + 0.5, arg_e)};
+  double val2_h{gamma_val * gsl_sf_hyperg_1F1(2 * n + 1, n + 0.5, arg_h)};
 
   //printf("val2: %d, %.3f, %.10e, %.10e\n", n, E, val2_e, val2_h);
 
   double r{prefactor_e * (val1_e + val2_e) + prefactor_h * (val1_h + val2_h)};
 
   //printf("result: %d, %f, %f\n", n, E, r);
+
+  return r;
+}
+
+
+double fluct_es_f(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  constexpr uint32_t nmax = 6;
+  double r;
+
+  if (E > 0) {
+    double terms[nmax] = {0};
+    double err;
+
+    gsl_sum_levin_u_workspace * ws = gsl_sum_levin_u_alloc(nmax);
+
+    for (uint32_t i = 0; i < nmax; i++) {
+      terms[i] = fluct_e_tf(z, E, mr_ep, mr_hp, mu_e, mu_h, i);
+      //printf("%d, %f, %e\n", i, E, terms[i]);
+    }
+
+    gsl_sum_levin_u_accel(terms, nmax, ws, &r, &err);
+
+    //printf("sum: %.3f, %.10f (%.10f), %.10f\n", z, r, ws->sum_plain, err);
+
+    gsl_sum_levin_u_free(ws);
+  } else {
+    r = fluct_e_tf(z, E, mr_ep, mr_hp, mu_e, mu_h, 0);
+  }
 
   return r;
 }
@@ -159,35 +208,11 @@ double fluct_e_tdf(double z, double E, double mr_ep, double mr_hp, double mu_e, 
   );
 }
 
-double fluct_es_f(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
-  constexpr uint32_t nmax = 8;
-
-  double terms[nmax] = {0};
-  double sum_accel, err;
-
-  gsl_sum_levin_u_workspace * ws = gsl_sum_levin_u_alloc(nmax);
-
-  for (uint32_t i = 0; i < nmax; i++) {
-    terms[i] = fluct_e_tf(z, E, mr_ep, mr_hp, mu_e, mu_h, i);
-    //printf("%d, %f, %e\n", i, E, terms[i]);
-  }
-
-  gsl_sum_levin_u_accel(terms, nmax, ws, &sum_accel, &err);
-
-  //sum_accel = ws->sum_plain;
-
-  //printf("sum: %.3f, %.10f (%.10f), %.10f\n", E, sum_accel, ws->sum_plain, err);
-
-  gsl_sum_levin_u_free(ws);
-
-  return sum_accel;
-}
-
 double fluct_es_df(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
   /*
     Expansion of the derivative.
   */
-  constexpr uint32_t nmax = 16;
+  constexpr uint32_t nmax = 6;
 
   double terms[nmax] = {0};
   double sum_accel, err;
@@ -207,11 +232,50 @@ double fluct_es_df(double z, double E, double mr_ep, double mr_hp, double mu_e, 
   return sum_accel;
 }
 
+double fluct_es_dfn_f(double z, void * params) {
+  double * params_arr = (double*)params;
+  double E = params_arr[0];
+  double mr_ep = params_arr[1];
+  double mr_hp = params_arr[2];
+  double mu_e = params_arr[3];
+  double mu_h = params_arr[4];
+
+  return fluct_es_f(z, E, mr_ep, mr_hp, mu_e, mu_h);
+}
+
+
 double fluct_es_dfn(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
   /*
     Derivative of the expansion.
   */
-  return derivative_b3<1>(&fluct_es_f, z, z * 1e-7, E, mr_ep, mr_hp, mu_e, mu_h)[0];
+  if (z > -5) {
+    // To avoid problems with z > z1.
+    gsl_function F;
+    double r, err;
+    double params_arr[] = {E, mr_ep, mr_hp, mu_e, mu_h};
+
+    F.function = &fluct_es_dfn_f;
+    F.params = params_arr;
+
+    gsl_deriv_backward(&F, z, z * 1e-7, &r, &err);
+    return r;
+    //return derivative_b3<1>(&fluct_es_f, z, z * 1e-6, E, mr_ep, mr_hp, mu_e, mu_h)[0];
+  } else {
+    gsl_function F;
+    double r, err;
+    double params_arr[] = {E, mr_ep, mr_hp, mu_e, mu_h};
+
+    F.function = &fluct_es_dfn_f;
+    F.params = params_arr;
+
+    gsl_deriv_central(&F, z, z * 1e-4, &r, &err);
+    return r;
+    /*
+    return derivative_c4<1>(&fluct_es_f, z, z * 1e-2, E, mr_ep, mr_hp, mu_e, mu_h)[0];
+    */
+  }
+
+  //printf("%.3f, %.3f, %3e\n", z, r, err);
 }
 
 double fluct_pf_f(double z, void * params) {
@@ -234,7 +298,7 @@ double fluct_pf_df(double z, void * params) {
   double mu_e = params_arr[3];
   double mu_h = params_arr[4];
 
-  return 0.5 * M_PI / std::sqrt(0.25 * ( 1 - std::pow(mr_hp - mr_ep, 2)) * E - z - mu_e - mu_h) + fluct_es_dfn(z, E, mr_ep, mr_hp, mu_e, mu_h);
+  return + 0.5 * M_PI / std::sqrt(0.25 * ( 1 - std::pow(mr_hp - mr_ep, 2)) * E - z - mu_e - mu_h) + fluct_es_dfn(z, E, mr_ep, mr_hp, mu_e, mu_h);
 }
 
 void fluct_pf_fdf(double z, void * params, double * f, double * df) {
@@ -260,7 +324,7 @@ double fluct_pf(double a, double E, double mr_ep, double mr_hp, double mu_e, dou
     return z1;
   }
 
-  double z{a > 0 ? z1 - 0.25 * a * a : z1 - 1e-10}, z0;
+  double z{a > 0 ? z1 - 0.25 * a * a : z1}, z0;
 
   //printf("first: %.2f, %.2f, %.10f, %.10f\n", E, a, T_at_z1, z);
 
@@ -275,12 +339,13 @@ double fluct_pf(double a, double E, double mr_ep, double mr_hp, double mu_e, dou
 
   gsl_root_fdfsolver_set(s, &funct, z);
 
-  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < 64; iter++) {
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < 16; iter++) {
     status = gsl_root_fdfsolver_iterate(s);
     z0 = z;
 
     z = gsl_root_fdfsolver_root(s);
-    status = gsl_root_test_delta(z, z0, 0, 1e-10);
+    status = gsl_root_test_delta(z, z0, 0, 1e-6);
+    //status = gsl_root_test_residual(z, 1e-10);
 
     //printf("iter: %.2f, %.2f, %.10f, %.10f, %d\n", E, a, z0, z, status);
   }
@@ -289,5 +354,23 @@ double fluct_pf(double a, double E, double mr_ep, double mr_hp, double mu_e, dou
 
   gsl_root_fdfsolver_free(s);
   return z;
+}
+
+double fluct_pr(double a, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  //if (a > 30) { return analytic_pr(a, E, mr_ep, mr_hp, mu_e, mu_h); }
+  double z0{fluct_pf(a, E, mr_ep, mr_hp, mu_e, mu_h)};
+
+  if (isnan(z0)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  double z1{0.25 * ( 1 - std::pow(mr_hp - mr_ep, 2)) * E - mu_e - mu_h};
+  double sqrt_val{2 * std::sqrt(z1 - z0) / M_PI};
+
+  return 1 / ( (std::exp(z0) - 1) * (1 + sqrt_val * fluct_es_dfn(z0, E, mr_ep, mr_hp, mu_e, mu_h)) );
+}
+
+double fluct_pm(double a, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  return 0;
 }
 

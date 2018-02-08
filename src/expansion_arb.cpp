@@ -159,7 +159,7 @@ double fluct_e_tfr(double z, double E, double mr_ep, double mr_hp, double mu_e, 
 
   arb_add(arb_prefactor_e, arb_prefactor_e, arb_prefactor_h, ARF_RND_NEAR);
 
-  printf("result: %d, %f, %f\n", n, E, arf_get_d(arb_midref(arb_prefactor_e), ARF_RND_NEAR));
+  //printf("result: %d, %f, %f\n", n, E, arf_get_d(arb_midref(arb_prefactor_e), ARF_RND_NEAR));
 
   double r{arf_get_d(arb_midref(arb_prefactor_e), ARF_RND_NEAR)};
 

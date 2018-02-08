@@ -673,7 +673,7 @@ std::vector<double> analytic_mu(double n_dless, double m_ratio_e, double m_ratio
   double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio};
   gsl_multiroot_function f = {&analytic_mu_f, n, params_arr};
 
-  constexpr double a = -1;
+  double a = 0.5 / std::sqrt(ideal_mu(n_dless, 1/m_ratio_e) + ideal_mu(n_dless, 1/m_ratio_h));
   std::vector<double> mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
   double x_init[] = { mu_i[0], mu_i[1], a };
 
@@ -748,12 +748,16 @@ double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
 }
 
 double ideal_mu(double n_dless, double m_ratio) {
-  // m_ratio = m_i / m_r
+  // m_ratio = m_r / m_i
   return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, 1.5));
 }
 
 double ideal_mu_dn_f(double z, void * params) {
-  return invPolylogExpM(((double*)params)[0], z);
+  double * params_arr = (double*)(params);
+  double s = params_arr[0];
+  double m_ratio = params_arr[1];
+
+  return invPolylogExpM(s, 0.5 * z * std::pow(m_ratio, 1.5));
 }
 
 double ideal_mu_dn(double n_dless, double m_ratio) {
@@ -761,7 +765,7 @@ double ideal_mu_dn(double n_dless, double m_ratio) {
 
   gsl_function F;
   double r, err;
-  double params_arr[] = {1.5};
+  double params_arr[] = {1.5, m_ratio};
 
   F.function = &ideal_mu_dn_f;
   F.params = params_arr;
@@ -770,6 +774,6 @@ double ideal_mu_dn(double n_dless, double m_ratio) {
 
   //printf("%.3e, %.3e, %.3e\n", n_dless, 4 * M_PI * arg * r, err);
 
-  return 2 * M_PI * std::pow(m_ratio, -1.5) * r;
+  return 4 * M_PI * r;
 }
 

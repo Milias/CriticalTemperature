@@ -19,13 +19,20 @@ from integrals import *
 
 initializeMPFR_GSL()
 
-def parallelTable(func, *args):
-  p = cpu_count()
+def parallelTable(func, *args, p = None, bs = 16):
+  if p == None:
+    p = cpu_count()
+
+  print('Starting "%s" with %d processors and block size %d.' % (func.__name__, p, bs))
   x = map(tuple, zip(*args))
 
+  t0 = time.time()
   with Pool(p) as workers:
-    y = workers.starmap(func, x, 1)
+    y = workers.starmap(func, x, bs)
+  dt = time.time() - t0
 
+  N = len(y)
+  print('Finishing "%s": N = %d, t/N = %.2f μs, t = %.2f s.\n' % (func.__name__, N, dt * 1e6 / N, dt))
   return y
 
 k_B = 8.6173303e-5 # eV K^-1
