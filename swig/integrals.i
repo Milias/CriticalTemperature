@@ -1,6 +1,7 @@
 %module integrals
 
 %include "stdint.i"
+%include "std_complex.i"
 %include "std_vector.i"
 namespace std {
    %template(DoubleVector) vector<double>;

@@ -30,7 +30,7 @@ py_sources = find_files('python', '.py')
 swig_py = 'bin/integrals.py'
 swig_cpp = 'src/integrals_wrapper.cpp'
 
-cc_flags = ['-O3', '-Wall', '-std=c++17', '-pedantic']
+cc_flags = ['-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native']
 incl_libs = ['gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb']
 swig_flags = ['-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall', '-modern', '-fastdispatch', '-nosafecstrings', '-fvirtual', '-noproxydel', '-fastproxy', '-fastinit', '-fastquery', '-modernargs', '-nobuildnone', '-dirvtable']
 

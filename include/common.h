@@ -33,12 +33,13 @@
 
 /*** MPFR ***/
 
-constexpr bool use_mpfr = false;
-constexpr mp_prec_t prec = 64;
+constexpr bool use_mpfr{false};
+constexpr mp_prec_t prec{64};
 
 /*** gsl_integration workspace size ***/
 
-constexpr size_t w_size = 1<<3;
+constexpr size_t w_size{1<<3};
+constexpr double global_eps{1e-8};
 
 extern "C" {
   /*** Initialization ***/
@@ -47,7 +48,7 @@ extern "C" {
 
   /*** Utility functions ***/
 
-  double logExp(double x, double xmax = 2e3);
+  double logExp(double x, double xmax = 1e3);
   double logExp_mpfr(double x, double xmax = 1e3);
 
   // real(Li_s(exp(z)))
