@@ -139,10 +139,6 @@ double fluct_t_dtdz(double z, double E, double mr_ep, double mr_hp, double mu_e,
   return 0.5 * M_PI / std::sqrt(0.25 * ( 1 - std::pow(mr_hp - mr_ep, 2)) * E - z - mu_e - mu_h) + fluct_i_dfdz_n(z, E, mr_ep, mr_hp, mu_e, mu_h);
 }
 
-std::complex<double> fluct_t_c(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a) {
-  return std::complex<double>(1, 2);
-}
-
 double fluct_pp_f(double z, void * params) {
   double * params_arr = (double*)params;
   double E = params_arr[0];
@@ -601,5 +597,396 @@ double fluct_Ec_a(double a, double mr_ep, double mr_hp, double mu_e, double mu_h
 
   gsl_root_fsolver_free(s);
   return z;
+}
+
+inline std::complex<double> fluct_i_c_flc(double a, double b) {
+  return std::log(std::complex<double>((a + b) / (a - b))) / b;
+}
+
+std::complex<double> fluct_i_c_fc(double x, double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  constexpr double sqrt_val{-1 / (4 * M_SQRT2)}; //1 / (4 * std::sqrt(2))
+
+  if (E < 1e-7) {
+    return 2 * std::sqrt(x) / (z + mu_e + mu_h - x) * ( 1 / (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1) + 1 / (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1)) * sqrt_val;
+  }
+
+  double a_e{z + mu_e + mu_h - mr_ep * E - x};
+  double a_h{z + mu_e + mu_h - mr_hp * E - x};
+
+  double b_e{2 * mr_ep * std::sqrt(E * x)};
+  double b_h{2 * mr_hp * std::sqrt(E * x)};
+
+  return std::sqrt(x) * (fluct_i_c_flc(a_e, b_e) / (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1) + 0.0 * fluct_i_c_flc(a_h, b_h) / (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1)) * sqrt_val;
+}
+
+double fluct_i_c_fer(double x, void * params) {
+  double * params_arr = (double*)params;
+  double z{params_arr[0]};
+  double E{params_arr[1]};
+  double mr_ep{params_arr[2]};
+  double mr_hp{params_arr[3]};
+  double mu_e{params_arr[4]};
+  double mu_h{params_arr[5]};
+
+  constexpr double sqrt_val{-1 / (4 * M_SQRT2)}; //1 / (4 * std::sqrt(2))
+
+  if (E <= 1e-5 && 2 * (z + mu_e + mu_h) > x) {
+    // In this case we compute the integral using the Cauchy principal value method.
+    // Thus, there's a factor of -1 / (z + mu_e + mu_h - x) missing.
+    return -2 * std::sqrt(x) / (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1) * sqrt_val;
+  } else if (E <= 1e-5) {
+    return 2 * std::sqrt(x) / ((z + mu_e + mu_h - x) * (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1)) * sqrt_val;
+  }
+
+
+  double a_e{z + mu_e + mu_h - mr_ep * E - x};
+  double b_e{2 * mr_ep * std::sqrt(E * x)};
+
+  return std::sqrt(x) * (fluct_i_c_flc(a_e, b_e).real() / (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1)) * sqrt_val;
+}
+
+double fluct_i_c_fei(double x, void * params) {
+  double * params_arr = (double*)params;
+  double z{params_arr[0]};
+  double E{params_arr[1]};
+  double mr_ep{params_arr[2]};
+  double mr_hp{params_arr[3]};
+  double mu_e{params_arr[4]};
+  double mu_h{params_arr[5]};
+
+  constexpr double sqrt_val{-1 / (4 * M_SQRT2)}; //1 / (4 * std::sqrt(2))
+
+  /*
+  if (E < 1e-7) {
+    // In this case the imaginary part can be exactly computed.
+  }
+  */
+
+  double a_e{z + mu_e + mu_h - mr_ep * E - x};
+  double b_e{2 * mr_ep * std::sqrt(E * x)};
+
+  return std::sqrt(x) * (fluct_i_c_flc(a_e, b_e).imag() / (std::exp((mr_hp * x - mu_h) / (4 * M_PI)) + 1)) * sqrt_val;
+}
+
+double fluct_i_c_fhr(double x, void * params) {
+  double * params_arr = (double*)params;
+  double z{params_arr[0]};
+  double E{params_arr[1]};
+  double mr_ep{params_arr[2]};
+  double mr_hp{params_arr[3]};
+  double mu_e{params_arr[4]};
+  double mu_h{params_arr[5]};
+
+  constexpr double sqrt_val{-1 / (4 * M_SQRT2)}; //1 / (4 * std::sqrt(2))
+
+  if (E <= 1e-5 && 2 * (z + mu_e + mu_h) > x) {
+    // In this case we compute the integral using the Cauchy principal value method.
+    // Thus, there's a factor of -1 / (z + mu_e + mu_h - x) missing.
+    return -2 * std::sqrt(x) / (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1) * sqrt_val;
+  } else if (E <= 1e-5) {
+    return 2 * std::sqrt(x) / ((z + mu_e + mu_h - x) * (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1)) * sqrt_val;
+  }
+
+  double a_h{z + mu_e + mu_h - mr_hp * E - x};
+  double b_h{2 * mr_hp * std::sqrt(E * x)};
+
+  return std::sqrt(x) * (fluct_i_c_flc(a_h, b_h).real() / (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1)) * sqrt_val;
+}
+
+double fluct_i_c_fhi(double x, void * params) {
+  double * params_arr = (double*)params;
+  double z{params_arr[0]};
+  double E{params_arr[1]};
+  double mr_ep{params_arr[2]};
+  double mr_hp{params_arr[3]};
+  double mu_e{params_arr[4]};
+  double mu_h{params_arr[5]};
+
+  constexpr double sqrt_val{-1 / (4 * M_SQRT2)}; //1 / (4 * std::sqrt(2))
+
+  /*
+  if (E < 1e-7) {
+    // In this case the imaginary part can be exactly computed.
+  }
+  */
+
+  double a_h{z + mu_e + mu_h - mr_hp * E - x};
+  double b_h{2 * mr_hp * std::sqrt(E * x)};
+
+  return std::sqrt(x) * (fluct_i_c_flc(a_h, b_h).imag() / (std::exp((mr_ep * x - mu_e) / (4 * M_PI)) + 1)) * sqrt_val;
+}
+
+uint32_t fluct_i_c_fb(double * pts, double z, double E, double mr_ip, double mu_t) {
+  double sqrt_arg{mr_ip * (mr_ip - 1.0) * E + z + mu_t};
+
+  if (sqrt_arg > global_eps) {
+    pts[1] = mr_ip * (2.0 * mr_ip - 1.0) * E + z + mu_t - 2 * mr_ip * std::sqrt(E * sqrt_arg);
+    pts[2] = mr_ip * (2.0 * mr_ip - 1.0) * E + z + mu_t + 2 * mr_ip * std::sqrt(E * sqrt_arg);
+    pts[3] = 2 * pts[2];
+
+    return 2;
+  } else if (sqrt_arg >= 0 && sqrt_arg <= global_eps) {
+    pts[1] = mr_ip * (2.0 * mr_ip - 1.0) * E + z + mu_t;
+    pts[2] = 2 * pts[1];
+
+    return 1;
+  }
+
+  return 0;
+}
+
+std::vector<double> fluct_i_c_fbv(double z, double E, double mr_ip, double mu_t) {
+  std::vector<double> r(4, 0);
+  fluct_i_c_fb(r.data(), z, E, mr_ip, mu_t);
+  return r;
+}
+
+std::complex<double> fluct_i_c(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  constexpr uint32_t n_int{6};
+  constexpr uint32_t n_pts{4};
+
+  double mu_t{mu_e + mu_h};
+  double params_arr[] = { z, E, mr_ep, mr_hp, mu_e, mu_h };
+
+  double pts_e[n_pts] = {0}, pts_h[n_pts] = {0};
+  size_t neval[1] = {0};
+  double result[n_int] = {0}, error[n_int] = {0};
+
+  gsl_function integrand_er;
+  integrand_er.function = &fluct_i_c_fer;
+  integrand_er.params = params_arr;
+
+  gsl_function integrand_hr;
+  integrand_hr.function = &fluct_i_c_fhr;
+  integrand_hr.params = params_arr;
+
+  /*
+    If E < global_eps we use different methods to compute the
+    integral. The real part can be approximated by Cauchy principal
+    values integration, and the imaginary part is exact.
+
+    Also, z + mu_t has to be positive, otherwise the integral
+    is just given by fluct_i(...).
+  */
+
+  pts_e[1] = z + mu_t;
+  if (E <= 1e-5 && pts_e[1] > 0) {
+    constexpr uint32_t local_ws_size{(1<<4)};
+
+    // Yes, it's ok to use pts_e for both integrals.
+    pts_e[2] = 2 * pts_e[1];
+
+    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qawc(&integrand_er, pts_e[0], pts_e[2], pts_e[1], 0, global_eps, local_ws_size, ws, result, error);
+    gsl_integration_qagiu(&integrand_er, pts_e[2], 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+
+    gsl_integration_qawc(&integrand_hr, pts_e[0], pts_e[2], pts_e[1], 0, global_eps, local_ws_size, ws, result + 2, error + 2);
+    gsl_integration_qagiu(&integrand_hr, pts_e[2], 0, global_eps, local_ws_size, ws, result + 3, error + 3);
+
+    gsl_integration_workspace_free(ws);
+
+    /*
+    for (uint32_t i = 0; i < n_int; i++) {
+      printf("results: %.10f, %.3e\n", result[i],  error[i]);
+    }
+    */
+
+    return std::complex<double>(
+      result[0] + result[1] + result[2] + result[3],
+      -M_PI_2 * M_SQRT1_2 * std::sqrt(pts_e[1]) * (1 / (std::exp((mr_hp * pts_e[1] - mu_h) / (4 * M_PI)) + 1) + 1 / (std::exp((mr_ep * pts_e[1] - mu_e)/(4 * M_PI)) + 1))
+    );
+  }
+
+  /*
+    First we compute the singular points of the integrand.
+
+    case 0: If there are none, then fluct_i_c == fluct_i.
+    case 1: If there is just one, the imaginary part is exactly zero.
+    case 2: If there are two, then there is a contribution to both
+    real and imaginary parts.
+  */
+
+  uint32_t int_state_e{fluct_i_c_fb(pts_e, z, E, mr_ep, mu_t)};
+  uint32_t int_state_h{fluct_i_c_fb(pts_h, z, E, mr_hp, mu_t)};
+
+  gsl_function integrand_ei;
+  integrand_ei.function = &fluct_i_c_fei;
+  integrand_ei.params = params_arr;
+
+  gsl_function integrand_hi;
+  integrand_hi.function = &fluct_i_c_fhi;
+  integrand_hi.params = params_arr;
+
+  constexpr uint32_t local_ws_size{(1<<6)};
+
+  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
+
+  switch (int_state_e) {
+    case 0:
+      gsl_integration_qagiu(&integrand_er, pts_e[0], 0, global_eps, local_ws_size, ws, result, error);
+      break;
+
+    case 1:
+      gsl_integration_qagp(&integrand_er, pts_e, 3, 0, global_eps, local_ws_size, ws, result, error);
+      gsl_integration_qagiu(&integrand_er, pts_e[2], 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+      break;
+
+    case 2:
+      gsl_integration_qagp(&integrand_er, pts_e, n_pts, 0, global_eps, local_ws_size, ws, result, error);
+      gsl_integration_qagiu(&integrand_er, pts_e[3], 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+      gsl_integration_qng(&integrand_ei, pts_e[1], pts_e[2], 0, global_eps, result + 2, error + 2, neval);
+      break;
+  }
+
+  switch (int_state_h) {
+    case 0:
+      gsl_integration_qagiu(&integrand_hr, pts_h[0], 0, global_eps, local_ws_size, ws, result + 3, error + 3);
+      break;
+
+    case 1:
+      gsl_integration_qagp(&integrand_hr, pts_h, 3, 0, global_eps, local_ws_size, ws, result + 3, error + 3);
+      gsl_integration_qagiu(&integrand_hr, pts_h[2], 0, global_eps, local_ws_size, ws, result + 4, error + 4);
+      break;
+
+    case 2:
+      gsl_integration_qagp(&integrand_hr, pts_h, n_pts, 0, global_eps, local_ws_size, ws, result + 3, error + 3);
+      gsl_integration_qagiu(&integrand_hr, pts_h[3], 0, global_eps, local_ws_size, ws, result + 4, error + 4);
+      gsl_integration_qng(&integrand_hi, pts_h[1], pts_h[2], 0, global_eps, result + 5, error + 5, neval);
+      break;
+  }
+
+  gsl_integration_workspace_free(ws);
+
+  /*
+  for (uint32_t i = 0; i < n_int; i++) {
+    printf("%.10f, %.3e\n", result[i],  error[i]);
+  }
+  */
+
+  return std::complex<double>(result[0]+result[1]+result[3]+result[4], result[2]+result[5]);
+}
+
+double fluct_bfi_f(double z, void * params) {
+  double * params_arr = (double*)params;
+  double E{params_arr[0]};
+  double mr_ep{params_arr[1]};
+  double mr_hp{params_arr[2]};
+  double mu_e{params_arr[3]};
+  double mu_h{params_arr[4]};
+  double a{params_arr[5]};
+  double z1{params_arr[6]};
+
+  std::complex<double> I2{fluct_i_c(z, E, mr_ep, mr_hp, mu_e, mu_h)};
+
+  double sqrt_val{std::sqrt(z - z1)};
+
+  return M_PI / sqrt_val * (M_PI_2 * a - I2.real()) / ( M_PI_2 * M_PI_2 * a * a + M_PI * M_PI * (z - z1) + std::norm(I2) + M_PI * a * I2.real() + 2 * M_PI * sqrt_val * I2.imag() ) / (std::exp(z / (4 * M_PI)) - 1);
+}
+
+double fluct_bfi_spi(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a) {
+  double z1{0.25 * (1 - std::pow(mr_hp - mr_ep, 2)) * E - mu_e - mu_h};
+  double params_arr[] = { E, mr_ep, mr_hp, mu_e, mu_h, a, z1 };
+  return fluct_bfi_f(z, params_arr);
+}
+
+double fluct_bfi(double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a) {
+  constexpr uint32_t n_int{2};
+  constexpr uint32_t n_pts{3};
+
+  double pts[n_pts] = {0};
+  double result[n_int] = {0}, error[n_int] = {0};
+
+  double z1{0.25 * (1 - std::pow(mr_hp - mr_ep, 2)) * E - mu_e - mu_h};
+  double params_arr[] = { E, mr_ep, mr_hp, mu_e, mu_h, a, z1 };
+
+  if (z1 < 0) {
+    pts[0] = z1;
+    pts[1] = 0;
+    pts[2] = -z1;
+  } else {
+    pts[0] = z1;
+    pts[1] = 2 * z1;
+  }
+
+  gsl_function integrand;
+  integrand.function = &fluct_bfi_f;
+  integrand.params = params_arr;
+
+  constexpr uint32_t local_ws_size{(1<<6)};
+
+  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
+
+  if (z1 < 0) {
+    /*
+    size_t neval[1] = {0};
+    gsl_integration_qng(&integrand, pts[0], pts[1], 0, global_eps, result + 1, error + 1, neval);
+    gsl_integration_qng(&integrand, pts[1], pts[2], 0, global_eps, result + 2, error + 2, neval);
+    */
+
+    gsl_integration_qagp(&integrand, pts, n_pts, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+    gsl_integration_qagiu(&integrand, pts[2], 0, global_eps, local_ws_size / 2, ws, result, error);
+  } else {
+    /*
+    size_t neval[1] = {0};
+    gsl_integration_qng(&integrand, pts[0], pts[1], 0, global_eps, result + 1, error + 1, neval);
+    */
+
+    gsl_integration_qags(&integrand, pts[0], pts[1], 0, global_eps, local_ws_size / 2, ws, result + 1, error + 1);
+    gsl_integration_qagiu(&integrand, pts[1], 0, global_eps, local_ws_size / 2, ws, result, error);
+  }
+
+  gsl_integration_workspace_free(ws);
+
+  /*
+  for (uint32_t i = 0; i < n_int; i++) {
+    printf("%.10f, %.3e\n", result[i],  error[i]);
+  }
+  */
+
+  return result[0] + result[1];
+}
+
+double fluct_bmi_f(double E, void * params) {
+  double * params_arr = (double*)params;
+  double a{params_arr[0]};
+  double mr_ep{params_arr[1]};
+  double mr_hp{params_arr[2]};
+  double mu_e{params_arr[3]};
+  double mu_h{params_arr[4]};
+
+  return fluct_bfi(E, mr_ep, mr_hp, mu_e, mu_h, a);
+}
+
+double fluct_bmi(double a, double mr_ep, double mr_hp, double mu_e, double mu_h) {
+  constexpr uint32_t n_int{2};
+  constexpr uint32_t n_pts{3};
+
+  double pts[n_pts] = {0};
+  double result[n_int] = {0}, error[n_int] = {0};
+
+  double params_arr[] = { a, mr_ep, mr_hp, mu_e, mu_h };
+
+  gsl_function integrand;
+  integrand.function = &fluct_bfi_f;
+  integrand.params = params_arr;
+
+  constexpr uint32_t local_ws_size{(1<<6)};
+
+  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
+
+  gsl_integration_qagp(&integrand, pts, n_pts, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+  gsl_integration_qagiu(&integrand, pts[2], 0, global_eps, local_ws_size / 2, ws, result, error);
+  gsl_integration_qags(&integrand, pts[0], pts[1], 0, global_eps, local_ws_size / 2, ws, result + 1, error + 1);
+
+  gsl_integration_workspace_free(ws);
+
+  /*
+  for (uint32_t i = 0; i < n_int; i++) {
+    printf("%.10f, %.3e\n", result[i],  error[i]);
+  }
+  */
+
+  return result[0] + result[1];
 }
 

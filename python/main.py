@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<10
-bs = 1<<3
+N = 1<<11
+bs = 1<<2
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -22,12 +22,13 @@ n_dless = 3e24 * lambda_th**3
 
 #mu_e, mu_h = ideal_mu(n_dless, mr_ep), ideal_mu(n_dless, mr_hp)
 #mu_e, mu_h, a = analytic_mu(n_dless, 1/mr_ep, 1/mr_hp, eps_r, e_ratio)
-mu_e, mu_h = -10, -1
+mu_e, mu_h = -1, -1
 
-E = 0
+z = 0
+E = 1
 ac = fluct_ac(mr_ep, mr_hp, mu_e, mu_h)
 ac_E = fluct_ac_E(E, mr_ep, mr_hp, mu_e, mu_h)
-a = 4
+a = ac_E
 
 Ec_a = fluct_Ec_a(a, mr_ep, mr_hp, mu_e, mu_h)
 
@@ -44,18 +45,17 @@ print('z0: %f' % z0)
 a_min, a_max = 2 * sqrt(abs(mu_e+mu_h)) + ac, 2 * sqrt(abs(mu_e+mu_h))
 ac_max = fluct_pp0c(mr_ep, mr_hp, mu_e, mu_h)
 
-print(fluct_t_c(0, E, mr_ep, mr_hp, mu_e, mu_h, a))
-#print(fluct_pmi(a, mr_ep, mr_hp, mu_e, mu_h))
-
-exit()
+#print(fluct_bfi(E, mr_ep, mr_hp, mu_e, mu_h, a))
+#exit()
 
 #x = linspace(0.7 * z0, 1.3 * z0 if 1.3 * z0 < z1 else z1, N)
 #x = linspace(z1 - 1e-3, z1 - 1e-4, N)
 #x = linspace(a_c, 0.5, N)
 #x = logspace(log10(1e22), log10(2e24), N) * lambda_th**3
 #x = range(0, N)
-x = linspace(ac, ac_max, N)
+x = linspace(-0.5, 4, N)
 #x = linspace(0, 1e2, N)
+#x = linspace(z1, 2 * z1, N)
 #x = linspace(0, Ec_a if Ec_a < float('inf') else 1e2, N)
 
 """
@@ -69,7 +69,45 @@ pp = array(parallelTable(
   itertools.repeat(mu_h, N),
   bs = bs
 ))
+
 """
+
+y = sqrt(E) * array(parallelTable(
+  fluct_bfi,
+  itertools.repeat(E, N),
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  x,
+  bs = bs
+))
+
+
+"""
+
+y = array(parallelTable(
+  fluct_bfi_spi,
+  x,
+  itertools.repeat(E, N),
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  itertools.repeat(a, N),
+  bs = bs
+))
+
+y2 = array(parallelTable(
+  fluct_i_c,
+  x,
+  itertools.repeat(0, N),
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
 
 y = array(parallelTable(
   fluct_pmi_nc,
@@ -81,7 +119,6 @@ y = array(parallelTable(
   bs = bs
 ))
 
-"""
 y = array(parallelTable(
   fluct_pr,
   itertools.repeat(a, N),
@@ -193,6 +230,7 @@ y2 = array(parallelTable(
 #y3 = z1 - 3 * (x - ac_E)**2 / 16
 #y3 = 0.5 * (z1 + y2)
 #y2 = - ac * exp(log(ac_E/ac) / E * x)
+#y2 = 0.25 * (1 - (mr_hp - mr_ep)**2) * x - mu_e - mu_h
 
 #y2 = ( 4 * abs(mu_e + mu_h) + (x - ac)**2) / (1 - (mr_ep - mr_hp)**2) + 1
 #y3 = zeros_like(x)
@@ -206,19 +244,32 @@ fig, axarr = plt.subplots(1, 1, sharex = True, figsize = (16, 5), dpi = 96)
 #fig.subplots_adjust(hspace=0)
 fig.tight_layout()
 
-axplots.append(getattr(axarr, plot_type)(x, y, 'r-'))
+axplots.append(getattr(axarr, plot_type)(x, real(y), 'r-'))
 axarr.autoscale(enable = True, axis = 'x', tight = True)
-#axarr.plot(x, y2, 'b--')
+axarr.plot(x, imag(y), 'b-')
+#axarr.plot(x, real(y2), 'g--')
+#axarr.plot(x, imag(y2), 'b--')
+#axarr.plot(x, y2, 'r--')
 #axarr.plot(x, y3, 'r--')
 #axarr.plot(x, pp, 'g--')
 #axarr.axvline(x = z1 - 0.25 * a * a, linestyle = '-', color = 'k', linewidth = 0.5)
-#axarr.axhline(y = z1, linestyle = '-', color = 'g')
-axarr.axvline(x = ac, linestyle = '-', color = 'g')
+#axarr.axhline(y = z0, linestyle = '-', color = 'g')
+#axarr.axvline(x = z0, linestyle = '--', color = 'g', linewidth = 1)
+#axarr.axvline(x = ac, linestyle = '-', color = 'g')
 #axarr.axvline(x = a_min, linestyle = '-', color = 'r')
 #axarr.axvline(x = a_max, linestyle = '-', color = 'b')
-axarr.axvline(x = ac_max, linestyle = '--', color = 'g')
+#axarr.axvline(x = ac_max, linestyle = '--', color = 'g')
 #axarr.axvline(x = pp0_E, linestyle = '--', color = 'g')
 #axarr.axvline(x = ac_E, linestyle = '--', color = 'g')
+
+"""
+for c, Eb in zip(('g', 'b', 'b', 'g'), fluct_i_c_fbv(z, E, mr_hp, mu_e + mu_h)):
+  axarr.axvline(x = Eb, linestyle = '--', color = c)
+
+for c, Eb in zip(('g', 'r', 'r', 'g'), fluct_i_c_fbv(z, E, mr_ep, mu_e + mu_h)):
+  axarr.axvline(x = Eb, linestyle = '--', color = c)
+"""
+
 #axarr.axvline(x = fluct_pf(a, E, mr_ep, mr_hp, mu_e, mu_h), linestyle = '-', color = 'g', linewidth = 1)
 
 if nanmax(y) >= 0 and nanmin(y) <= 0:
