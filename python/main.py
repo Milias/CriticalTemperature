@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<11
-bs = 1<<2
+N = 1<<7
+bs = 1<<0
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -22,13 +22,13 @@ n_dless = 3e24 * lambda_th**3
 
 #mu_e, mu_h = ideal_mu(n_dless, mr_ep), ideal_mu(n_dless, mr_hp)
 #mu_e, mu_h, a = analytic_mu(n_dless, 1/mr_ep, 1/mr_hp, eps_r, e_ratio)
-mu_e, mu_h = -1, -1
+mu_e, mu_h = -2e2, -2e2
 
 z = 0
 E = 1
 ac = fluct_ac(mr_ep, mr_hp, mu_e, mu_h)
 ac_E = fluct_ac_E(E, mr_ep, mr_hp, mu_e, mu_h)
-a = ac_E
+a = -1
 
 Ec_a = fluct_Ec_a(a, mr_ep, mr_hp, mu_e, mu_h)
 
@@ -37,15 +37,13 @@ print('z1: %f, %f' % (z1, 0.25 * (1 - (mr_hp - mr_ep)**2)))
 
 print('mu_e: %.3f meV, mu_h: %.3f meV, mu_e: %.3f, mu_h: %.3f, ac: %.3f, ac_E: %.3f' % (mu_e * energy_th * 1e3, mu_h * energy_th * 1e3, mu_e, mu_h, ac, ac_E))
 
-pp0_E = fluct_pp0(a, mr_ep, mr_hp, mu_e, mu_h)
-
 z0 = fluct_pp(a, E, mr_ep, mr_hp, mu_e, mu_h)
-print('z0: %f' % z0)
 
 a_min, a_max = 2 * sqrt(abs(mu_e+mu_h)) + ac, 2 * sqrt(abs(mu_e+mu_h))
 ac_max = fluct_pp0c(mr_ep, mr_hp, mu_e, mu_h)
+print('z0: %f, ac_max: %f' % (z0, ac_max))
 
-#print(fluct_bfi(E, mr_ep, mr_hp, mu_e, mu_h, a))
+#print(fluct_bmi(a, mr_ep, mr_hp, mu_e, mu_h))
 #exit()
 
 #x = linspace(0.7 * z0, 1.3 * z0 if 1.3 * z0 < z1 else z1, N)
@@ -53,8 +51,8 @@ ac_max = fluct_pp0c(mr_ep, mr_hp, mu_e, mu_h)
 #x = linspace(a_c, 0.5, N)
 #x = logspace(log10(1e22), log10(2e24), N) * lambda_th**3
 #x = range(0, N)
-x = linspace(-0.5, 4, N)
-#x = linspace(0, 1e2, N)
+x = linspace(20, ac_max, N)
+#x = linspace(0, Ec_a, N)
 #x = linspace(z1, 2 * z1, N)
 #x = linspace(0, Ec_a if Ec_a < float('inf') else 1e2, N)
 
@@ -69,22 +67,113 @@ pp = array(parallelTable(
   itertools.repeat(mu_h, N),
   bs = bs
 ))
-
 """
 
-y = sqrt(E) * array(parallelTable(
-  fluct_bfi,
+"""
+y = array(parallelTable(
+  fluct_pp0c,
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  x,
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
+
+y2 = array(parallelTable(
+  fluct_ac,
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  x,
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
+
+#y = zeros_like(x)
+#y2 = zeros_like(x)
+y3 = zeros_like(x)
+y4 = zeros_like(x)
+
+"""
+y = array(parallelTable(
+  fluct_bmi,
+  x,
+  #itertools.repeat(0.9 * Ec_a, N),
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  #itertools.repeat(a, N),
+  bs = bs
+))
+
+y2 = array(parallelTable(
+  fluct_pmi,
+  x,
+  itertools.repeat(ac_max, N),
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
+
+n_id = (analytic_n_id(mu_e, 1/mr_ep) + analytic_n_id(mu_h, 1/mr_hp))
+print('n_id: %f' % n_id)
+
+y_total = y + y2 + n_id
+y3 = y2 / y_total
+y2 = n_id / y_total
+y4 = y / y_total
+y = y3 + y4
+"""
+
+y2 = array(parallelTable(
+  fluct_bfi_spi_d,
+  x,
   itertools.repeat(E, N),
   itertools.repeat(mr_ep, N),
   itertools.repeat(mr_hp, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
+  itertools.repeat(a, N),
+  bs = bs
+))
+
+y *= amax(abs(y2)) / amax(abs(y))
+
+y2 = array(parallelTable(
+  analytic_n_sc,
+  itertools.repeat(mu_e + mu_h, N),
+  itertools.repeat(mr_ep + mr_hp, N),
   x,
   bs = bs
 ))
 
-
+y2 = array(parallelTable(
+  analytic_n_ex,
+  itertools.repeat(mu_e + mu_h, N),
+  itertools.repeat(mr_ep + mr_hp, N),
+  x,
+  bs = bs
+))
 """
+"""
+y2 = array(parallelTable(
+  fluct_pmi_nc,
+  x,
+  itertools.repeat(mr_ep, N),
+  itertools.repeat(mr_hp, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
+
+#print(y)
+
+n_id = analytic_n_id(mu_e, 1/mr_ep) + analytic_n_id(mu_h, 1/mr_hp)
+
+#y = (y + y2) / (y + y2 + n_id)
+
 
 y = array(parallelTable(
   fluct_bfi_spi,
@@ -246,19 +335,22 @@ fig.tight_layout()
 
 axplots.append(getattr(axarr, plot_type)(x, real(y), 'r-'))
 axarr.autoscale(enable = True, axis = 'x', tight = True)
-axarr.plot(x, imag(y), 'b-')
+#axarr.plot(x, imag(y), 'b-')
 #axarr.plot(x, real(y2), 'g--')
 #axarr.plot(x, imag(y2), 'b--')
-#axarr.plot(x, y2, 'r--')
-#axarr.plot(x, y3, 'r--')
+axarr.plot(x, y2, 'g--')
+axarr.plot(x, y3, 'm--')
+axarr.plot(x, y4, 'k--')
 #axarr.plot(x, pp, 'g--')
 #axarr.axvline(x = z1 - 0.25 * a * a, linestyle = '-', color = 'k', linewidth = 0.5)
 #axarr.axhline(y = z0, linestyle = '-', color = 'g')
+#axarr.axhline(y = ac, linestyle = '-', color = 'g')
+#axarr.axhline(y = ac_max, linestyle = '-', color = 'g')
 #axarr.axvline(x = z0, linestyle = '--', color = 'g', linewidth = 1)
-#axarr.axvline(x = ac, linestyle = '-', color = 'g')
+#axarr.axvline(x = ac, linestyle = '-.', color = 'g')
+#axarr.axvline(x = ac_max, linestyle = '--', color = 'g')
 #axarr.axvline(x = a_min, linestyle = '-', color = 'r')
 #axarr.axvline(x = a_max, linestyle = '-', color = 'b')
-#axarr.axvline(x = ac_max, linestyle = '--', color = 'g')
 #axarr.axvline(x = pp0_E, linestyle = '--', color = 'g')
 #axarr.axvline(x = ac_E, linestyle = '--', color = 'g')
 
@@ -285,6 +377,8 @@ axarr.set_xlim(x[0], x[-1])
 #axarr.set_xticks([0.0], minor = False)
 #axarr.set_yticks([0.0], minor = False)
 #axarr.grid(color = 'k', linestyle = '-', linewidth = 0.5)
+
+#fig.savefig('bin/plots/fluct_n_ex_sc_v4.eps')
 
 plt.show()
 

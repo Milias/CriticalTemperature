@@ -45,10 +45,11 @@ double fluct_Ec_a(double a, double mr_ep, double mr_hp, double mu_e, double mu_h
 std::vector<double> fluct_i_c_fbv(double z, double E, double mr_ip, double mu_t);
 std::complex<double> fluct_i_c_fc(double x, double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h);
 std::complex<double> fluct_i_c(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h);
+std::complex<double> fluct_i_ci(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h);
 
 /*** Branch contribution: matsubara sum ***/
 
-double fluct_bfi_spi(double z, double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a);
+double fluct_bfi_spi(double y, double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a);
 
 double fluct_bfi(double E, double mr_ep, double mr_hp, double mu_e, double mu_h, double a);
 

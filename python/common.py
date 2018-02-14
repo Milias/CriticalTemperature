@@ -32,7 +32,7 @@ def parallelTable(func, *args, p = None, bs = 16):
   dt = time.time() - t0
 
   N = len(y)
-  print('Finishing "%s": N = %d, t/N = %.2f μs, t = %.2f s.\n' % (func.__name__, N, dt * 1e6 / N, dt))
+  print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.\n' % (func.__name__, N, p * dt * 1e3 / N, dt))
   return y
 
 k_B = 8.6173303e-5 # eV K^-1
