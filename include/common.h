@@ -36,10 +36,11 @@
 constexpr bool use_mpfr{false};
 constexpr mp_prec_t prec{64};
 
-/*** gsl_integration workspace size ***/
+/*** gsl constants ***/
 
 constexpr size_t w_size{1<<3};
 constexpr double global_eps{1e-8};
+constexpr int max_iter{16};
 
 extern "C" {
   /*** Initialization ***/

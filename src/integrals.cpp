@@ -513,19 +513,19 @@ double integralDensityBranch(double mu, double beta, double a) {
 }
 
 double analytic_n_id(double mu_i, double m_ratio) {
-  // m_ratio = m_i / m_r
-  return 2 * std::pow(m_ratio, 1.5) * polylogExpM(1.5, mu_i / (4 * M_PI));
+  // m_ratio = m_r / m_i
+  return 2 * std::pow(m_ratio, -1.5) * polylogExpM(1.5, mu_i / (4 * M_PI));
 }
 
 double analytic_n_ex(double mu, double m_ratio, double a) {
-  // m_ratio = m_1 / m_r + m_2 / m_r
-  // mu = mu_1 + mu_2
+  // m_ratio = m_e / m_r + m_e / m_r
+  // mu = mu_e + mu_h
   if (a < 0) { return 0; }
   return 4 * std::pow(m_ratio, 1.5) * polylogExp(1.5, (mu + a*a / 4) / (4 * M_PI));
 }
 
 double analytic_n_sc_f(double y, void * params) {
-  // mu = mu_1 + mu_2
+  // mu = mu_e + mu_h
   double * params_arr = (double*)params;
   double mu = params_arr[0];
   double a = params_arr[1];
@@ -534,8 +534,8 @@ double analytic_n_sc_f(double y, void * params) {
 }
 
 double analytic_n_sc(double mu, double m_ratio, double a) {
-  // m_ratio = m_1 / m_r + m_2 / m_r
-  // mu = mu_1 + mu_2
+  // m_ratio = m_e / m_r + m_e / m_r
+  // mu = mu_e + mu_h
   constexpr uint32_t local_ws_size = 1<<8;
   double result[2] = {0}, err[2] = {0};
   double params_arr[] = {mu, a};
@@ -572,18 +572,18 @@ int analytic_mu_param_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   double * params_arr = (double*)params;
   double n_dless = params_arr[0];
-  double m_ratio_e = params_arr[1];
-  double m_ratio_h = params_arr[2];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
   double a = params_arr[3];
 
   double mu_e = gsl_vector_get(x, 0);
   double mu_h = gsl_vector_get(x, 1);
 
-  double mu = mu_e + mu_h, m_ratio = m_ratio_e + m_ratio_h;
+  double mu = mu_e + mu_h, m_ratio = 1/m_pe + 1/m_ph;
 
   double yv[n_eq] = {0};
 
-  double n_id[] = {analytic_n_id(mu_e, m_ratio_e), analytic_n_id(mu_h, m_ratio_h)};
+  double n_id[] = {analytic_n_id(mu_e, m_pe), analytic_n_id(mu_h, m_ph)};
 
   yv[0] = - n_dless + n_id[0] + n_id[1] + analytic_n_ex(mu, m_ratio, a) + analytic_n_sc(mu, m_ratio, a);
   yv[1] = n_id[0] - n_id[1];
@@ -593,13 +593,15 @@ int analytic_mu_param_f(const gsl_vector * x, void * params, gsl_vector * f) {
   return GSL_SUCCESS;
 }
 
-std::vector<double> analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
+std::vector<double> analytic_mu_param(double n_dless, double m_pe, double m_ph, double a) {
   // n = number of equations
   constexpr size_t n = 2;
-  double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, a};
+  double params_arr[] = {n_dless, m_pe, m_ph, a};
   gsl_multiroot_function f = {&analytic_mu_param_f, n, params_arr};
 
-  double x_init[] = {ideal_mu(n_dless, 1/m_ratio_e), ideal_mu(n_dless, 1/m_ratio_h)};
+  std::vector<double> mu_i = ideal_c_mu(n_dless, m_pe, m_ph);
+
+  double * x_init = mu_i.data();
   gsl_vector * x = gsl_vector_alloc(n);
 
   for(size_t i = 0; i < n; i++) { gsl_vector_set(x, i, x_init[i]); }
@@ -624,8 +626,85 @@ std::vector<double> analytic_mu_param(double n_dless, double m_ratio_e, double m
   return r;
 }
 
-std::vector<double> analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a) {
-  return derivative_c2<2>(&analytic_mu_param, n_dless, n_dless * 1e-6, m_ratio_e, m_ratio_h, a);
+double analytic_mu_param_b_f(double mu_e, void * params) {
+  /*
+    Here we need to solve one equation,
+
+    |  n = n_id + n_ex + n_sc
+
+    solving for mu_e (and mu_h) in the
+    process, for a fixed value of a and n.
+  */
+  double * params_arr = (double*)params;
+  double n = params_arr[0];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
+  double a = params_arr[3];
+  double m_sigma = params_arr[4];
+
+  double mu_h{ideal_mu_b(mu_e, m_ph, m_pe)};
+  double mu_t = mu_e + mu_h;
+
+  double n_id{analytic_n_id(mu_e, m_pe)};
+  //printf("mu: %.5f, %.5f, %.10f\n", mu_e, mu_h, analytic_n_ex(mu_t, m_sigma, a));
+
+  return - n + n_id + analytic_n_ex(mu_t, m_sigma, a) + analytic_n_sc(mu_t, m_sigma, a);
+}
+
+std::vector<double> analytic_mu_param_b(double n, double m_pe, double m_ph, double a) {
+  // n = number of equations
+  double m_sigma = 1/m_pe + 1/m_ph;
+  double params_arr[] = {n, m_pe, m_ph, a, m_sigma};
+  double z, z_max, z_min;
+
+  gsl_function funct;
+  funct.function = &analytic_mu_param_b_f;
+  funct.params = params_arr;
+
+  // TODO: maybe take z_min and z_max as arguments?
+  if (a >= 0) {
+    // This bound is only valid when a > 0.
+    z_max = ideal_mu_v(-0.25 * a*a - global_eps, -1, m_pe, m_ph);
+    z_min = - 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
+  } else {
+    z_max = ideal_mu_v(0, -1, m_pe, m_ph);
+    z_min = 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
+  }
+
+  /*
+  double f0{funct.function(z_min, params_arr)}, f1{funct.function(z_max, params_arr)};
+  if (f0 * f1 > 0) {
+    z = std::min(std::abs(f0), std::abs(f1));
+    return std::vector<double>({z, ideal_mu_b(z, m_ph, m_pe)});
+  }
+  */
+
+  //printf("first: %.3f, %.10f, %.10f, %.2f, %.2f\n", a, z_min, z_max, funct.function(z_min, params_arr), funct.function(z_max, params_arr));
+
+  const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+  gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+  gsl_root_fsolver_set(s, &funct, z_min, z_max);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fsolver_iterate(s);
+    z = gsl_root_fsolver_root(s);
+    z_min = gsl_root_fsolver_x_lower(s);
+    z_max = gsl_root_fsolver_x_upper(s);
+
+    status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+
+    //printf("iter %d: %.3f, %.10f, %.10f, %.7e\n", iter, a, z_min, z_max, funct.function(z, params_arr));
+  }
+
+  //printf("result: %.2f, %.10f, %.10f, %.10f\n", a, z, fluct_Ec_a_f(z, params_arr), fluct_Ec_a_df(z, params_arr));
+
+  gsl_root_fsolver_free(s);
+  return std::vector<double>({z, ideal_mu_b(z, m_ph, m_pe)});
+}
+
+std::vector<double> analytic_mu_param_dn(double n_dless, double m_pe, double m_ph, double a) {
+  return derivative_c2<2>(&analytic_mu_param, n_dless, n_dless * 1e-6, m_pe, m_ph, a);
 }
 
 int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
@@ -642,8 +721,8 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   double * params_arr = (double*)params;
   double n_dless = params_arr[0];
-  double m_ratio_e = params_arr[1];
-  double m_ratio_h = params_arr[2];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
   double eps_r = params_arr[3];
   double e_ratio = params_arr[4];
 
@@ -652,8 +731,8 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double a = gsl_vector_get(x, 2);
 
   double yv[n_eq] = {0};
-  std::vector<double> mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
-  std::vector<double> lambda_i = analytic_mu_param_dn(n_dless, m_ratio_e, m_ratio_h, a);
+  std::vector<double> mu_i = analytic_mu_param(n_dless, m_pe, m_ph, a);
+  std::vector<double> lambda_i = analytic_mu_param_dn(n_dless, m_pe, m_ph, a);
   double lambda_s = 1 / std::sqrt(std::abs(1 / lambda_i[0] + 1 / lambda_i[1]));
   //printf("%.10f, %.10f,  %.10f\n", n_dless, lambda_i[0], lambda_i[1]);
 
@@ -666,15 +745,16 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   return GSL_SUCCESS;
 }
 
-std::vector<double> analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio) {
+std::vector<double> analytic_mu(double n_dless, double m_pe, double m_ph, double eps_r, double e_ratio) {
   // n = number of equations
   // TODO: check the prefactor of the chemical potential.
   constexpr size_t n = 3;
-  double params_arr[] = {n_dless, m_ratio_e, m_ratio_h, eps_r, e_ratio};
+  double params_arr[] = {n_dless, m_pe, m_ph, eps_r, e_ratio};
   gsl_multiroot_function f = {&analytic_mu_f, n, params_arr};
 
-  double a = 0.5 / std::sqrt(ideal_mu(n_dless, 1/m_ratio_e) + ideal_mu(n_dless, 1/m_ratio_h));
-  std::vector<double> mu_i = analytic_mu_param(n_dless, m_ratio_e, m_ratio_h, a);
+  std::vector<double> mu_id = ideal_c_mu(n_dless, m_pe, m_ph);
+  double a = 0.5 / std::sqrt(mu_id[0] + mu_id[1]);
+  std::vector<double> mu_i = analytic_mu_param(n_dless, m_pe, m_ph, a);
   double x_init[] = { mu_i[0], mu_i[1], a };
 
   gsl_vector * x = gsl_vector_alloc(n);
@@ -747,9 +827,13 @@ double wavefunction_int(double eps_r, double e_ratio, double lambda_s) {
   return a1;
 }
 
-double ideal_mu(double n_dless, double m_ratio) {
+double ideal_mu(double n, double m_pa) {
   // m_ratio = m_r / m_i
-  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n_dless * std::pow(m_ratio, 1.5));
+  return 4 * M_PI * invPolylogExpM(1.5, 0.25 * n * std::pow(m_pa, 1.5));
+}
+
+std::vector<double> ideal_c_mu(double n, double m_pe, double m_ph) {
+  return std::vector<double>({ideal_mu(n, m_pe), ideal_mu(n, m_ph)});
 }
 
 double ideal_mu_dn_f(double z, void * params) {
@@ -757,7 +841,7 @@ double ideal_mu_dn_f(double z, void * params) {
   double s = params_arr[0];
   double m_ratio = params_arr[1];
 
-  return invPolylogExpM(s, 0.5 * z * std::pow(m_ratio, 1.5));
+  return invPolylogExpM(s, 0.25 * z * std::pow(m_ratio, 1.5));
 }
 
 double ideal_mu_dn(double n_dless, double m_ratio) {
@@ -775,5 +859,63 @@ double ideal_mu_dn(double n_dless, double m_ratio) {
   //printf("%.3e, %.3e, %.3e\n", n_dless, 4 * M_PI * arg * r, err);
 
   return 4 * M_PI * r;
+}
+
+double ideal_mu_b(double mu_a, double m_pb, double m_pa) {
+  return 4 * M_PI * invPolylogExpM(1.5, std::pow(m_pb / m_pa, 1.5) * polylogExpM(1.5, mu_a / (4 * M_PI)));
+}
+
+double ideal_mu_v_f(double mu_e, void * params) {
+  double * params_arr = (double*)params;
+  double v = params_arr[0];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
+
+  return mu_e + ideal_mu_b(mu_e, m_ph, m_pe) - v;
+}
+
+double ideal_mu_v_df(double mu_e, void * params) {
+  double * params_arr = (double*)params;
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
+
+  return 1 + derivative_c2<1>(&ideal_mu_b, mu_e, global_eps * mu_e, m_ph, m_pe)[0];
+}
+
+void ideal_mu_v_fdf(double z, void * params, double * f, double * df) {
+  f[0] = ideal_mu_v_f(z, params);
+  df[0] = ideal_mu_v_df(z, params);
+}
+
+double ideal_mu_v(double v, double mu_0, double m_pe, double m_ph) {
+  /*
+    Solves the equation mu_e + mu_h == v for mu_e,
+    assuming n_id,e == n_id,h.
+  */
+
+  double params_arr[] = {v, m_pe, m_ph};
+  double z0, z{mu_0};
+
+  gsl_function_fdf funct;
+  funct.f = &ideal_mu_v_f;
+  funct.df = &ideal_mu_v_df;
+  funct.fdf = &ideal_mu_v_fdf;
+  funct.params = params_arr;
+
+  const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
+  gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
+
+  gsl_root_fdfsolver_set(s, &funct, z);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fdfsolver_iterate(s);
+    z0 = z;
+
+    z = gsl_root_fdfsolver_root(s);
+    status = gsl_root_test_delta(z, z0, 0, global_eps);
+  }
+
+  gsl_root_fdfsolver_free(s);
+  return z;
 }
 

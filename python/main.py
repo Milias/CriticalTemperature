@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<7
-bs = 1<<0
+N = 1<<10
+bs = 1<<2
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -13,37 +13,38 @@ beta = 1 / (k_B * T) # eV^-1
 lambda_th = c * hbar * sqrt(2 * pi * beta / m_p) # m
 energy_th = 1 / ( 4 * pi * beta )
 eps_r, e_ratio = 6.56, m_p / energy_th
-mr_ep = m_p / m_e
-mr_hp = m_p / m_h
+m_pe = m_p / m_e
+m_ph = m_p / m_h
 
 print('%f nm, %f meV' % (lambda_th * 1e9, energy_th * 1e3))
 
-n_dless = 3e24 * lambda_th**3
+n = 3e24 * lambda_th**3
 
-#mu_e, mu_h = ideal_mu(n_dless, mr_ep), ideal_mu(n_dless, mr_hp)
-#mu_e, mu_h, a = analytic_mu(n_dless, 1/mr_ep, 1/mr_hp, eps_r, e_ratio)
-mu_e, mu_h = -2e2, -2e2
+mu_e, mu_h = ideal_c_mu(n, m_pe, m_ph)
+#mu_e, mu_h, a = analytic_mu(n, 1/m_pe, 1/m_ph, eps_r, e_ratio)
+#mu_e, mu_h = -2e2, -2e2
 
 z = 0
 E = 1
-ac = fluct_ac(mr_ep, mr_hp, mu_e, mu_h)
-ac_E = fluct_ac_E(E, mr_ep, mr_hp, mu_e, mu_h)
-a = -1
+ac = fluct_ac(m_pe, m_ph, mu_e, mu_h)
+ac_E = fluct_ac_E(E, m_pe, m_ph, mu_e, mu_h)
+a = -200
 
-Ec_a = fluct_Ec_a(a, mr_ep, mr_hp, mu_e, mu_h)
+Ec_a = fluct_Ec_a(a, m_pe, m_ph, mu_e, mu_h)
 
-z1 = 0.25 * (1 - (mr_hp - mr_ep)**2) * E - mu_e - mu_h
-print('z1: %f, %f' % (z1, 0.25 * (1 - (mr_hp - mr_ep)**2)))
+z1 = 0.25 * (1 - (m_ph - m_pe)**2) * E - mu_e - mu_h
+print('z1: %f, n: %f' % (z1, n))
 
 print('mu_e: %.3f meV, mu_h: %.3f meV, mu_e: %.3f, mu_h: %.3f, ac: %.3f, ac_E: %.3f' % (mu_e * energy_th * 1e3, mu_h * energy_th * 1e3, mu_e, mu_h, ac, ac_E))
 
-z0 = fluct_pp(a, E, mr_ep, mr_hp, mu_e, mu_h)
+z0 = fluct_pp(a, E, m_pe, m_ph, mu_e, mu_h)
 
 a_min, a_max = 2 * sqrt(abs(mu_e+mu_h)) + ac, 2 * sqrt(abs(mu_e+mu_h))
-ac_max = fluct_pp0c(mr_ep, mr_hp, mu_e, mu_h)
+ac_max = fluct_pp0c(m_pe, m_ph, mu_e, mu_h)
 print('z0: %f, ac_max: %f' % (z0, ac_max))
 
-#print(fluct_bmi(a, mr_ep, mr_hp, mu_e, mu_h))
+#print(analytic_mu_param_b(n, m_pe, m_ph, a))
+#print(fluct_mu_a(n, a, m_pe, m_ph))
 #exit()
 
 #x = linspace(0.7 * z0, 1.3 * z0 if 1.3 * z0 < z1 else z1, N)
@@ -51,18 +52,36 @@ print('z0: %f, ac_max: %f' % (z0, ac_max))
 #x = linspace(a_c, 0.5, N)
 #x = logspace(log10(1e22), log10(2e24), N) * lambda_th**3
 #x = range(0, N)
-x = linspace(20, ac_max, N)
+x = linspace(-100, 70, N)
 #x = linspace(0, Ec_a, N)
 #x = linspace(z1, 2 * z1, N)
 #x = linspace(0, Ec_a if Ec_a < float('inf') else 1e2, N)
 
+y = zeros_like(x)
+y2 = zeros_like(x)
+y3 = zeros_like(x)
+y4 = zeros_like(x)
+
 """
+y = array(parallelTable(
+  analytic_mu_param_b,
+  itertools.repeat(n, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
+  x,
+  bs = bs
+))
+
+y2 = y[:, 1]
+y = y[:, 0]
+
+
 pp = array(parallelTable(
   fluct_pp_b,
   x,
   itertools.repeat(0, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -72,8 +91,8 @@ pp = array(parallelTable(
 """
 y = array(parallelTable(
   fluct_pp0c,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   x,
   itertools.repeat(mu_h, N),
   bs = bs
@@ -81,25 +100,19 @@ y = array(parallelTable(
 
 y2 = array(parallelTable(
   fluct_ac,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   x,
   itertools.repeat(mu_h, N),
   bs = bs
 ))
 
-#y = zeros_like(x)
-#y2 = zeros_like(x)
-y3 = zeros_like(x)
-y4 = zeros_like(x)
-
-"""
 y = array(parallelTable(
   fluct_bmi,
   x,
   #itertools.repeat(0.9 * Ec_a, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   #itertools.repeat(a, N),
@@ -110,14 +123,14 @@ y2 = array(parallelTable(
   fluct_pmi,
   x,
   itertools.repeat(ac_max, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
 ))
 
-n_id = (analytic_n_id(mu_e, 1/mr_ep) + analytic_n_id(mu_h, 1/mr_hp))
+n_id = (analytic_n_id(mu_e, 1/m_pe) + analytic_n_id(mu_h, 1/m_ph))
 print('n_id: %f' % n_id)
 
 y_total = y + y2 + n_id
@@ -126,13 +139,14 @@ y2 = n_id / y_total
 y4 = y / y_total
 y = y3 + y4
 """
+"""
 
 y2 = array(parallelTable(
   fluct_bfi_spi_d,
   x,
   itertools.repeat(E, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   itertools.repeat(a, N),
@@ -144,7 +158,7 @@ y *= amax(abs(y2)) / amax(abs(y))
 y2 = array(parallelTable(
   analytic_n_sc,
   itertools.repeat(mu_e + mu_h, N),
-  itertools.repeat(mr_ep + mr_hp, N),
+  itertools.repeat(m_pe + m_ph, N),
   x,
   bs = bs
 ))
@@ -152,7 +166,7 @@ y2 = array(parallelTable(
 y2 = array(parallelTable(
   analytic_n_ex,
   itertools.repeat(mu_e + mu_h, N),
-  itertools.repeat(mr_ep + mr_hp, N),
+  itertools.repeat(m_pe + m_ph, N),
   x,
   bs = bs
 ))
@@ -161,8 +175,8 @@ y2 = array(parallelTable(
 y2 = array(parallelTable(
   fluct_pmi_nc,
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -170,7 +184,7 @@ y2 = array(parallelTable(
 
 #print(y)
 
-n_id = analytic_n_id(mu_e, 1/mr_ep) + analytic_n_id(mu_h, 1/mr_hp)
+n_id = analytic_n_id(mu_e, 1/m_pe) + analytic_n_id(mu_h, 1/m_ph)
 
 #y = (y + y2) / (y + y2 + n_id)
 
@@ -179,8 +193,8 @@ y = array(parallelTable(
   fluct_bfi_spi,
   x,
   itertools.repeat(E, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   itertools.repeat(a, N),
@@ -191,8 +205,8 @@ y2 = array(parallelTable(
   fluct_i_c,
   x,
   itertools.repeat(0, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -201,8 +215,8 @@ y2 = array(parallelTable(
 y = array(parallelTable(
   fluct_pmi_nc,
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -212,8 +226,8 @@ y = array(parallelTable(
   fluct_pr,
   itertools.repeat(a, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -225,8 +239,8 @@ y2 = array(parallelTable(
   fluct_pp_b,
   itertools.repeat(a, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -236,8 +250,8 @@ y2 = array(parallelTable(
 ac_E_vec = array(parallelTable(
   fluct_ac_E,
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -247,8 +261,8 @@ y = sqrt(x) * array(parallelTable(
   fluct_pr,
   0.5 * ac_E_vec,
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -259,8 +273,8 @@ y2 = array(parallelTable(
   fluct_pp_b,
   x,
   itertools.repeat(E, N),
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -271,8 +285,8 @@ y2 = sqrt(x) * array(parallelTable(
   analytic_prf,
   itertools.repeat(-0.5, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -282,8 +296,8 @@ y = array(parallelTable(
   fluct_pp,
   itertools.repeat(a, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -293,8 +307,8 @@ y = array(parallelTable(
   fluct_pr,
   itertools.repeat(a, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -304,8 +318,8 @@ y2 = array(parallelTable(
   analytic_prf,
   itertools.repeat(a, N),
   x,
-  itertools.repeat(mr_ep, N),
-  itertools.repeat(mr_hp, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs
@@ -319,9 +333,9 @@ y2 = array(parallelTable(
 #y3 = z1 - 3 * (x - ac_E)**2 / 16
 #y3 = 0.5 * (z1 + y2)
 #y2 = - ac * exp(log(ac_E/ac) / E * x)
-#y2 = 0.25 * (1 - (mr_hp - mr_ep)**2) * x - mu_e - mu_h
+#y2 = 0.25 * (1 - (m_ph - m_pe)**2) * x - mu_e - mu_h
 
-#y2 = ( 4 * abs(mu_e + mu_h) + (x - ac)**2) / (1 - (mr_ep - mr_hp)**2) + 1
+#y2 = ( 4 * abs(mu_e + mu_h) + (x - ac)**2) / (1 - (m_pe - m_ph)**2) + 1
 #y3 = zeros_like(x)
 
 #y = 0.5 * pi * a - pi * sqrt(z1 - x) + y
@@ -338,9 +352,9 @@ axarr.autoscale(enable = True, axis = 'x', tight = True)
 #axarr.plot(x, imag(y), 'b-')
 #axarr.plot(x, real(y2), 'g--')
 #axarr.plot(x, imag(y2), 'b--')
-axarr.plot(x, y2, 'g--')
-axarr.plot(x, y3, 'm--')
-axarr.plot(x, y4, 'k--')
+axarr.plot(x, y2, 'b-')
+axarr.plot(x, y3, 'r--')
+axarr.plot(x, y4, 'b--')
 #axarr.plot(x, pp, 'g--')
 #axarr.axvline(x = z1 - 0.25 * a * a, linestyle = '-', color = 'k', linewidth = 0.5)
 #axarr.axhline(y = z0, linestyle = '-', color = 'g')
@@ -355,14 +369,14 @@ axarr.plot(x, y4, 'k--')
 #axarr.axvline(x = ac_E, linestyle = '--', color = 'g')
 
 """
-for c, Eb in zip(('g', 'b', 'b', 'g'), fluct_i_c_fbv(z, E, mr_hp, mu_e + mu_h)):
+for c, Eb in zip(('g', 'b', 'b', 'g'), fluct_i_c_fbv(z, E, m_ph, mu_e + mu_h)):
   axarr.axvline(x = Eb, linestyle = '--', color = c)
 
-for c, Eb in zip(('g', 'r', 'r', 'g'), fluct_i_c_fbv(z, E, mr_ep, mu_e + mu_h)):
+for c, Eb in zip(('g', 'r', 'r', 'g'), fluct_i_c_fbv(z, E, m_pe, mu_e + mu_h)):
   axarr.axvline(x = Eb, linestyle = '--', color = c)
 """
 
-#axarr.axvline(x = fluct_pf(a, E, mr_ep, mr_hp, mu_e, mu_h), linestyle = '-', color = 'g', linewidth = 1)
+#axarr.axvline(x = fluct_pf(a, E, m_pe, m_ph, mu_e, mu_h), linestyle = '-', color = 'g', linewidth = 1)
 
 if nanmax(y) >= 0 and nanmin(y) <= 0:
   axarr.axhline(y = 0, linestyle = '-', color = 'k', linewidth = 0.5)

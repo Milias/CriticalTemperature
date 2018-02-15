@@ -48,25 +48,45 @@ double logExp_mpfr(double x, double xmax) {
 
 double polylogExp(double s, double z) {
   double r{0};
-  assert(z <= 0 && "z has to be negative.");
+  //assert(z <= 0 && "z has to be negative.");
 
-  arb_t arb_x, arb_s, arb_z;
+  if (z >= 0) {
+    arb_t arb_x, arb_s, arb_z;
 
-  arb_init(arb_x);
-  arb_init(arb_s);
-  arb_init(arb_z);
+    arb_init(arb_x);
+    arb_init(arb_s);
+    arb_init(arb_z);
 
-  arb_set_d(arb_s, s);
-  arb_set_d(arb_z, std::exp(z));
+    arb_set_d(arb_s, s);
+    arb_set_d(arb_z, std::exp(z));
+    //arb_exp(arb_z, arb_z, prec);
 
-  arb_polylog(arb_x, arb_s, arb_z, prec);
+    arb_polylog(arb_x, arb_s, arb_z, prec);
 
-  r = arf_get_d(arb_midref(arb_x), ARF_RND_NEAR);
+    r = arf_get_d(arb_midref(arb_x), ARF_RND_NEAR);
 
-  arb_clear(arb_x);
-  arb_clear(arb_s);
-  arb_clear(arb_z);
-  //r = arf_get_d(arb_midref(acb_realref(acb_x)), ARF_RND_NEAR);
+    arb_clear(arb_x);
+    arb_clear(arb_s);
+    arb_clear(arb_z);
+  } else {
+    acb_t acb_x, acb_s, acb_z;
+
+    acb_init(acb_x);
+    acb_init(acb_s);
+    acb_init(acb_z);
+
+    acb_set_d(acb_s, s);
+    acb_set_d(acb_z, std::exp(z));
+    //acb_exp(acb_z, acb_z, prec);
+
+    acb_polylog(acb_x, acb_s, acb_z, prec);
+
+    r = arf_get_d(arb_midref(acb_realref(acb_x)), ARF_RND_NEAR);
+
+    acb_clear(acb_x);
+    acb_clear(acb_s);
+    acb_clear(acb_z);
+  }
 
   return r;
 }
@@ -80,6 +100,8 @@ double polylogExpM(double s, double z) {
 
   arb_set_d(arb_s, s);
   arb_set_d(arb_z, -std::exp(z));
+  //arb_exp(arb_z, arb_z, prec);
+  //arb_neg(arb_z, arb_z);
 
   arb_polylog(arb_x, arb_s, arb_z, prec);
 
@@ -111,12 +133,12 @@ void invPolylogExp_fdf(double z, void * params, double * f, double * df) {
 
 double invPolylogExp(double p_s, double a) {
   // Can't be higher than zeta(p_s) == Li(p_s, exp(0))
-  if (a < 0) { return NAN; }
+  if (a < 0) { return std::numeric_limits<double>::quiet_NaN(); }
   if (a == 0) { return -std::numeric_limits<double>::infinity(); }
 
   if (p_s > 1) {
     double zeta_val = gsl_sf_zeta(p_s);
-    if (a > zeta_val) { return NAN; }
+    if (a > zeta_val) { return std::numeric_limits<double>::quiet_NaN(); }
     if (a == zeta_val) { return 0; }
   }
 
@@ -165,7 +187,7 @@ void invPolylogExpM_fdf(double z, void * params, double * f, double * df) {
 
 double invPolylogExpM(double p_s, double a) {
   // Can't be negative.
-  if (a < 0) { return NAN; }
+  if (a < 0) { return std::numeric_limits<double>::quiet_NaN(); }
   if (a == 0) { return -std::numeric_limits<double>::infinity(); }
 
   double params_arr[] = {p_s, a};

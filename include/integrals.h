@@ -54,19 +54,26 @@ double analytic_n_id(double mu, double m_ratio);
 double analytic_n_ex(double mu, double m_ratio, double a);
 double analytic_n_sc(double mu, double m_ratio, double a);
 
-/*** Scattering length: ODE ***/
+/*** Chemical potential: analytic version ***/
 
-std::vector<double> analytic_mu_param(double n_dless, double m_ratio_e, double m_ratio_h, double a);
-std::vector<double> analytic_mu_param_dn(double n_dless, double m_ratio_e, double m_ratio_h, double a);
-std::vector<double> analytic_mu(double n_dless, double m_ratio_e, double m_ratio_h, double eps_r, double e_ratio);
+std::vector<double> analytic_mu_param(double n, double m_pe, double m_ph, double a);
+std::vector<double> analytic_mu_param_b(double n, double m_pe, double m_ph, double a);
+std::vector<double> analytic_mu_param_dn(double n, double m_pe, double m_ph, double a);
+std::vector<double> analytic_mu(double n, double m_pe, double m_ph, double eps_r, double e_ratio);
+
+/*** Scattering length: ODE ***/
 
 double yukawa_pot(double x, double eps_r, double e_ratio, double lambda_s);
 double wavefunction_int(double eps_r, double e_ratio, double lambda_s);
 
-/*** Scattering length: ideal gas chemical potential ***/
+/*** Chemical potential: ideal gas version ***/
 
-double ideal_mu(double n_dless, double m_ratio);
-double ideal_mu_dn(double n_dless, double m_ratio);
+double ideal_mu(double n, double m_pa);
+std::vector<double> ideal_c_mu(double n, double m_pe, double m_ph);
+double ideal_mu_dn(double n, double m_pa);
+
+double ideal_mu_b(double mu_a, double m_pb, double m_pa);
+double ideal_mu_v(double v, double mu_0, double m_pe, double m_ph);
 
 #ifndef SWIG
 
