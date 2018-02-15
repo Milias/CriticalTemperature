@@ -648,7 +648,7 @@ double analytic_mu_param_b_f(double mu_e, void * params) {
   double n_id{analytic_n_id(mu_e, m_pe)};
   //printf("mu: %.5f, %.5f, %.10f\n", mu_e, mu_h, analytic_n_ex(mu_t, m_sigma, a));
 
-  return - n + n_id + analytic_n_ex(mu_t, m_sigma, a) + analytic_n_sc(mu_t, m_sigma, a);
+  return - n + 2*n_id + analytic_n_ex(mu_t, m_sigma, a) + analytic_n_sc(mu_t, m_sigma, a);
 }
 
 std::vector<double> analytic_mu_param_b(double n, double m_pe, double m_ph, double a) {
@@ -664,10 +664,11 @@ std::vector<double> analytic_mu_param_b(double n, double m_pe, double m_ph, doub
   // TODO: maybe take z_min and z_max as arguments?
   if (a >= 0) {
     // This bound is only valid when a > 0.
-    z_max = ideal_mu_v(-0.25 * a*a - global_eps, -1, m_pe, m_ph);
+    double mu_e{ideal_mu(n, m_pe)}, mu_h{ideal_mu(n, m_ph)};
+    z_max = (mu_e + mu_h) + 0.25 *a*a < 0 ? mu_e : ideal_mu_v(-0.25 * a*a - global_eps, -1, m_pe, m_ph);
     z_min = - 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   } else {
-    z_max = ideal_mu_v(0, -1, m_pe, m_ph);
+    z_max = ideal_mu(n, m_pe); //ideal_mu_v(0, -1, m_pe, m_ph);
     z_min = 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   }
 

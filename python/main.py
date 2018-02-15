@@ -1,6 +1,6 @@
 from common import *
 
-N = 1<<10
+N = 1<<12
 bs = 1<<2
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
@@ -52,7 +52,7 @@ print('z0: %f, ac_max: %f' % (z0, ac_max))
 #x = linspace(a_c, 0.5, N)
 #x = logspace(log10(1e22), log10(2e24), N) * lambda_th**3
 #x = range(0, N)
-x = linspace(-100, 70, N)
+x = linspace(-1e2, 70, N)
 #x = linspace(0, Ec_a, N)
 #x = linspace(z1, 2 * z1, N)
 #x = linspace(0, Ec_a if Ec_a < float('inf') else 1e2, N)
@@ -62,7 +62,6 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
-"""
 y = array(parallelTable(
   analytic_mu_param_b,
   itertools.repeat(n, N),
@@ -74,8 +73,11 @@ y = array(parallelTable(
 
 y2 = y[:, 1]
 y = y[:, 0]
+y3[:] = ideal_mu(n, m_pe)
+y4[:] = ideal_mu(n, m_ph)
 
 
+"""
 pp = array(parallelTable(
   fluct_pp_b,
   x,
