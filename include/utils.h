@@ -98,7 +98,6 @@ struct s_system {
     lambda_th = c * hbar * sqrt(2 * pi * beta / m_p)
   */
   double f_lambda_th(double beta, double m_p) {
-    printf("lambda_th called\n");
     return c_light * c_hbar * std::sqrt(2 * M_PI * beta / m_p);
   }
 

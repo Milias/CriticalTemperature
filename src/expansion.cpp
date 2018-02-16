@@ -120,9 +120,9 @@ double fluct_i_dfdz_n(double z, double E, double m_pe, double m_ph, double mu_e,
   //double z1{0.25 * ( 1 - std::pow(m_ph - m_pe, 2)) * E - mu_e - mu_h};
 
   if (z > 0) {
-    return derivative_b3<1>(&fluct_i, z, z * 1e-3, E, m_pe, m_ph, mu_e, mu_h)[0];
+    return derivative_b3(&fluct_i, z, z * 1e-3, E, m_pe, m_ph, mu_e, mu_h);
   } else {
-    return derivative_f3<1>(&fluct_i, z, z * 1e-3, E, m_pe, m_ph, mu_e, mu_h)[0];
+    return derivative_f3(&fluct_i, z, z * 1e-3, E, m_pe, m_ph, mu_e, mu_h);
   }
 
   //printf("%.3f, %.3f, %3e\n", z, r, err);
@@ -1202,7 +1202,7 @@ double fluct_mu_a_df(double mu_e, void * params) {
 
   double mu_h{ideal_mu_b(mu_e, m_ph, m_pe)};
 
-  return M_1_PI * std::pow(m_pe, -1.5) * polylogExpM(0.5, 0.25 * M_1_PI * mu_e) + derivative_b3<1>(&fluct_mu_a_df_exsc, mu_e, mu_e * global_eps, mu_h, m_pe, m_ph, a)[0];
+  return M_1_PI * std::pow(m_pe, -1.5) * polylogExpM(0.5, 0.25 * M_1_PI * mu_e) + derivative_b3(&fluct_mu_a_df_exsc, mu_e, mu_e * global_eps, mu_h, m_pe, m_ph, a);
 }
 
 void fluct_mu_a_fdf(double mu_e, void * params, double * f, double * df) {

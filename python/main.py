@@ -26,18 +26,8 @@ mu_e = ideal_mu(n, m_pe)
 mu_h = ideal_mu(n, m_ph)
 print('mu_e: %.3f, mu_h: %.3f, mu_t: %.3f\n' % (mu_e, mu_h, mu_e + mu_h))
 
-print("system:")
 system = s_system(m_e, m_h, eps_r, T)
-system.n = 1
-print("done")
-
-print("system2:")
-system2 = s_system(system)
-system2.n = 2
-print("done")
-
-print((system.n, system2.n))
-
+print(ideal_mu_v(0, -1, system.m_pe, system.m_ph))
 exit()
 
 #x = logspace(log10(1e22), log10(7e24), N) * lambda_th**3

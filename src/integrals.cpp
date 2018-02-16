@@ -880,7 +880,7 @@ double ideal_mu_v_df(double mu_e, void * params) {
   double m_pe = params_arr[1];
   double m_ph = params_arr[2];
 
-  return 1 + derivative_c2<1>(&ideal_mu_b, mu_e, global_eps * mu_e, m_ph, m_pe)[0];
+  return 1 + derivative_c2(&ideal_mu_b, mu_e, global_eps * mu_e, m_ph, m_pe);
 }
 
 void ideal_mu_v_fdf(double z, void * params, double * f, double * df) {
