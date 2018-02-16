@@ -150,5 +150,10 @@ template <uint32_t N, typename F, typename ... Args> std::vector<double> derivat
   return fp_val;
 }
 
+template <typename T, typename F, typename Arg1, typename ... Args> inline T python_wrap(const F & f, Arg1 arg1, Args ... args) {
+  double params_arr[sizeof...(args)] = { args... };
+  return f(arg1, params_arr);
+}
+
 #endif
 

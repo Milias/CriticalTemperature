@@ -26,6 +26,7 @@ double fluct_pp(double a, double E, double m_pe, double m_ph, double mu_e, doubl
 double fluct_pp_b(double a, double E, double m_pe, double m_ph, double mu_e, double mu_h);
 double fluct_pp0(double a, double m_pe, double m_ph, double mu_e, double mu_h);
 double fluct_pp0c(double m_pe, double m_ph, double mu_e, double mu_h);
+double fluct_pp0c_mu(double a, double n, double m_pe, double m_ph);
 
 double fluct_pr(double a, double E, double m_pe, double m_ph, double mu_e, double mu_h);
 
@@ -59,5 +60,6 @@ double fluct_bmi(double a, double m_pe, double m_ph, double mu_e, double mu_h);
 
 /*** Chemical potential: fixed scattering length ***/
 
+double fluct_mu_a_fp(double mu_e, double n, double m_pe, double m_ph, double a);
 std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph);
 

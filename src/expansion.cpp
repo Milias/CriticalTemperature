@@ -374,6 +374,59 @@ double fluct_pp0c(double m_pe, double m_ph, double mu_e, double mu_h) {
   return z;
 }
 
+double fluct_pp0c_mu_f(double mu_e, void * params) {
+  double * params_arr = (double*)params;
+  double a = params_arr[0];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
+  double mu_h{ideal_mu_b(mu_e, m_ph, m_pe)};
+
+  return fluct_pp0c(m_pe, m_ph, mu_e, mu_h) - a;
+}
+
+double fluct_pp0c_mu(double a, double n, double m_pe, double m_ph) {
+  /*
+    Computes the value of mu_e such that ac_max == a.
+    Here we compute mu_h(mu_e) assuming n_id,e == n_id,h.
+  */
+  double m_sigma = 1/m_pe + 1/m_ph;
+  double params_arr[] = {a, m_pe, m_ph};
+  double z, z_min{-0.25 *a*a * (a > 0) + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma,-1.5) * n)};
+  double z_max{ideal_mu_v(0, -1, m_pe, m_ph)};
+
+  if (a < fluct_pp0c(m_pe, m_ph, z_max, ideal_mu_b(z_max, m_ph, m_pe))) {
+    // In this case there is no root.
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  //printf("first: %.3f, %.3f, %.3f, %.3f\n", a, z_max, fluct_pp0_f(z_min, params_arr), fluct_pp0_f(z_max, params_arr));
+
+  gsl_function funct;
+  funct.function = &fluct_pp0c_mu_f;
+  funct.params = params_arr;
+
+  const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+  gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+  gsl_root_fsolver_set(s, &funct, z_min, z_max);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fsolver_iterate(s);
+    z = gsl_root_fsolver_root(s);
+    z_min = gsl_root_fsolver_x_lower(s);
+    z_max = gsl_root_fsolver_x_upper(s);
+
+    status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+
+    //printf("iter: %.2f, %.2f, %.10f, %.10f, %d\n", E, a, z0, z, status);
+  }
+
+  //printf("result: %.2f, %.2f, %.10f, %.10f, %.10f\n", E, a, z, fluct_pp_f(z, params_arr), fluct_pp_df(z, params_arr));
+
+  gsl_root_fsolver_free(s);
+  return z;
+}
+
 double fluct_pr(double a, double E, double m_pe, double m_ph, double mu_e, double mu_h) {
   double z0{fluct_pp_b(a, E, m_pe, m_ph, mu_e, mu_h)};
 
@@ -813,7 +866,7 @@ std::complex<double> fluct_i_c(double z, double E, double m_pe, double m_ph, dou
   integrand_hi.function = &fluct_i_c_fhi;
   integrand_hi.params = params_arr;
 
-  constexpr uint32_t local_ws_size{(1<<6)};
+  constexpr uint32_t local_ws_size{(1<<4)};
 
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
 
@@ -961,9 +1014,9 @@ double fluct_bfi_f(double y, void * params) {
   double y_sq{y*y};
   double new_var{y_sq + z1};
 
-  //std::complex<double> I2{fluct_i_c(new_var, E, m_pe, m_ph, mu_e, mu_h) * M_1_PI};
+  std::complex<double> I2{fluct_i_c(new_var, E, m_pe, m_ph, mu_e, mu_h) * M_1_PI};
   //std::complex<double> I2{fluct_i_ci(new_var, E, m_pe, m_ph, mu_e, mu_h) * M_1_PI};
-  std::complex<double> I2{0};
+  //std::complex<double> I2{0};
 
   return (a + 2 * I2.real()) / (std::norm(std::complex<double>(0.5 * a, y) + I2) * (std::exp(new_var / (4 * M_PI)) - 1));
 }
@@ -1056,70 +1109,76 @@ double fluct_bmi(double a, double m_pe, double m_ph, double mu_e, double mu_h) {
   return prefactor * r;
 }
 
-int fluct_mu_a_f(const gsl_vector * x, void * params, gsl_vector * f) {
+double fluct_mu_a_f(double mu_e, void * params) {
   /*
-    Here we need to solve two equations,
+    Here we need to solve one equation,
 
     |  n = n_id + n_ex + n_sc
-    |  n_e,id = n_h,id
 
-    solving for mu_e and mu_h in the
-    process, for a fixed value of a.
+    solving for mu_e (and mu_h) in the
+    process, for a fixed value of a and n.
   */
-  constexpr uint32_t n_eq = 2;
-
   double * params_arr = (double*)params;
   double n = params_arr[0];
   double m_pe = params_arr[1];
   double m_ph = params_arr[2];
   double a = params_arr[3];
 
-  double mu_e = gsl_vector_get(x, 0);
-  double mu_h = gsl_vector_get(x, 1);
+  double mu_h{ideal_mu_b(mu_e, m_ph, m_pe)};
 
-  double yv[n_eq] = {0};
-  double ac_max{fluct_pp0c(m_pe, m_ph, mu_e, mu_h)};
+  double n_id{analytic_n_id(mu_e, m_pe)};
+  // Assuming a is always in the correct range.
+  //double ac_max{fluct_pp0c(m_pe, m_ph, mu_e, mu_h)};
 
-  double n_id[] = {analytic_n_id(mu_e, m_pe), analytic_n_id(mu_h, m_ph)};
+  return - n + 2*n_id + fluct_pmi_nc(a, /*ac_max,*/ m_pe, m_ph, mu_e, mu_h) + fluct_bmi(a, m_pe, m_ph, mu_e, mu_h);
+}
 
-  yv[0] = - n + n_id[0] + n_id[1] + fluct_pmi(a, ac_max, m_pe, m_ph, mu_e, mu_h) + fluct_bmi(a, m_pe, m_ph, mu_e, mu_h);
-  yv[1] = n_id[0] - n_id[1];
-
-  for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
-  return GSL_SUCCESS;
+double fluct_mu_a_fp(double mu_e, double n, double m_pe, double m_ph, double a) {
+  return python_wrap<double>(&fluct_mu_a_f, mu_e, n, m_pe, m_ph, a);
 }
 
 std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph) {
-  constexpr size_t n_eq = 2;
+  double m_sigma = 1/m_pe + 1/m_ph;
   double params_arr[] = {n, m_pe, m_ph, a};
-  gsl_multiroot_function f = {&fluct_mu_a_f, n_eq, params_arr};
+  double z, z_max, z_min;
 
-  double x_init[] = {ideal_mu(n, m_pe), ideal_mu(n, m_ph)};
-  gsl_vector * x = gsl_vector_alloc(n);
+  gsl_function funct;
+  funct.function = &fluct_mu_a_f;
+  funct.params = params_arr;
 
-  printf("first: %.10f, %.10f\n", x_init[0], x_init[1]);
-
-  for(size_t i = 0; i < n_eq; i++) { gsl_vector_set(x, i, x_init[i]); }
-
-  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrid;
-  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n);
-  gsl_multiroot_fsolver_set(s, &f, x);
-
-  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    printf("iter %d: %.10f, %.10f\n", iter, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
-
-    status = gsl_multiroot_fsolver_iterate(s);
-    if (status) { break; }
-    status = gsl_multiroot_test_residual(s->f, global_eps);
+  // TODO: maybe take z_min and z_max as arguments?
+  if (a >= 0) {
+    // This bound is only valid when a > 0.
+    double mu_e{ideal_mu(n, m_pe)};//, mu_h{ideal_mu(n, m_ph)};
+    z_max = std::min(mu_e, fluct_pp0c_mu(a, n, m_pe, m_ph)); //(mu_e + mu_h) + 0.25 *a*a < 0 ? mu_e : ideal_mu_v(-0.25 * a*a - global_eps, -1, m_pe, m_ph);
+    z_min = - 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
+  } else {
+    z_max = ideal_mu(n, m_pe); //ideal_mu_v(0, -1, m_pe, m_ph);
+    z_min = 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   }
 
-  std::vector<double> r(n);
+  //printf("first: %.3f, %.10f, %.10f, %.2f, %.2f\n", a, z_min, z_max, funct.function(z_min, params_arr), funct.function(z_max, params_arr));
 
-  for(size_t i = 0; i < n_eq; i++) { r[i] = gsl_vector_get(s->x, i); }
+  const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+  gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
 
-  gsl_multiroot_fsolver_free(s);
-  gsl_vector_free(x);
+  gsl_root_fsolver_set(s, &funct, z_min, z_max);
 
-  return r;
+  printf("fluct_mu_a(%.3f, %.3f): loop begin\n", n, a);
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fsolver_iterate(s);
+    z = gsl_root_fsolver_root(s);
+    z_min = gsl_root_fsolver_x_lower(s);
+    z_max = gsl_root_fsolver_x_upper(s);
+
+    status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+
+    printf("fluct_mu_a(%.3f, %.3f): iter %d, [%.3f, %.3f, %.2e]\n", n, a, iter, z_min, z_max, (z_min - z_max));
+    //printf("iter %d: %.3f, %.10f, %.10f, %.7e\n", iter, a, z_min, z_max, funct.function(z, params_arr));
+  }
+  printf("fluct_mu_a(%.3f, %.3f): loop over, %.3f\n", n, a, z);
+
+  gsl_root_fsolver_free(s);
+  return std::vector<double>({z, ideal_mu_b(z, m_ph, m_pe)});
 }
 
