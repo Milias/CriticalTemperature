@@ -1149,11 +1149,10 @@ std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph) {
   // TODO: maybe take z_min and z_max as arguments?
   if (a >= 0) {
     // This bound is only valid when a > 0.
-    double mu_e{ideal_mu(n, m_pe)};//, mu_h{ideal_mu(n, m_ph)};
-    z_max = std::min(mu_e, fluct_pp0c_mu(a, n, m_pe, m_ph)); //(mu_e + mu_h) + 0.25 *a*a < 0 ? mu_e : ideal_mu_v(-0.25 * a*a - global_eps, -1, m_pe, m_ph);
+    z_max = std::min(ideal_mu(n, m_pe), fluct_pp0c_mu(a, n, m_pe, m_ph));
     z_min = - 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   } else {
-    z_max = ideal_mu(n, m_pe); //ideal_mu_v(0, -1, m_pe, m_ph);
+    z_max = ideal_mu(n, m_pe);
     z_min = 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   }
 

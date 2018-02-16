@@ -36,6 +36,7 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
+"""
 pp0c_mu = array(parallelTable(
   fluct_pp0c_mu,
   x[x>=0],
@@ -48,7 +49,17 @@ pp0c_mu = array(parallelTable(
 y3 = -0.25 *x**2 *(x>=0) + 4*pi*invPolylogExp(1.5, 0.25 * m_sigma**-1.5 * n)
 y4[x<0] = ideal_mu(n, m_pe)
 y4[x>=0] = minimum(ones_like(pp0c_mu) * ideal_mu(n, m_pe), pp0c_mu)
+"""
 
+y = array(parallelTable(
+  fluct_mu_a_fp,
+  x,
+  itertools.repeat(n, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(m_ph, N),
+  itertools.repeat(a, N),
+  bs = bs
+))
 """
 y = array(parallelTable(
   fluct_mu_a,
@@ -58,13 +69,13 @@ y = array(parallelTable(
   itertools.repeat(m_ph, N),
   bs = bs
 ))
-"""
 
 data = loadData('bin/data/data_fluct_mu_a_1518779889003259.json.gz')
 y = array(data['result'])
 
 y2 = y[:, 1]
 y = y[:, 0]
+"""
 
 #x *= lambda_th**-3
 
