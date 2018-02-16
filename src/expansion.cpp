@@ -1138,7 +1138,7 @@ double fluct_mu_a_fp(double mu_e, double n, double m_pe, double m_ph, double a) 
 }
 
 std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph) {
-  double m_sigma = 1/m_pe + 1/m_ph;
+  //double m_sigma = 1/m_pe + 1/m_ph;
   double params_arr[] = {n, m_pe, m_ph, a};
   double z, z_max, z_min;
 
@@ -1150,10 +1150,10 @@ std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph) {
   if (a >= 0) {
     // This bound is only valid when a > 0.
     z_max = std::min(ideal_mu(n, m_pe), fluct_pp0c_mu(a, n, m_pe, m_ph));
-    z_min = - 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
+    z_min = ideal_mu_b(z_max, m_ph, m_pe); //- 0.25 * a * a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   } else {
     z_max = ideal_mu(n, m_pe);
-    z_min = 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
+    z_min = ideal_mu_b(z_max, m_ph, m_pe); //4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(m_sigma, -1.5) * n);
   }
 
   //printf("first: %.3f, %.10f, %.10f, %.2f, %.2f\n", a, z_min, z_max, funct.function(z_min, params_arr), funct.function(z_max, params_arr));
@@ -1178,6 +1178,74 @@ std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph) {
   printf("fluct_mu_a(%.3f, %.3f): loop over, %.3f\n", n, a, z);
 
   gsl_root_fsolver_free(s);
+  return std::vector<double>({z, ideal_mu_b(z, m_ph, m_pe)});
+}
+
+double fluct_mu_a_df_exsc(double mu_e, double mu_h, double m_pe, double m_ph, double a) {
+  return fluct_pmi_nc(a, m_pe, m_ph, mu_e, mu_h) + fluct_bmi(a, m_pe, m_ph, mu_e, mu_h);
+}
+
+double fluct_mu_a_df(double mu_e, void * params) {
+  /*
+    Here we need to solve one equation,
+
+    |  n = n_id + n_ex + n_sc
+
+    solving for mu_e (and mu_h) in the
+    process, for a fixed value of a and n.
+  */
+  double * params_arr = (double*)params;
+  //double n = params_arr[0];
+  double m_pe = params_arr[1];
+  double m_ph = params_arr[2];
+  double a = params_arr[3];
+
+  double mu_h{ideal_mu_b(mu_e, m_ph, m_pe)};
+
+  return M_1_PI * std::pow(m_pe, -1.5) * polylogExpM(0.5, 0.25 * M_1_PI * mu_e) + derivative_b3<1>(&fluct_mu_a_df_exsc, mu_e, mu_e * global_eps, mu_h, m_pe, m_ph, a)[0];
+}
+
+void fluct_mu_a_fdf(double mu_e, void * params, double * f, double * df) {
+  f[0] = fluct_mu_a_f(mu_e, params);
+  df[0] = fluct_mu_a_df(mu_e, params);
+}
+
+std::vector<double> fluct_mu_a_s(double n, double a, double m_pe, double m_ph) {
+  //double m_sigma = 1/m_pe + 1/m_ph;
+  double params_arr[] = {n, m_pe, m_ph, a};
+  double z, z0;
+
+  gsl_function_fdf funct;
+  funct.f = &fluct_mu_a_f;
+  funct.df = &fluct_mu_a_df;
+  funct.fdf = &fluct_mu_a_fdf;
+  funct.params = params_arr;
+  const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
+
+  if (a >= 0) {
+    // This bound is only valid when a > 0.
+    z = std::min(ideal_mu(n, m_pe), fluct_pp0c_mu(a, n, m_pe, m_ph));
+  } else {
+    z = ideal_mu(n, m_pe);
+    T = gsl_root_fdfsolver_secant;
+  }
+
+  gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
+
+  gsl_root_fdfsolver_set(s, &funct, z);
+
+  printf("fluct_mu_a(%.3f, %.3f): loop begin\n", n, a);
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter && status != GSL_SUCCESS; iter++) {
+    status = gsl_root_fdfsolver_iterate(s);
+    z0 = z;
+    z = gsl_root_fdfsolver_root(s);
+    status = gsl_root_test_delta(z0, z, 0, global_eps);
+
+    printf("fluct_mu_a(%.3f, %.3f): iter %d, [%.3f, %.3f, %.2e]\n", n, a, iter, z0, z, (z0 - z));
+  }
+  printf("fluct_mu_a(%.3f, %.3f): loop over, %.3f\n", n, a, z);
+
+  gsl_root_fdfsolver_free(s);
   return std::vector<double>({z, ideal_mu_b(z, m_ph, m_pe)});
 }
 

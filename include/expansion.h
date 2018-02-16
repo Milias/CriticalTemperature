@@ -62,4 +62,5 @@ double fluct_bmi(double a, double m_pe, double m_ph, double mu_e, double mu_h);
 
 double fluct_mu_a_fp(double mu_e, double n, double m_pe, double m_ph, double a);
 std::vector<double> fluct_mu_a(double n, double a, double m_pe, double m_ph);
+std::vector<double> fluct_mu_a_s(double n, double a, double m_pe, double m_ph);
 

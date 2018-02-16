@@ -5,7 +5,7 @@ bs = 1<<0
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
-#m_e, m_h = 1.0 * m_electron, 1.0 * m_electron # eV
+#m_e, m_h = 1.1 * m_electron, 1.0 * m_electron # eV
 m_p = 1.0 / (1.0 / m_e + 1.0 / m_h) # eV
 
 T = 300 # K
@@ -19,7 +19,7 @@ m_sigma = 1/m_pe + 1/m_ph
 
 print('%f nm, %f meV' % (lambda_th * 1e9, energy_th * 1e3))
 
-n = 8e24 * lambda_th**3
+n = 3e24 * lambda_th**3
 a = 5
 
 mu_e = ideal_mu(n, m_pe)
@@ -29,14 +29,13 @@ print('mu_e: %.3f, mu_h: %.3f, mu_t: %.3f\n' % (mu_e, mu_h, mu_e + mu_h))
 #exit()
 
 #x = logspace(log10(1e22), log10(7e24), N) * lambda_th**3
-x = linspace(10, 20, N)
+x = linspace(-10, 10, N)
 
 y = zeros_like(x)
 y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
-"""
 pp0c_mu = array(parallelTable(
   fluct_pp0c_mu,
   x[x>=0],
@@ -46,11 +45,19 @@ pp0c_mu = array(parallelTable(
   bs = bs
 ))
 
-y3 = -0.25 *x**2 *(x>=0) + 4*pi*invPolylogExp(1.5, 0.25 * m_sigma**-1.5 * n)
+#y3 = -0.25 *x**2 *(x>=0) + 4*pi*invPolylogExp(1.5, 0.25 * m_sigma**-1.5 * n)
 y4[x<0] = ideal_mu(n, m_pe)
 y4[x>=0] = minimum(ones_like(pp0c_mu) * ideal_mu(n, m_pe), pp0c_mu)
-"""
 
+y2 = array(parallelTable(
+  ideal_mu_b,
+  y4,
+  itertools.repeat(m_ph, N),
+  itertools.repeat(m_pe, N),
+  bs = bs
+))
+
+"""
 y = array(parallelTable(
   fluct_mu_a_fp,
   x,
@@ -61,8 +68,9 @@ y = array(parallelTable(
   bs = bs
 ))
 """
+
 y = array(parallelTable(
-  fluct_mu_a,
+  fluct_mu_a_s,
   itertools.repeat(n, N),
   x,
   itertools.repeat(m_pe, N),
@@ -70,12 +78,13 @@ y = array(parallelTable(
   bs = bs
 ))
 
-data = loadData('bin/data/data_fluct_mu_a_1518779889003259.json.gz')
-y = array(data['result'])
-
-y2 = y[:, 1]
-y = y[:, 0]
 """
+filename = 'bin/data/data_fluct_mu_a_1518783072844825.json.gz'
+data = loadData(filename)
+y = array(data['result'])
+"""
+
+y = y[:, 0]
 
 #x *= lambda_th**-3
 
@@ -90,8 +99,8 @@ axplots.append(getattr(axarr, plot_type)(x, real(y), 'r-', marker = '.'))
 
 axarr.autoscale(enable = True, axis = 'x', tight = True)
 
-axarr.plot(x, imag(y), 'b-', marker = '.')
-axarr.plot(x, real(y2), 'r--', marker = '.')
+axarr.plot(x, imag(y), 'r--', marker = '.')
+axarr.plot(x, real(y2), 'b-', marker = '.')
 axarr.plot(x, imag(y2), 'b--', marker = '.')
 axarr.plot(x, y3, 'g-', marker = '.')
 axarr.plot(x, y4, 'm-', marker = '.')
@@ -113,7 +122,7 @@ axarr.set_xlim(x[0], x[-1])
 #axarr.set_yticks([0.0], minor = False)
 #axarr.grid(color = 'k', linestyle = '-', linewidth = 0.5)
 
-t_now = time.time()
+t_now = 1e6 * time.time()
 fig.savefig('bin/plots/saved_%d.eps' % t_now)
 fig.savefig('bin/plots/saved_%d.png' % t_now)
 
