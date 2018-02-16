@@ -11,7 +11,7 @@ m_p = 1.0 / (1.0 / m_e + 1.0 / m_h) # eV
 T = 300 # K
 beta = 1 / (k_B * T) # eV^-1
 lambda_th = c * hbar * sqrt(2 * pi * beta / m_p) # m
-energy_th = 1 / ( 4 * pi * beta )
+energy_th = 1 / ( 4 * pi * beta ) # eV
 eps_r, e_ratio = 6.56, m_p / energy_th
 m_pe = m_p / m_e
 m_ph = m_p / m_h
@@ -26,7 +26,19 @@ mu_e = ideal_mu(n, m_pe)
 mu_h = ideal_mu(n, m_ph)
 print('mu_e: %.3f, mu_h: %.3f, mu_t: %.3f\n' % (mu_e, mu_h, mu_e + mu_h))
 
-#exit()
+print("system:")
+system = s_system(m_e, m_h, eps_r, T)
+system.n = 1
+print("done")
+
+print("system2:")
+system2 = s_system(system)
+system2.n = 2
+print("done")
+
+print((system.n, system2.n))
+
+exit()
 
 #x = logspace(log10(1e22), log10(7e24), N) * lambda_th**3
 x = linspace(-10, 10, N)

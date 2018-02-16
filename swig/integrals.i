@@ -9,11 +9,13 @@ namespace std {
 
 %{
 #include "common.h"
+#include "utils.h"
 #include "integrals.h"
 #include "expansion.h"
 %}
 
 %include "common.h"
+%include "utils.h"
 %include "integrals.h"
 %include "expansion.h"
 
