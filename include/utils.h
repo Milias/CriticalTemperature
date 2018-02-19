@@ -150,7 +150,16 @@ template <uint32_t N> struct s_output {
   */
   double dt[N] = {0};
 
+  /*
+    Number of evaluations (gsl_integration_qng)
+    or iterations (gsl_solver_*), for example.
+  */
+  uint32_t neval[N] = {0};
+
   s_output() {}
+  s_output(const s_output& s_o) = default;
+  s_output& operator=(const s_output& s_o) = default;
+
   ~s_output() {}
 };
 

@@ -1,6 +1,5 @@
 import os
-from multiprocessing import Pool, cpu_count
-
+import sys
 import time
 import itertools
 import json
@@ -21,6 +20,8 @@ import matplotlib.pyplot as plt
 
 import copy
 from integrals import *
+
+from multiprocessing import Pool, cpu_count
 
 initializeMPFR_GSL()
 
@@ -55,7 +56,7 @@ def loadData(filename):
   with gzip.open(filename, 'rb') as fp:
     return json.loads(fp.read().decode())
 
-def parallelTable(func, *args, p = None, bs = 16):
+def parallelTableSync(func, *args, p = None, bs = 16):
   if p == None:
     p = cpu_count()
 
@@ -66,6 +67,42 @@ def parallelTable(func, *args, p = None, bs = 16):
   t0 = time.time()
   with Pool(p) as workers:
     y = workers.starmap(func, x, bs)
+  dt = time.time() - t0
+
+  N = len(y)
+  print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (func.__name__, N, p * dt * 1e3 / N, dt))
+
+  __saveData(func, args_cpy, p, bs, dt, N, y)
+
+  print('')
+
+  return y
+
+def asyncCallback(result):
+  return result
+
+def asyncErrorCallback(error):
+  print('Error: %s' % error)
+
+def parallelTable(func, *args, p = None, bs = 16):
+  if p == None:
+    p = cpu_count()
+
+  print('Starting "%s" with %d processors and block size %d.' % (func.__name__, p, bs))
+  args_cpy = copy.deepcopy(args)
+  x = map(tuple, zip(*args))
+
+  t0 = time.time()
+  with Pool(p) as workers:
+    result = workers.starmap_async(func, x, bs, callback = asyncCallback, error_callback = asyncErrorCallback)
+
+    while (result._number_left > 0):
+      print('\r%20d' % (result._number_left * result._chunksize), end = '')
+      time.sleep(0.1)
+
+    print('')
+    y = result.get()
+
   dt = time.time() - t0
 
   N = len(y)

@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<7
-bs = 1<<0
+N = 1<<22
+bs = 1<<8
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -26,18 +26,38 @@ mu_e = ideal_mu(n, m_pe)
 mu_h = ideal_mu(n, m_ph)
 print('mu_e: %.3f, mu_h: %.3f, mu_t: %.3f\n' % (mu_e, mu_h, mu_e + mu_h))
 
-system = s_system(m_e, m_h, eps_r, T)
-print(ideal_mu_v(0, -1, system.m_pe, system.m_ph))
-exit()
+#system = s_system(m_e, m_h, eps_r, T)
+#print(ideal_mu_v(0, -1, system.m_pe, system.m_ph))
+#exit()
 
 #x = logspace(log10(1e22), log10(7e24), N) * lambda_th**3
-x = linspace(-10, 10, N)
+x = linspace(0, 10, N)
 
 y = zeros_like(x)
 y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
+"""
+y = array(parallelTable(
+  abs,
+  x,
+  bs = bs
+))
+"""
+
+y = array(parallelTable(
+  analytic_pr,
+  x,
+  itertools.repeat(0, N),
+  itertools.repeat(m_ph, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs
+))
+
+"""
 pp0c_mu = array(parallelTable(
   fluct_pp0c_mu,
   x[x>=0],
@@ -59,7 +79,6 @@ y2 = array(parallelTable(
   bs = bs
 ))
 
-"""
 y = array(parallelTable(
   fluct_mu_a_fp,
   x,
@@ -69,7 +88,6 @@ y = array(parallelTable(
   itertools.repeat(a, N),
   bs = bs
 ))
-"""
 
 y = array(parallelTable(
   fluct_mu_a_s,
@@ -79,14 +97,15 @@ y = array(parallelTable(
   itertools.repeat(m_ph, N),
   bs = bs
 ))
+"""
 
 """
 filename = 'bin/data/data_fluct_mu_a_1518783072844825.json.gz'
 data = loadData(filename)
 y = array(data['result'])
-"""
 
 y = y[:, 0]
+"""
 
 #x *= lambda_th**-3
 
