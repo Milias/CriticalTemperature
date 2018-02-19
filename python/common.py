@@ -110,16 +110,23 @@ def parallelTable(func, *args, p = None, bs = 16):
 
     msg = ''
     N = len(result._value)
-    while (result._number_left > 0):
-      print(' ' * len(msg), end = '\r')
-      left = result._number_left * result._chunksize
-      t = time.time() - t0
-      msg = '\rleft/total: %d/%d, elapsed: %s' % (left, N, asyncTimer(t))
-      print(msg, end = '')
-      time.sleep(0.5)
+    try:
+      while (result._number_left > 0):
+        print(' ' * len(msg), end = '\r')
+        left = result._number_left * result._chunksize
+        t = time.time() - t0
+        msg = '\rleft/total: %d/%d, elapsed: %s' % (left, N, asyncTimer(t))
+        print(msg, end = '')
+        time.sleep(0.5)
 
-    print(' ' * len(msg), end = '\r')
-    y = result.get()
+      print(' ' * len(msg), end = '\r')
+      y = result.get()
+    except KeyboardInterrupt:
+      workers.terminate()
+      print('\n\nTerminated')
+      y = [x if x != None else float('nan') for x in result._value]
+    except:
+      raise
 
   dt = time.time() - t0
 
