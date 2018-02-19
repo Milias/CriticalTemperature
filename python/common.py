@@ -32,7 +32,7 @@ def __saveData(func, args, p, bs, dt, N, y):
   args_data = [list(arg) for arg in args]
 
   data = {
-    'uuid' : str(data_uuid),
+    'id' : str(data_uuid),
     'time' : data_time,
     'proc' : p,
     'bsize' : bs,

@@ -52,7 +52,7 @@ std::complex<double> fluct_i_ci(double z, double E, double m_pe, double m_ph, do
 
 double fluct_bfi_spi(double y, double E, double m_pe, double m_ph, double mu_e, double mu_h, double a);
 
-double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, double a);
+double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, double a, uint32_t local_ws_size = 1<<3, gsl_integration_workspace * ws = nullptr);
 
 /*** Branch contribution: momentum integral ***/
 

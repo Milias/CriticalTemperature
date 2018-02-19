@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<10
-bs = 1<<2
+N = 1<<6
+bs = 1<<0
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -26,8 +26,7 @@ mu_e = ideal_mu(n, m_pe)
 mu_h = ideal_mu(n, m_ph)
 print('mu_e: %.3f, mu_h: %.3f, mu_t: %.3f\n' % (mu_e, mu_h, mu_e + mu_h))
 
-#system = s_system(m_e, m_h, eps_r, T)
-#print(ideal_mu_v(0, -1, system.m_pe, system.m_ph))
+#print(fluct_bmi(a, m_pe, m_ph, mu_e, mu_h))
 #exit()
 
 #x = logspace(log10(1e22), log10(7e24), N) * lambda_th**3

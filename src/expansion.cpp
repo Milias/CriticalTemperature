@@ -1027,7 +1027,7 @@ double fluct_bfi_spi(double y, double E, double m_pe, double m_ph, double mu_e, 
   return fluct_bfi_f(y, params_arr);
 }
 
-double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, double a) {
+double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, double a, uint32_t local_ws_size, gsl_integration_workspace * ws) {
   constexpr uint32_t n_int{2};
   constexpr double x_max{1};
   double result[n_int] = {0}, error[n_int] = {0};
@@ -1039,11 +1039,16 @@ double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, d
   integrand.function = &fluct_bfi_f;
   integrand.params = params_arr;
 
-  constexpr uint32_t local_ws_size{1<<4};
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
+  if (ws == nullptr) {
+    ws = gsl_integration_workspace_alloc(local_ws_size);
+  }
+
   gsl_integration_qag(&integrand, 0, x_max, 0, global_eps, local_ws_size, GSL_INTEG_GAUSS21, ws, result, error);
   gsl_integration_qagiu(&integrand, x_max, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
-  gsl_integration_workspace_free(ws);
+
+  if (ws == nullptr) {
+    gsl_integration_workspace_free(ws);
+  }
 
   /*
   for (uint32_t i = 0; i < n_int; i++) {
@@ -1056,15 +1061,17 @@ double fluct_bfi(double E, double m_pe, double m_ph, double mu_e, double mu_h, d
   return r;
 }
 
-double fluct_bmi_f(double E, void * params) {
-  double * params_arr = (double*)params;
-  double a{params_arr[0]};
-  double m_pe{params_arr[1]};
-  double m_ph{params_arr[2]};
-  double mu_e{params_arr[3]};
-  double mu_h{params_arr[4]};
+struct fluct_bmi_s {
+  double a;
+  double m_pe;
+  double m_ph;
+  double mu_e;
+  double mu_h;
+};
 
-  return sqrt(E) * fluct_bfi(E, m_pe, m_ph, mu_e, mu_h, a);
+double fluct_bmi_f(double E, void * params) {
+  fluct_bmi_s * s = static_cast<fluct_bmi_s*>(params);
+  return sqrt(E) * fluct_bfi(E, s->m_pe, s->m_ph, s->mu_e, s->mu_h, s->a);
 }
 
 double fluct_bmi(double a, double m_pe, double m_ph, double mu_e, double mu_h) {
@@ -1079,24 +1086,29 @@ double fluct_bmi(double a, double m_pe, double m_ph, double mu_e, double mu_h) {
   }
 
   double result[n_int] = {0}, error[n_int] = {0};
-  double params_arr[] = { a, m_pe, m_ph, mu_e, mu_h };
+
+  constexpr uint32_t integrand_ws_size{1<<4};
+  gsl_integration_workspace * integrand_ws = gsl_integration_workspace_alloc(integrand_ws_size);
+  fluct_bmi_s params_arr({a, m_pe, m_ph, mu_e, mu_h});
 
   gsl_function integrand;
   integrand.function = &fluct_bmi_f;
-  integrand.params = params_arr;
+  integrand.params = &params_arr;
 
   if (std::isinf(Emax)) {
-    constexpr uint32_t local_ws_size{1<<3};
+    constexpr uint32_t local_ws_size{1<<4};
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
     gsl_integration_qagiu(&integrand, 0, 0, global_eps, local_ws_size, ws, result, error);
     gsl_integration_workspace_free(ws);
   } else {
-    constexpr uint32_t local_ws_size{1<<3};
+    constexpr uint32_t local_ws_size{1<<4};
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
     gsl_integration_qag(&integrand, 0, Emax, 0, global_eps, local_ws_size, GSL_INTEG_GAUSS31, ws, result, error);
     gsl_integration_qagiu(&integrand, Emax, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
     gsl_integration_workspace_free(ws);
   }
+
+  gsl_integration_workspace_free(integrand_ws);
 
   /*
   for (uint32_t i = 0; i < n_int; i++) {
