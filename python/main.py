@@ -1,7 +1,7 @@
 from common import *
 
-N = 1<<22
-bs = 1<<8
+N = 1<<10
+bs = 1<<2
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
 #m_e, m_h = 1.1 * m_electron, 0.1 * m_electron # eV
@@ -38,18 +38,9 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
-"""
 y = array(parallelTable(
-  abs,
+  fluct_bmi,
   x,
-  bs = bs
-))
-"""
-
-y = array(parallelTable(
-  analytic_pr,
-  x,
-  itertools.repeat(0, N),
   itertools.repeat(m_ph, N),
   itertools.repeat(m_pe, N),
   itertools.repeat(mu_e, N),

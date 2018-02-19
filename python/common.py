@@ -84,6 +84,18 @@ def asyncCallback(result):
 def asyncErrorCallback(error):
   print('Error: %s' % error)
 
+def asyncTimer(dt):
+  m = dt // 60
+
+  if m < 1:
+    return '%d sec' % dt
+
+  if m < 60:
+    return '%02d:%02d min' % (m, dt % 60)
+
+  h = dt // 3600
+  return '%02d:%02d:%02d' % (h, m % 60, dt % 60)
+
 def parallelTable(func, *args, p = None, bs = 16):
   if p == None:
     p = cpu_count()
@@ -96,16 +108,21 @@ def parallelTable(func, *args, p = None, bs = 16):
   with Pool(p) as workers:
     result = workers.starmap_async(func, x, bs, callback = asyncCallback, error_callback = asyncErrorCallback)
 
+    msg = ''
+    N = len(result._value)
     while (result._number_left > 0):
-      print('\r%20d' % (result._number_left * result._chunksize), end = '')
-      time.sleep(0.1)
+      print(' ' * len(msg), end = '\r')
+      left = result._number_left * result._chunksize
+      t = time.time() - t0
+      msg = '\rleft/total: %d/%d, elapsed: %s' % (left, N, asyncTimer(t))
+      print(msg, end = '')
+      time.sleep(0.5)
 
-    print('')
+    print(' ' * len(msg), end = '\r')
     y = result.get()
 
   dt = time.time() - t0
 
-  N = len(y)
   print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (func.__name__, N, p * dt * 1e3 / N, dt))
 
   __saveData(func, args_cpy, p, bs, dt, N, y)
