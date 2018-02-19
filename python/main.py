@@ -37,6 +37,25 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
+job_api = JobAPI()
+
+job_api.submit(
+  fluct_bmi,
+  N,
+  x,
+  itertools.repeat(m_ph, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs,
+  desc = 'Tssting job'
+)
+
+job_api.process()
+
+exit()
+
+"""
 y = array(parallelTable(
   fluct_bmi,
   x,
@@ -47,7 +66,6 @@ y = array(parallelTable(
   bs = bs
 ))
 
-"""
 pp0c_mu = array(parallelTable(
   fluct_pp0c_mu,
   x[x>=0],

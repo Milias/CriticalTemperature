@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 
 import copy
 from integrals import *
+from job_api import JobAPI
 
 from multiprocessing import Pool, cpu_count
 
@@ -55,28 +56,6 @@ def __saveData(func, args, p, bs, dt, N, y):
 def loadData(filename):
   with gzip.open(filename, 'rb') as fp:
     return json.loads(fp.read().decode())
-
-def parallelTableSync(func, *args, p = None, bs = 16):
-  if p == None:
-    p = cpu_count()
-
-  print('Starting "%s" with %d processors and block size %d.' % (func.__name__, p, bs))
-  args_cpy = copy.deepcopy(args)
-  x = map(tuple, zip(*args))
-
-  t0 = time.time()
-  with Pool(p) as workers:
-    y = workers.starmap(func, x, bs)
-  dt = time.time() - t0
-
-  N = len(y)
-  print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (func.__name__, N, p * dt * 1e3 / N, dt))
-
-  __saveData(func, args_cpy, p, bs, dt, N, y)
-
-  print('')
-
-  return y
 
 def asyncCallback(result):
   return result
@@ -123,8 +102,8 @@ def parallelTable(func, *args, p = None, bs = 16):
       y = result.get()
     except KeyboardInterrupt:
       workers.terminate()
-      print('\n\nTerminated')
-      y = [x if x != None else float('nan') for x in result._value]
+      print(' ' * len(msg), end = '\r')
+      y = [x if x else float('nan') for x in result._value]
     except:
       raise
 
