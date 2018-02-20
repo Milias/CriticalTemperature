@@ -1,6 +1,6 @@
 from common import *
 
-N = 1<<6
+N = 1<<7
 bs = 1<<0
 
 m_e, m_h = 0.28 * m_electron, 0.59 * m_electron # eV
@@ -48,7 +48,31 @@ job_api.submit(
   itertools.repeat(mu_e, N),
   itertools.repeat(mu_h, N),
   bs = bs,
-  desc = 'Tssting job'
+  desc = 'Testing job'
+)
+
+job_api.submit(
+  fluct_bmi,
+  N,
+  x,
+  itertools.repeat(m_ph, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs,
+  desc = 'Testing job'
+)
+
+job_api.submit(
+  fluct_bmi,
+  N,
+  x,
+  itertools.repeat(m_ph, N),
+  itertools.repeat(m_pe, N),
+  itertools.repeat(mu_e, N),
+  itertools.repeat(mu_h, N),
+  bs = bs,
+  desc = 'Testing job'
 )
 
 job_api.process()

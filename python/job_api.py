@@ -42,7 +42,9 @@ class JobAPI:
 
     task = requests.put(self.api_url + ('/tasks/%(id)d' % job['api_data']), headers = self.json_header, data = json.dumps(api_data))
 
-    return left > 0
+    job['api_data'].update(task.json())
+
+    return job['api_data']['status_id']
 
   def __saveOutput(self, job_data, result, elapsed_time, status_id):
     args_data = [list(arg) for arg in job_data['args']]
@@ -50,8 +52,6 @@ class JobAPI:
     new_api_data = {
       'elapsed_time' : elapsed_time,
       'status_id': status_id,
-      'status_id' : 4,
-      'left': 0,
       'completed': datetime.now().timestamp()
     }
 
@@ -64,7 +64,7 @@ class JobAPI:
     }
 
     data_str = json.dumps(data, sort_keys = True)
-    filename = 'bin/data/%(name)s_%(id)d.json.gz' % job_data['api_data']
+    filename = 'bin/data/%(name)s_%(id)d_%(completed).0f.json.gz' % job_data['api_data']
 
     with gzip.open(filename, 'wb') as fp:
       fp.write(data_str.encode())
@@ -114,6 +114,11 @@ class JobAPI:
         args_cpy = copy.deepcopy(job['args'])
         args_map = map(tuple, zip(*job['args']))
 
+        task = requests.put(self.api_url + ('/tasks/%(id)d' % job_data), headers = self.json_header, data = json.dumps({'status_id': 3, 'started': datetime.now().timestamp()}))
+
+        job_data.update(task.json())
+        job_status = job_data['status_id']
+
         t0 = time.time()
         with Pool(job_data['cpu_count']) as workers:
           result = workers.starmap_async(job['func'], args_map, job_data['block_size'], callback = self.__asyncCallback, error_callback = self.__asyncErrorCallback)
@@ -122,13 +127,18 @@ class JobAPI:
           completed = False
           try:
             while result._number_left > 0:
-              self.__updateJobStatus(job, result, time.time() - t0)
+              job_status = self.__updateJobStatus(job, result, time.time() - t0)
+              if job_status == 6: # status == stopped
+                raise KeyboardInterrupt
               time.sleep(self.sleep_time)
 
+            self.__updateJobStatus(job, result, time.time() - t0)
             result_data = result.get()
             completed = True
+            job_status = 2  # -> status_id for completed
           except KeyboardInterrupt:
             workers.terminate()
+            job_status = 6  # -> status_id for stopped
             result_data = [x if x else float('nan') for x in result._value]
           except:
             raise
@@ -137,9 +147,11 @@ class JobAPI:
 
         print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (job_data['name'], job_data['size'], job_data['cpu_count'] * dt * 1e3 / job_data['size'], dt))
 
-        self.__saveOutput(job, result_data, dt, 2) # 2 -> status_id for completed
+        self.__saveOutput(job, result_data, dt, job_status)
 
         self.completed_jobs.append(job)
+
+        del task
       except KeyboardInterrupt:
         continue
       except:
