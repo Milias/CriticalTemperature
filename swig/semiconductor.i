@@ -1,8 +1,9 @@
-%module integrals
+%module semiconductor
 
 %include "stdint.i"
 %include "std_complex.i"
 %include "std_vector.i"
+
 namespace std {
    %template(DoubleVector) vector<double>;
 }
@@ -10,12 +11,10 @@ namespace std {
 %{
 #include "common.h"
 #include "utils.h"
-#include "integrals.h"
-#include "expansion.h"
+#include "analytic.h"
 %}
 
 %include "common.h"
 %include "utils.h"
-%include "integrals.h"
-%include "expansion.h"
+%include "analytic.h"
 

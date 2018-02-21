@@ -13,7 +13,7 @@ template <uint32_t local_ws_size = w_size, typename F, typename ... Args> double
   integrand.params = params_arr;
 
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
-  gsl_integration_qagiu(&integrand, x0, 0, 1e-10, local_ws_size, ws, result, &error);
+  gsl_integration_qagiu(&integrand, x0, 0, global_eps, local_ws_size, ws, result, &error);
   gsl_integration_workspace_free(ws);
 
   return result[0];
@@ -89,7 +89,7 @@ template <uint32_t N = 1, typename F, typename ... Args> auto derivative_b3(cons
   return derivative_generic<n_ord, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
 }
 
-template <typename T, typename F, typename Arg1, typename ... Args> inline T python_wrap(const F & f, Arg1 arg1, Args ... args) {
+template <typename F, typename Arg1, typename ... Args> auto python_wrap(const F & f, Arg1 arg1, Args ... args) {
   double params_arr[sizeof...(args)] = { args... };
   return f(arg1, params_arr);
 }

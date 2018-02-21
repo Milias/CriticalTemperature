@@ -6,6 +6,7 @@
 *.sync-conflict*
 *dblite
 
+deprecated/*
 bin/*
 *.o-*
 *.o

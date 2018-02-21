@@ -4,6 +4,7 @@
 #include <chrono>
 #include <utility>
 #include <assert.h>
+#include <thread>
 
 #include <complex>
 
@@ -32,6 +33,8 @@
 
 #include <acb.h>
 
+#include "utils.h"
+
 /*** MPFR ***/
 
 constexpr bool use_mpfr{false};
@@ -41,7 +44,7 @@ constexpr mp_prec_t prec{64};
 
 constexpr size_t w_size{1<<3};
 constexpr double global_eps{1e-6};
-constexpr int max_iter{16};
+constexpr int max_iter{32};
 
 /*** Initialization ***/
 

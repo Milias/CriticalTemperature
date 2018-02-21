@@ -1,124 +1,19 @@
-import os
-import sys
 import time
+import copyreg
 import itertools
-import json
-import uuid
-import gzip
-import base64
-
-import ctypes
 
 from numpy import *
-import numpy.lib.scimath as sm
-from scipy.integrate import *
-from scipy.optimize import *
-from scipy.interpolate import *
-from scipy.special import gamma, erfc
-
 import matplotlib.pyplot as plt
 
-import copy
-from integrals import *
+from semiconductor import *
 from job_api import JobAPI
-
-from multiprocessing import Pool, cpu_count
 
 initializeMPFR_GSL()
 
-def __saveData(func, args, p, bs, dt, N, y):
-  data_uuid = uuid.uuid4()
-  data_time = time.time()
+## Define how to pickle system_data objects
 
-  args_data = [list(arg) for arg in args]
+def pickle_system_data(sys):
+  return system_data, (sys.dl_m_e, sys.dl_m_h, sys.eps_r, sys.T)
 
-  data = {
-    'id' : str(data_uuid),
-    'time' : data_time,
-    'proc' : p,
-    'bsize' : bs,
-    'dt' : dt,
-    'N' : N,
-    'args' : args_data,
-    'result' : y
-  }
-
-  data_str = json.dumps(data, sort_keys = True)
-  filename = 'bin/data/data_%s_%d.json.gz' % (func.__name__, 1e6 * data_time)
-
-  with gzip.open(filename, 'wb') as fp:
-    fp.write(data_str.encode())
-
-  print("Saved to %s." % filename)
-
-  return filename
-
-def loadData(filename):
-  with gzip.open(filename, 'rb') as fp:
-    return json.loads(fp.read().decode())
-
-def asyncCallback(result):
-  return result
-
-def asyncErrorCallback(error):
-  print('Error: %s' % error)
-
-def asyncTimer(dt):
-  m = dt // 60
-
-  if m < 1:
-    return '%d sec' % dt
-
-  if m < 60:
-    return '%02d:%02d min' % (m, dt % 60)
-
-  h = dt // 3600
-  return '%02d:%02d:%02d' % (h, m % 60, dt % 60)
-
-def parallelTable(func, *args, p = None, bs = 16):
-  if p == None:
-    p = cpu_count()
-
-  print('Starting "%s" with %d processors and block size %d.' % (func.__name__, p, bs))
-  args_cpy = copy.deepcopy(args)
-  x = map(tuple, zip(*args))
-
-  t0 = time.time()
-  with Pool(p) as workers:
-    result = workers.starmap_async(func, x, bs, callback = asyncCallback, error_callback = asyncErrorCallback)
-
-    msg = ''
-    N = len(result._value)
-    try:
-      while (result._number_left > 0):
-        print(' ' * len(msg), end = '\r')
-        left = result._number_left * result._chunksize
-        t = time.time() - t0
-        msg = '\rleft/total: %d/%d, elapsed: %s' % (left, N, asyncTimer(t))
-        print(msg, end = '')
-        time.sleep(0.5)
-
-      print(' ' * len(msg), end = '\r')
-      y = result.get()
-    except KeyboardInterrupt:
-      workers.terminate()
-      print(' ' * len(msg), end = '\r')
-      y = [x if x else float('nan') for x in result._value]
-    except:
-      raise
-
-  dt = time.time() - t0
-
-  print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (func.__name__, N, p * dt * 1e3 / N, dt))
-
-  __saveData(func, args_cpy, p, bs, dt, N, y)
-
-  print('')
-
-  return y
-
-k_B = 8.6173303e-5 # eV K^-1
-m_electron = 0.5109989461e6 # eV
-hbar = 6.582119514e-16 # eV s
-c = 299792458 # m s^-1
+copyreg.pickle(system_data, pickle_system_data)
 

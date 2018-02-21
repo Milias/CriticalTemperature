@@ -1,12 +1,17 @@
 import json
-import time
 import gzip
 import tarfile
 
+import time
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
 
 import copy
+import pickle
+import base64
+import hashlib
+from hmac import compare_digest
+
 import requests
 
 class JobAPI:
@@ -17,6 +22,10 @@ class JobAPI:
     self.completed_jobs = []
     self.api_url = 'http://localhost:5000/api/v1'
     self.json_header = { 'Content-Type' : 'application/json' }
+
+    self.hash_key = b'QkpQRUZiU0UzdFlZOUJ6NzVKWjR6akdrSzh3N3Y0ZEtBdmNna1R1ZWRDZ21lQmtXbUJXZTJ4bjJqd3U0M0IzRQ=='
+
+    self.hasher = hashlib.blake2b(key = base64.b64decode(self.hash_key))
 
   def __asyncCallback(self, result):
     return result
@@ -46,13 +55,21 @@ class JobAPI:
 
     return job['api_data']['status_id']
 
-  def __saveOutput(self, job_data, result, elapsed_time, status_id):
-    args_data = [list(arg) for arg in job_data['args']]
+  def __saveOutput(self, job_data, args_cpy, result, elapsed_time, status_id):
+    args_bytes = base64.b64encode(pickle.dumps(args_cpy))
+
+    # Hash the bytes to check that they haven't been modified.
+
+    self.hasher.update(args_bytes)
+    args_hash = self.hasher.hexdigest()
+
+    args_data = args_bytes.decode()
 
     new_api_data = {
       'elapsed_time' : elapsed_time,
       'status_id': status_id,
-      'completed': datetime.now().timestamp()
+      'completed': datetime.now().timestamp(),
+      'args_hash': args_hash
     }
 
     job_data['api_data'].update(new_api_data)
@@ -69,17 +86,29 @@ class JobAPI:
     with gzip.open(filename, 'wb') as fp:
       fp.write(data_str.encode())
 
-    print("Saved to %s." % filename)
+    print("Saved to %s" % filename)
 
     new_api_data['output_file'] = filename
 
     task = requests.put(self.api_url + ('/tasks/%(id)d' % data['api_data']), headers = self.json_header, data = json.dumps(new_api_data))
 
+    job_data['api_data'].update(task.json())
+
     return task
 
-  def loadData(filename):
+  def loadData(self, filename):
     with gzip.open(filename, 'rb') as fp:
-      return json.loads(fp.read().decode())
+      data = json.loads(fp.read().decode())
+
+      self.hasher.update(data['args'].encode())
+      args_hash_file = self.hasher.hexdigest()
+      args_hash_db = requests.get(self.api_url + '/tasks/%d' % data['api_data']['id']).json()['args_hash']
+
+      if compare_digest(args_hash_file, args_hash_db):
+        data['args'] = pickle.loads(base64.b64decode(data['args'].encode()))
+      else:
+        raise RuntimeError('Hash check of arguments failed.')
+      return data
 
   def submit(self, func, N, *args, p = None, bs = 16, desc = ''):
     if p == None:
@@ -147,7 +176,7 @@ class JobAPI:
 
         print('Finishing "%s": N = %d, t*p/N = %.2f ms, t = %.2f s.' % (job_data['name'], job_data['size'], job_data['cpu_count'] * dt * 1e3 / job_data['size'], dt))
 
-        self.__saveOutput(job, result_data, dt, job_status)
+        self.__saveOutput(job, args_cpy, result_data, dt, job_status)
 
         self.completed_jobs.append(job)
 
@@ -156,4 +185,7 @@ class JobAPI:
         continue
       except:
         raise
+
+  def getLastJob(self):
+    return requests.get(self.api_url + '/tasks/limit/1').json()['tasks'][0]
 
