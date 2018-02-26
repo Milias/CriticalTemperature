@@ -1,16 +1,18 @@
 from common import *
 
-job_api = JobAPI()
+api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5EaYZw6U4xEv7/EHa2f+w=='
+job_api = JobAPI(api_token)
 
-job_filename = job_api.getLastJob()['output_file']
+job_api.load_batch()
 
-print('Loading from file: %s' % job_filename)
-job = job_api.loadData(job_filename)
+ideal_ls, analytic_a_ls = job_api.loaded_jobs
 
-x = job['args'][0]
+x = array([x for x in ideal_ls.args[0]])
+
+#exit()
 
 # Get repeated object
-sys = job['args'][1].__reduce__()[1][0]
+sys = ideal_ls.args[1].__reduce__()[1][0]
 
 x *= sys.lambda_th**-3
 
@@ -19,9 +21,8 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
-result = array(job['result'])
-#y = result[:, 0]
-#y2 = result[:, 1]
+y = ideal_ls.result
+y2 = analytic_a_ls.result
 
 plot_type = 'semilogx'
 
@@ -49,7 +50,7 @@ if nanmax(y) >= 0 and nanmin(y) <= 0:
 if x[0] <= 0 and x[-1] >= 0:
   axarr.axvline(x = 0, linestyle = '-', color = 'k', linewidth = 0.5)
 
-#axarr.set_ylim(-25, 3)
+axarr.set_ylim(-200, 200)
 axarr.set_xlim(x[0], x[-1])
 #axarr.set_yscale('symlog')
 

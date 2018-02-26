@@ -31,33 +31,32 @@ class JobAPI_Batch(JobAPI_Item):
   def __init__(self, api_data = {}):
     self.data = {'api_data': api_data}
 
-  def add_file(self, filename, remove = False, path = '/tmp/'):
+  def add_file(self, new_file, path = '/tmp/'):
     # Here we add the file created for the job to the
     # tar.gz container associated with the batch.
     #
     # If the tar.gz file exists, it is first read, its
-    # contents extracted to /tmp/bin/data (by default)
+    # contents extracted to /tmp/old (by default)
     # and then compressed again with the new file.
-    #
-    # If remove == True, the original file is deleted
-    # from the filesystem.
 
     tar_fp = '%s/%s' % (self.save_folder, self.data['api_data']['output_file'])
-    files_to_add = [filename]
+    files_to_add = []
 
     if os.path.exists(tar_fp):
       with tarfile.open(tar_fp, 'r') as fp:
-        files_to_add.extend([path + self.save_folder + '/' + name for name in fp.getnames()])
-        fp.extractall(path = path + self.save_folder)
-
-    files_to_add = set(files_to_add)
+        files_to_add.extend([path + 'old/' + file for file in fp.getnames()])
+        fp.extractall(path = path + 'old')
 
     with tarfile.open(tar_fp, 'w:gz') as fp:
-      for i, file in enumerate(files_to_add):
-        fp.add(file, arcname = os.path.basename(file))
+      for file in files_to_add:
+        if os.path.basename(file) == os.path.basename(new_file):
+          continue
 
-      if remove or i > 0:
-        os.remove(filename)
+        fp.add(file, arcname = os.path.basename(file))
+        os.remove(file)
+
+      fp.add(new_file, arcname = os.path.basename(new_file))
+      os.remove(new_file)
 
     return tar_fp
 
@@ -73,8 +72,8 @@ class JobAPI_Batch(JobAPI_Item):
     files = []
     if os.path.exists(tar_fp):
       with tarfile.open(tar_fp, 'r') as fp:
-        files.extend([path + self.save_folder + '/' + name for name in fp.getnames()])
-        fp.extractall(path = path + self.save_folder)
+        files.extend([path + name for name in fp.getnames()])
+        fp.extractall(path = path)
 
     return files
 
@@ -87,26 +86,23 @@ class JobAPI_Job(JobAPI_Item):
     self.func = func
     self.args = args
 
-  def update_saved_data(self, new_data, save_to_file = True):
+  def update_saved_data(self, new_data, path = '/tmp/'):
     # Here the data associated with this job
     # is saved or updated, with data being a dictionary
     # containing the new data.
-    #
-    # If save_to_file == True, self.data will be saved
-    # to a container given by the batch.
 
     self.data.update(new_data)
 
     data_str = json.dumps(self.data, sort_keys = True)
     filename = '%(name)s_%(id)d.json' % self
-    abs_filename = '/tmp/' + self.save_folder + '/' + filename
+    abs_filename = path + filename
 
     # First we save the json file to /tmp
     with open(abs_filename, 'w+') as fp:
       fp.write(data_str)
 
     # Then it is added to the batch container
-    self.__batch.add_file(abs_filename)
+    self.__batch.add_file(abs_filename, path = path)
 
 class JobAPI_Iterator:
   def __init__(self, job_api):
@@ -272,6 +268,7 @@ class JobAPI:
           raise RuntimeError('>>> HASH CHECK FAILED <<<')
 
         job = JobAPI_Job(batch, job_api_data, func, *args)
+        job.data['result'] = data['result']
 
         self.__state['loaded_jobs'].append(job)
 
@@ -291,8 +288,11 @@ class JobAPI:
     else:
       raise RuntimeError('Error %d: %s' % (response.status_code, response.json()))
 
-  def resume_last_batch(self):
-    response = self.__api_call('/me/batches/last')
+  def load_batch(self, batch_id = None):
+    if batch_id:
+      response = self.__api_call('/batches/%d' % batch_id)
+    else:
+      response = self.__api_call('/me/batches/last')
 
     if response.status_code == 200:
       batch = JobAPI_Batch(response.json())
@@ -327,8 +327,7 @@ class JobAPI:
 
       job.update_saved_data({
           'args_data': hash_data['bytes'].decode()
-        },
-        save_to_file = True
+        }
       )
 
       return job
@@ -338,8 +337,4 @@ class JobAPI:
   def process(self):
     for job in JobAPI_Iterator(self):
       self.__process_job(job)
-
-  def get_last_result(self):
-    print(self.__state['jobs'][-1].result)
-    return self.__state['jobs'][-1].result
 
