@@ -20,8 +20,8 @@ y3 = zeros_like(x)
 y4 = zeros_like(x)
 
 result = array(job['result'])
-y = result[:, 0]
-y2 = result[:, 1]
+#y = result[:, 0]
+#y2 = result[:, 1]
 
 plot_type = 'semilogx'
 
