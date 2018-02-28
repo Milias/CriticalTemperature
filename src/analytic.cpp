@@ -7,6 +7,10 @@ double ideal_n(double mu_i, double m_pi) {
   return 2 * std::pow(m_pi, -1.5) * polylogExpM(1.5, mu_i / (4 * M_PI));
 }
 
+double ideal_dn_dmu(double mu_i, double m_pi) {
+  return std::pow(m_pi, -1.5) * polylogExpM(0.5, mu_i / (4 * M_PI)) / (2 * M_PI);
+}
+
 double analytic_n_ex(double mu_t, double a, const system_data & sys) {
   if (a < 0) { return 0; }
   return 4 * std::pow(sys.m_sigma, 1.5) * polylogExp(1.5, (mu_t + a*a / 4) / (4 * M_PI));
@@ -35,6 +39,29 @@ double analytic_n_sc(double mu_t, double a, const system_data & sys) {
   gsl_integration_workspace_free(ws);
 
   return - a * std::pow(sys.m_sigma / M_PI, 1.5) * result[0];
+}
+
+template<bool N> double analytic_dn_f(double x1, double x2, const system_data & sys) {
+  double mu_e, a;
+
+  if constexpr(N) {
+    mu_e = x1;
+    a = x2;
+  } else {
+    a = x1;
+    mu_e = x2;
+  }
+
+  double mu_t{mu_e + ideal_mu_h(mu_e, sys)};
+  return analytic_n_ex(mu_t, a, sys) + analytic_n_sc(mu_t, a, sys);
+}
+
+double analytic_dn_dmu(double mu_e, double a, const system_data & sys) {
+  return derivative_c2(&analytic_dn_f<true>, mu_e, mu_e * 1e-6, a, sys);
+}
+
+double analytic_dn_da(double mu_e, double a, const system_data & sys) {
+  return derivative_c2(&analytic_dn_f<false>, a, a * 1e-6, mu_e, sys);
 }
 
 /*** Chemical potential ***/
@@ -192,12 +219,15 @@ std::vector<double> analytic_mu_f(double mu_e, double a, double n, const system_
 }
 
 double analytic_mu_init_a(double n, double a, const system_data & sys) {
-  return -0.25 * a*a;// + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(sys.m_sigma, -1.5) * n);
+  return -0.25 * a*a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(sys.m_sigma, -1.5) * n);
 }
 
 double analytic_mu_init_mu(double n, double a, const system_data & sys) {
   if (a > 0) {
-    return /*ideal_mu_v(analytic_mu_init_a(n, a, sys), sys); */std::min(ideal_mu(n, sys.m_pe), ideal_mu_v(analytic_mu_init_a(n, a, sys), sys));
+    //return ideal_mu_v(analytic_mu_init_a(n, a, sys), sys);
+    //return ideal_mu_v(-0.25 * a*a, sys);
+    return std::min(ideal_mu(n, sys.m_pe), ideal_mu_v(analytic_mu_init_a(n, a, sys), sys));
+    //return ideal_mu(n, sys.m_pe);
   } else {
     return ideal_mu(n, sys.m_pe);
   }
@@ -242,15 +272,72 @@ std::vector<double> analytic_mu(double n, const system_data & sys) {
   return r;
 }
 
-std::vector<double> analytic_mu_follow(double n, double init_a, const system_data & sys) {
+template<uint32_t N, uint32_t M> double analytic_mu_df_nm(double mu_e, double a, const analytic_mu_s * s) {
+  if constexpr(N == 0) {
+    if constexpr(M == 0) {
+      /*
+       * dn_eq/dmu
+       */
+      return 2 * ideal_dn_dmu(mu_e, s->sys.m_pe) + analytic_dn_dmu(mu_e, a, s->sys);
+
+    } else if constexpr(M == 1) {
+      /*
+       * dn_eq/da
+       */
+      return analytic_dn_da(mu_e, a, s->sys);
+
+    }
+  } else if constexpr(N == 1) {
+    if constexpr(M == 0) {
+      /*
+       * da_eq/dmu
+       */
+      double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
+      double ls{ideal_ls(n_id, s->sys)};
+      return derivative_c2(&analytic_a_ls, ls, ls * 1e-6, s->sys);
+
+    } else if constexpr(M == 1) {
+      /*
+       * da_eq/da
+       */
+      return 0;
+
+    }
+  }
+}
+
+int analytic_mu_df(const gsl_vector * x, void * params, gsl_matrix * J) {
+  // defined in analytic_utils.h
+  analytic_mu_s * s{static_cast<analytic_mu_s*>(params)};
+
+  double mu_e{gsl_vector_get(x, 0)};
+  double a{gsl_vector_get(x, 1)};
+
+  gsl_matrix_set(J, 0, 0, analytic_mu_df_nm<0, 0>(mu_e, a, s));
+  gsl_matrix_set(J, 0, 1, analytic_mu_df_nm<0, 1>(mu_e, a, s));
+  gsl_matrix_set(J, 1, 0, analytic_mu_df_nm<1, 0>(mu_e, a, s));
+  gsl_matrix_set(J, 1, 1, analytic_mu_df_nm<1, 1>(mu_e, a, s));
+
+  return GSL_SUCCESS;
+}
+
+int analytic_mu_fdf(const gsl_vector * x, void * params, gsl_vector * f, gsl_matrix * J) {
+  analytic_mu_f(x, params, f);
+  analytic_mu_df(x, params, J);
+
+  return GSL_SUCCESS;
+}
+
+std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, const system_data & sys) {
   constexpr uint32_t n_eq{2};
   analytic_mu_s params_s{n, sys};
 
-  gsl_multiroot_function f = {&analytic_mu_f, n_eq, &params_s};
-
-  double x_init[n_eq] = {
-    analytic_mu_init_mu(n, init_a, sys),
-    init_a
+  gsl_multiroot_function_fdf f = {
+    &analytic_mu_f,
+    &analytic_mu_df,
+    &analytic_mu_fdf,
+    n_eq,
+    &params_s
   };
 
   //printf("first: %.3f, %.10f\n", n, x_init[0]);
@@ -259,9 +346,9 @@ std::vector<double> analytic_mu_follow(double n, double init_a, const system_dat
 
   for(size_t i = 0; i < n_eq; i++) { gsl_vector_set(x, i, x_init[i]); }
 
-  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
-  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n_eq);
-  gsl_multiroot_fsolver_set(s, &f, x);
+  const gsl_multiroot_fdfsolver_type * T = gsl_multiroot_fdfsolver_hybridsj;
+  gsl_multiroot_fdfsolver * s = gsl_multiroot_fdfsolver_alloc(T, n_eq);
+  gsl_multiroot_fdfsolver_set(s, &f, x);
 
   std::vector<double> r;
   for(size_t i = 0; i < n_eq; i++) {
@@ -269,24 +356,27 @@ std::vector<double> analytic_mu_follow(double n, double init_a, const system_dat
     r.push_back(gsl_vector_get(s->f, i));
   }
 
-  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+  int status, iter;
+  for (status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
     //printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
-    status = gsl_multiroot_fsolver_iterate(s);
+    status = gsl_multiroot_fdfsolver_iterate(s);
     for(size_t i = 0; i < n_eq; i++) {
       r.push_back(gsl_vector_get(s->x, i));
       r.push_back(gsl_vector_get(s->f, i));
     }
     if (status) { break; }
-    //status = gsl_multiroot_test_residual(s->f, global_eps);
-    status = gsl_multiroot_test_delta(s->dx, s->x, 0, global_eps);
+    status = gsl_multiroot_test_residual(s->f, global_eps);
+    //status = gsl_multiroot_test_delta(s->dx, s->x, 0, global_eps);
   }
+
+  //printf("STATUS: %s\n", gsl_strerror(status));
 
   for(size_t i = 0; i < n_eq; i++) {
     r.push_back(gsl_vector_get(s->x, i));
     r.push_back(gsl_vector_get(s->f, i));
   }
 
-  gsl_multiroot_fsolver_free(s);
+  gsl_multiroot_fdfsolver_free(s);
   gsl_vector_free(x);
 
   return r;

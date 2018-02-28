@@ -45,6 +45,10 @@ double ideal_n(double mu_i, double m_pi);
 double analytic_n_ex(double mu_t, double a, const system_data & sys);
 double analytic_n_sc(double mu_t, double a, const system_data & sys);
 
+double ideal_dn_dmu(double mu_i, double m_pi);
+double analytic_dn_dmu(double mu_e, double a, const system_data & sys);
+double analytic_dn_da(double mu_e, double a, const system_data & sys);
+
 /*** Chemical potential ***/
 
 /*
@@ -122,5 +126,5 @@ double analytic_a_ls(double ls, const system_data & sys);
 std::vector<double> analytic_mu_f(double mu_e, double a, double n, const system_data & sys);
 double analytic_mu_init_mu(double n, double a, const system_data & sys);
 std::vector<double> analytic_mu(double n, const system_data & sys);
-std::vector<double> analytic_mu_follow(double n, double init_a, const system_data & sys);
+std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, const system_data & sys);
 

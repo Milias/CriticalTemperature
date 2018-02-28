@@ -36,7 +36,9 @@ template <uint32_t N = 1, typename F, typename ... Args> auto derivative_c2(cons
   }
 }
 
-template <uint32_t n_ord, uint32_t N = 1, typename F, typename ... Args> auto derivative_generic(const double pf[n_ord], const int32_t ip[n_ord], const F & f, double x0, double h, Args ... args) {
+template <double pf[], int32_t ip[], uint32_t N = 1, typename F, typename ... Args> auto derivative_generic(const F & f, double x0, double h, Args ... args) {
+  constexpr uint32_t n_ord{sizeof(pf)};
+
   if constexpr(N > 1) {
     std::vector<double> fp_val(N);
     std::vector<double> f_vals(N, 0);
@@ -66,27 +68,24 @@ template <uint32_t n_ord, uint32_t N = 1, typename F, typename ... Args> auto de
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_c4(const F & f, double x0, double h, Args ... args) {
-  constexpr uint32_t n_ord = 4;
-  constexpr double pf[n_ord] = {1.0/12, -8.0/12, 8.0/12, -1.0/12};
-  constexpr int32_t ip[n_ord] = {-2, -1, 1, 2};
+  constexpr double pf[]{1.0/12, -8.0/12, 8.0/12, -1.0/12};
+  constexpr int32_t ip[]{-2, -1, 1, 2};
 
-  return derivative_generic<n_ord, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_f3(const F & f, double x0, double h, Args ... args) {
-  constexpr uint32_t n_ord = 3;
-  constexpr double pf[n_ord] = {-1.5, 2, -0.5};
-  constexpr int32_t ip[n_ord] = {0, 1, 2};
+  constexpr double pf[]{-1.5, 2, -0.5};
+  constexpr int32_t ip[]{0, 1, 2};
 
-  return derivative_generic<n_ord, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_b3(const F & f, double x0, double h, Args ... args) {
-  constexpr uint32_t n_ord = 3;
-  constexpr double pf[n_ord] = {1.5, -2.0, 0.5};
-  constexpr int32_t ip[n_ord] = {0, -1, -2};
+  constexpr double pf[]{1.5, -2.0, 0.5};
+  constexpr int32_t ip[]{0, -1, -2};
 
-  return derivative_generic<n_ord, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
 }
 
 template <typename F, typename Arg1, typename ... Args> auto python_wrap(const F & f, Arg1 arg1, Args ... args) {
