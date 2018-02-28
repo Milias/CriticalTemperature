@@ -4,19 +4,12 @@
 
 #ifndef SWIG
 
-template <uint32_t local_ws_size = w_size, typename F, typename ... Args> double integralTemplate(const F & integrand_function, double x0, Args ... args) {
-  double result[] = {0}, error;
-  double params_arr[sizeof...(args)] = { args... };
-
-  gsl_function integrand;
-  integrand.function = integrand_function;
-  integrand.params = params_arr;
-
-  gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
-  gsl_integration_qagiu(&integrand, x0, 0, global_eps, local_ws_size, ws, result, &error);
-  gsl_integration_workspace_free(ws);
-
-  return result[0];
+template <uint32_t N, typename T> T sum_result(T * values) {
+  if constexpr(N > 1) {
+    return values[N - 1] + sum_result<N - 1, T>(values);
+  } else {
+    return values[0];
+  }
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_c2(const F & f, double x0, double h, Args ... args) {
@@ -36,9 +29,7 @@ template <uint32_t N = 1, typename F, typename ... Args> auto derivative_c2(cons
   }
 }
 
-template <double pf[], int32_t ip[], uint32_t N = 1, typename F, typename ... Args> auto derivative_generic(const F & f, double x0, double h, Args ... args) {
-  constexpr uint32_t n_ord{sizeof(pf)};
-
+template <uint32_t n_ord, uint32_t N = 1, typename F, typename ... Args> auto derivative_generic(const double pf[n_ord], const int32_t ip[n_ord], const F & f, double x0, double h, Args ... args) {
   if constexpr(N > 1) {
     std::vector<double> fp_val(N);
     std::vector<double> f_vals(N, 0);
@@ -68,24 +59,27 @@ template <double pf[], int32_t ip[], uint32_t N = 1, typename F, typename ... Ar
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_c4(const F & f, double x0, double h, Args ... args) {
-  constexpr double pf[]{1.0/12, -8.0/12, 8.0/12, -1.0/12};
-  constexpr int32_t ip[]{-2, -1, 1, 2};
+  constexpr uint32_t n{4};
+  constexpr double pf[n]{1.0/12, -8.0/12, 8.0/12, -1.0/12};
+  constexpr int32_t ip[n]{-2, -1, 1, 2};
 
-  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<n, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_f3(const F & f, double x0, double h, Args ... args) {
-  constexpr double pf[]{-1.5, 2, -0.5};
-  constexpr int32_t ip[]{0, 1, 2};
+  constexpr uint32_t n{3};
+  constexpr double pf[n]{-1.5, 2, -0.5};
+  constexpr int32_t ip[n]{0, 1, 2};
 
-  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<n, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
 }
 
 template <uint32_t N = 1, typename F, typename ... Args> auto derivative_b3(const F & f, double x0, double h, Args ... args) {
-  constexpr double pf[]{1.5, -2.0, 0.5};
-  constexpr int32_t ip[]{0, -1, -2};
+  constexpr uint32_t n{3};
+  constexpr double pf[n]{1.5, -2.0, 0.5};
+  constexpr int32_t ip[n]{0, -1, -2};
 
-  return derivative_generic<pf, ip, N>(f, x0, h, std::forward<Args>(args)...);
+  return derivative_generic<n, N>(pf, ip, f, x0, h, std::forward<Args>(args)...);
 }
 
 template <typename F, typename Arg1, typename ... Args> auto python_wrap(const F & f, Arg1 arg1, Args ... args) {

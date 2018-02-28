@@ -12,9 +12,11 @@ namespace std {
 #include "common.h"
 #include "utils.h"
 #include "analytic.h"
+#include "fluctuations.h"
 %}
 
 %include "common.h"
 %include "utils.h"
 %include "analytic.h"
+%include "fluctuations.h"
 

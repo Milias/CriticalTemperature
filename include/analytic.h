@@ -24,8 +24,6 @@
  * m_pi is the ratio between the reduced mass and
  * the mass of the species.
  *
- * m_sigma is 1/m_pe + 1/m_ph.
- *
  * a is one over the scattering length.
  *
  * ideal_n is the density of an ideal gas with
