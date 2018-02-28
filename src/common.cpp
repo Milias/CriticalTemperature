@@ -161,7 +161,7 @@ double invPolylogExp(double p_s, double a) {
     status = gsl_root_fdfsolver_iterate(s);
     x0 = x;
     x = gsl_root_fdfsolver_root(s);
-    status = gsl_root_test_delta (x, x0, 0, 1e-10);
+    status = gsl_root_test_delta (x, x0, 0, global_eps);
   }
 
   gsl_root_fdfsolver_free (s);
@@ -189,26 +189,30 @@ double invPolylogExpM(double p_s, double a) {
   // Can't be negative.
   if (a < 0) { return std::numeric_limits<double>::quiet_NaN(); }
   if (a == 0) { return -std::numeric_limits<double>::infinity(); }
+  if (a > 300) {
+    // https://en.wikipedia.org/wiki/Polylogarithm#Limiting_behavior
+    return std::pow(a * gsl_sf_gamma(p_s + 1.0), 1 / p_s);
+  }
 
   double params_arr[] = {p_s, a};
   double x0, x = 0;
 
-  gsl_function_fdf T_mat;
-  T_mat.f = &invPolylogExpM_f;
-  T_mat.df = &invPolylogExpM_df;
-  T_mat.fdf = &invPolylogExpM_fdf;
-  T_mat.params = params_arr;
+  gsl_function_fdf func;
+  func.f = &invPolylogExpM_f;
+  func.df = &invPolylogExpM_df;
+  func.fdf = &invPolylogExpM_fdf;
+  func.params = params_arr;
 
   const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
   gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
 
-  gsl_root_fdfsolver_set(s, &T_mat, x);
+  gsl_root_fdfsolver_set(s, &func, x);
 
   for (int status = GSL_CONTINUE; status == GSL_CONTINUE; ) {
     status = gsl_root_fdfsolver_iterate(s);
     x0 = x;
     x = gsl_root_fdfsolver_root(s);
-    status = gsl_root_test_delta (x, x0, 0, 1e-10);
+    status = gsl_root_test_delta (x, x0, 0, global_eps);
   }
 
   //printf("%.10f, %.10f, %.3e\n", a, x, x - x0);

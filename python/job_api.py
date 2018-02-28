@@ -336,5 +336,9 @@ class JobAPI:
 
   def process(self):
     for job in JobAPI_Iterator(self):
-      self.__process_job(job)
+      try:
+        self.__process_job(job)
+      except:
+        self.__update_job({'status_id': 5})
+        raise
 

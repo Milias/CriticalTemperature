@@ -5,14 +5,12 @@ job_api = JobAPI(api_token)
 
 job_api.load_batch()
 
-(analytic_mu, ) = job_api.loaded_jobs
+(mu, init_mu, mu_f, ideal_mu) = job_api.loaded_jobs
 
-x = array([x for x in analytic_mu.args[0]])
-
-#exit()
+x = array([x for x in mu.args[0]])
 
 # Get repeated object
-sys = analytic_mu.args[1].__reduce__()[1][0]
+sys = mu.args[1].__reduce__()[1][0]
 
 x *= sys.lambda_th**-3
 
@@ -21,10 +19,14 @@ y2 = zeros_like(x)
 y3 = zeros_like(x)
 y4 = zeros_like(x)
 
-result = array(analytic_mu.result)
-#y = array(analytic_mu.result)
+result = array(mu.result)
 y = result[:, 0]
 y2 = result[:, 1]
+"""
+mu_f_result = array(mu_f.result)
+y3 = mu_f_result[:, 0]
+y4 = 1/mu_f_result[:, 1]
+"""
 
 #plot_type = 'plot'
 plot_type = 'semilogx'

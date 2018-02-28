@@ -92,7 +92,7 @@ double analytic_n_sc(double mu_t, double a, const system_data & sys);
 double ideal_mu(double n, double m_pi);
 double ideal_mu_dn(double n, double m_pi);
 double ideal_mu_h(double mu_e, const system_data & sys);
-double ideal_mu_v(double v, double mu_0, const system_data & sys);
+double ideal_mu_v(double v, const system_data & sys);
 double ideal_ls(double n_id, const system_data & sys);
 
 /*
@@ -119,5 +119,8 @@ double analytic_a_ls(double ls, const system_data & sys);
  *
  * energy_th = 1 / (4 * M_PI * beta)
  */
+std::vector<double> analytic_mu_f(double mu_e, double a, double n, const system_data & sys);
+double analytic_mu_init_mu(double n, double a, const system_data & sys);
 std::vector<double> analytic_mu(double n, const system_data & sys);
+std::vector<double> analytic_mu_follow(double n, double init_a, const system_data & sys);
 

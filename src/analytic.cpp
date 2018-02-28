@@ -68,15 +68,21 @@ void ideal_mu_v_fdf(double z, void * params, double * f, double * df) {
   df[0] = ideal_mu_v_df(z, params);
 }
 
-double ideal_mu_v(double v, double mu_0, const system_data & sys) {
+double ideal_mu_v(double v, const system_data & sys) {
   /*
     Solves the equation mu_e + mu_h == v for mu_e,
     assuming n_id,e == n_id,h.
   */
 
+  double v_max{-1300};
+  if (v < v_max) {
+    return 0.5 * (v - v_max) + ideal_mu_v(v_max, sys);
+  }
+
+
   // defined in analytic_utils.h
   ideal_mu_v_s params_s{v, sys};
-  double z0, z{mu_0};
+  double z0, z{v > 0 ? sys.m_pe * v : 0.5 * v};
 
   gsl_function_fdf funct;
   funct.f = &ideal_mu_v_f;
@@ -156,16 +162,45 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double mu_h{ideal_mu_h(mu_e, s->sys)};
   double mu_t{mu_e + mu_h};
 
-  double n_id{ideal_n(mu_e, s->sys.m_pe)};
+  double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
 
   double ls{ideal_ls(n_id, s->sys)};
+  double new_a{analytic_a_ls(ls, s->sys)};
 
   double yv[n_eq] = {0};
-  yv[0] = - s->n + 2 * n_id + analytic_n_ex(mu_t, a, s->sys) + analytic_n_sc(mu_t, a, s->sys);
-  yv[1] = - a + analytic_a_ls(ls, s->sys);
+  yv[0] = - s->n + n_id + analytic_n_ex(mu_t, new_a, s->sys) + analytic_n_sc(mu_t, new_a, s->sys);
+  yv[1] = - a + new_a;
   for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
 
   return GSL_SUCCESS;
+}
+
+std::vector<double> analytic_mu_f(double mu_e, double a, double n, const system_data & sys) {
+  gsl_vector * x = gsl_vector_alloc(2);
+  gsl_vector_set(x, 0, mu_e);
+  gsl_vector_set(x, 1, a);
+
+  analytic_mu_s params{n, sys};
+
+  analytic_mu_f(x, &params, x);
+
+  std::vector<double> r(2);
+  for (uint32_t i = 0; i < 2; i++) { r[i] = gsl_vector_get(x, i); }
+
+  gsl_vector_free(x);
+  return r;
+}
+
+double analytic_mu_init_a(double n, double a, const system_data & sys) {
+  return -0.25 * a*a;// + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(sys.m_sigma, -1.5) * n);
+}
+
+double analytic_mu_init_mu(double n, double a, const system_data & sys) {
+  if (a > 0) {
+    return /*ideal_mu_v(analytic_mu_init_a(n, a, sys), sys); */std::min(ideal_mu(n, sys.m_pe), ideal_mu_v(analytic_mu_init_a(n, a, sys), sys));
+  } else {
+    return ideal_mu(n, sys.m_pe);
+  }
 }
 
 std::vector<double> analytic_mu(double n, const system_data & sys) {
@@ -174,16 +209,10 @@ std::vector<double> analytic_mu(double n, const system_data & sys) {
 
   gsl_multiroot_function f = {&analytic_mu_f, n_eq, &params_s};
 
-  /*
-   * The initial guess is given by the minimum between
-   * the ideal case and the purely excitonic case.
-   */
+  double init_a{analytic_a_ls(ideal_ls(2*ideal_n(-300, sys.m_pe), sys), sys)};
   double x_init[n_eq] = {
-    std::min(
-      ideal_mu(n, sys.m_pe),
-      ideal_mu_v(4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(sys.m_sigma, -1.5) * n), -1, sys)
-    ),
-    -100
+    analytic_mu_init_mu(n, init_a, sys),
+    init_a
   };
 
   //printf("first: %.3f, %.10f\n", n, x_init[0]);
@@ -206,6 +235,56 @@ std::vector<double> analytic_mu(double n, const system_data & sys) {
   std::vector<double> r(n_eq);
 
   for(size_t i = 0; i < n_eq; i++) { r[i] = gsl_vector_get(s->x, i); }
+
+  gsl_multiroot_fsolver_free(s);
+  gsl_vector_free(x);
+
+  return r;
+}
+
+std::vector<double> analytic_mu_follow(double n, double init_a, const system_data & sys) {
+  constexpr uint32_t n_eq{2};
+  analytic_mu_s params_s{n, sys};
+
+  gsl_multiroot_function f = {&analytic_mu_f, n_eq, &params_s};
+
+  double x_init[n_eq] = {
+    analytic_mu_init_mu(n, init_a, sys),
+    init_a
+  };
+
+  //printf("first: %.3f, %.10f\n", n, x_init[0]);
+
+  gsl_vector * x = gsl_vector_alloc(n_eq);
+
+  for(size_t i = 0; i < n_eq; i++) { gsl_vector_set(x, i, x_init[i]); }
+
+  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
+  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n_eq);
+  gsl_multiroot_fsolver_set(s, &f, x);
+
+  std::vector<double> r;
+  for(size_t i = 0; i < n_eq; i++) {
+    r.push_back(gsl_vector_get(s->x, i));
+    r.push_back(gsl_vector_get(s->f, i));
+  }
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    //printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    status = gsl_multiroot_fsolver_iterate(s);
+    for(size_t i = 0; i < n_eq; i++) {
+      r.push_back(gsl_vector_get(s->x, i));
+      r.push_back(gsl_vector_get(s->f, i));
+    }
+    if (status) { break; }
+    //status = gsl_multiroot_test_residual(s->f, global_eps);
+    status = gsl_multiroot_test_delta(s->dx, s->x, 0, global_eps);
+  }
+
+  for(size_t i = 0; i < n_eq; i++) {
+    r.push_back(gsl_vector_get(s->x, i));
+    r.push_back(gsl_vector_get(s->f, i));
+  }
 
   gsl_multiroot_fsolver_free(s);
   gsl_vector_free(x);
