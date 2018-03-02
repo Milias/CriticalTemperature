@@ -119,5 +119,11 @@ struct system_data {
    * it will recompute the related quantities.
   */
   void set_temperature(double T);
+
+  /*
+   * Compute the value of z_1 given the energy
+   * and chemical potential given.
+   */
+  double get_z1(double E, double mu_t) const;
 };
 

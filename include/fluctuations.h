@@ -44,15 +44,9 @@ double fluct_dT_dz(double z, double E, double mu_e, double mu_h, const system_da
  * As previously introduced, the many-body T matrix becomes
  * complex when z > z_1, and therefore a different set of
  * functions is required to find a solution.
- *
- * "fluct_i_c" computes the full solution, while "fluct_i_ci"
- * neglects the real part.
  */
 
-
-#ifndef SWIG
-std::complex<double> fluct_T_c(double z, double E, double m_pe, double m_ph, double mu_e, double mu_h);
-std::complex<double> fluct_T_ci(double z, double E, double m_pe, double m_ph, double mu_e, double mu_h);
+std::complex<double> fluct_T_c(double z, double E, double mu_e, double mu_h, const system_data & sys);
 
 /*
  * These are the necessary ingredients to compute, first,
@@ -110,10 +104,62 @@ double fluct_pp0_a(double mu_e, double mu_h, const system_data & sys);
 double fluct_pp0_mu(double a, double n, const system_data & sys);
 
 /*
- * "fluct_pr" computes the residue of the pole.
+ * "fluct_pr" computes the residue of the pole. It takes
+ * the value given by "fluct_pp" and multiplies it by the
+ * appropiate factor.
  */
 
 double fluct_pr(double E, double a, double mu_e, double mu_h, const system_data & sys);
 
-#endif
+/*
+ * These are helping functions for finding special values
+ * of the pole position.
+ *
+ * "fluct_ac" computes the critical scattering length for
+ * a given energy E. For a > a_c(E) > a_c(0) the pole
+ * disappears.
+ *
+ * "fluct_Ec" is the inverse of the previous function:
+ * given a scattering length it computes the critical
+ * energy at which the excitonic pole disappears.
+ */
+
+double fluct_ac(double E, double mu_e, double mu_h, const system_data & sys);
+double fluct_Ec(double a, double mu_e, double mu_h, const system_data & sys);
+
+/*
+ * Now the momentum integral can be computed.
+ *
+ * "fluct_n_ex_c" checks that a > ac_max, in which case
+ * there is a singularity in the integrand.
+ */
+
+double fluct_n_ex(double a, double mu_e, double mu_h, const system_data & sys);
+double fluct_n_ex_c(double a, double ac_max, double mu_e, double mu_h, const system_data & sys);
+
+/*
+ * Branch contibution.
+ *
+ * In the following there are the functions required
+ * for the computation of the scattering contribution
+ * to the density.
+ *
+ * Firstly, solving the matsubara sum involves
+ * solving an integral over the real axis.
+ */
+
+double fluct_bfi(double E, double a, double mu_e, double mu_h, const system_data & sys);
+
+/*
+ * Next, the momentum integral is computed from
+ * "fluct_bfi".
+ */
+
+double fluct_n_sc(double a, double mu_e, double mu_h, const system_data & sys);
+
+/*
+ * Solving equation of state and self-consistency.
+ */
+std::vector<double> fluct_mu(double n, const system_data & sys);
+std::vector<double> fluct_mu_steps(double n, std::vector<double> x_init, const system_data & sys);
 
