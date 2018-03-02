@@ -6,6 +6,8 @@ job_api.load_batch()
 
 mu_steps, = job_api.loaded_jobs
 
+print(mu_steps.result[-1])
+
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300 # K
 
 sys = system_data(m_e, m_h, eps_r, T)
@@ -31,7 +33,8 @@ def plot_steps(axarr, y):
 fig, axarr = plt.subplots(1, 2, figsize = (18, 6), dpi = 96)
 
 for y in mu_steps.result:
-  plot_steps(axarr, y)
+  if isinstance(y, list):
+    plot_steps(axarr, y)
 
 plt.show()
 
