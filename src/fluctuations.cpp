@@ -143,11 +143,15 @@ double fluct_T_z1(double E, double a, double mu_e, double mu_h, const system_dat
 }
 
 double fluct_dT_i_dz(double z, double E, double mu_e, double mu_h, const system_data & sys) {
+  /*
   if (z > 0) {
-    return derivative_b3(&fluct_T_i, z, z * 1e-3, E, mu_e, mu_h, sys);
+    return derivative_b3(&fluct_T_i, z, z * 1e-6, E, mu_e, mu_h, sys);
   } else {
-    return derivative_f3(&fluct_T_i, z, z * 1e-3, E, mu_e, mu_h, sys);
+    return derivative_f3(&fluct_T_i, z, z * 1e-6, E, mu_e, mu_h, sys);
   }
+  */
+
+  return derivative_c2(&fluct_T_i, z, z * 1e-6, E, mu_e, mu_h, sys);
 }
 
 double fluct_dT_dz(double z, double E, double mu_e, double mu_h, const system_data & sys) {
@@ -447,7 +451,7 @@ double fluct_pp_b(double E, double a, double mu_e, double mu_h, const system_dat
     return z1;
   }
 
-  double z{z1 - 3 / 16 * std::pow(a - fluct_ac(E, mu_e, mu_h, sys), 2)};
+  double z{z1 - 0.25 * std::pow(a - fluct_ac(E, mu_e, mu_h, sys), 2)};
   double z_min{z}, z_max{0.5 * (z1 + z)};
 
   gsl_function funct;
@@ -470,6 +474,10 @@ double fluct_pp_b(double E, double a, double mu_e, double mu_h, const system_dat
 
   gsl_root_fsolver_free(s);
   return z;
+}
+
+double fluct_pp(double E, double a, double mu_e, double mu_h, const system_data & sys) {
+  return fluct_pp_b(E, a, mu_e, mu_h, sys);
 }
 
 double fluct_pp0_E_f(double E, void * params) {
@@ -682,10 +690,6 @@ double fluct_Ec(double a, double mu_e, double mu_h, const system_data & sys) {
 double fluct_n_ex_f(double E, void * params) {
   fluct_n_ex_s * s{static_cast<fluct_n_ex_s*>(params)};
 
-  if (fluct_ac(E, s->mu_e, s->mu_h, s->sys) > s->a) {
-    return 0;
-  }
-
   double pr{fluct_pr(E, s->a, s->mu_e, s->mu_h, s->sys)};
 
   if (std::isnan(pr)) {
@@ -729,7 +733,7 @@ double fluct_n_ex(double a, double mu_e, double mu_h, const system_data & sys) {
   return result[0];
 }
 
-double fluct_n_ex_c(double a, double ac_max, double mu_e, double mu_h, const system_data & sys) {
+double fluct_n_ex_c(double a, double mu_e, double mu_h, const system_data & sys) {
   double Emax{fluct_Ec(a, mu_e, mu_h, sys)};
 
   if (std::isnan(Emax)) {
@@ -751,6 +755,8 @@ double fluct_n_ex_c(double a, double ac_max, double mu_e, double mu_h, const sys
   gsl_function integrand;
   integrand.function = &fluct_n_ex_f;
   integrand.params = &params;
+
+  double ac_max{fluct_pp0_a(mu_e, mu_h, sys)};
 
   if (a < ac_max) {
     if (std::isinf(Emax)) {
@@ -801,7 +807,7 @@ double fluct_bfi(double E, double a, double mu_e, double mu_h, const system_data
   integrand.function = &fluct_bfi_f;
   integrand.params = &params;
 
-  constexpr uint32_t local_ws_size{1<<4};
+  constexpr uint32_t local_ws_size{1<<3};
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
 
   gsl_integration_qag(&integrand, 0, x_max, 0, global_eps, local_ws_size, GSL_INTEG_GAUSS21, ws, result, error);
@@ -829,8 +835,6 @@ double fluct_n_sc(double a, double mu_e, double mu_h, const system_data & sys) {
 
   double result[n_int] = {0}, error[n_int] = {0};
 
-  constexpr uint32_t integrand_ws_size{1<<4};
-  gsl_integration_workspace * integrand_ws = gsl_integration_workspace_alloc(integrand_ws_size);
   fluct_n_sc_s params({a, mu_e, mu_h, sys});
 
   gsl_function integrand;
@@ -838,19 +842,17 @@ double fluct_n_sc(double a, double mu_e, double mu_h, const system_data & sys) {
   integrand.params = &params;
 
   if (std::isinf(Emax)) {
-    constexpr uint32_t local_ws_size{1<<4};
+    constexpr uint32_t local_ws_size{1<<3};
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
     gsl_integration_qagiu(&integrand, 0, 0, global_eps, local_ws_size, ws, result, error);
     gsl_integration_workspace_free(ws);
   } else {
-    constexpr uint32_t local_ws_size{1<<4};
+    constexpr uint32_t local_ws_size{1<<3};
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
     gsl_integration_qag(&integrand, 0, Emax, 0, global_eps, local_ws_size, GSL_INTEG_GAUSS31, ws, result, error);
     gsl_integration_qagiu(&integrand, Emax, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
     gsl_integration_workspace_free(ws);
   }
-
-  gsl_integration_workspace_free(integrand_ws);
 
   return sum_result<n_int>(result);
 }
@@ -1002,7 +1004,8 @@ std::vector<double> fluct_mu(double n, const system_data & sys) {
   gsl_multiroot_fdfsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    double mu_e{gsl_vector_get(s->x, 0)}, a{gsl_vector_get(s->x, 1)};
+    printf("iter %d: %.3f, %.10f, %.10f, %.6f\n", iter, n, mu_e, a, fluct_pp0_a(mu_e, ideal_mu_h(mu_e, sys), sys));
     status = gsl_multiroot_fdfsolver_iterate(s);
     if (status) { break; }
     //status = gsl_multiroot_test_residual(s->f, global_eps);

@@ -70,14 +70,7 @@ std::complex<double> fluct_T_c(double z, double E, double mu_e, double mu_h, con
 double fluct_pp_s(double E, double a, double mu_e, double mu_h, const system_data & sys);
 double fluct_pp_b(double E, double a, double mu_e, double mu_h, const system_data & sys);
 
-template <bool brent = true, typename ... Args> double fluct_pp(Args ... args) {
-  if constexpr(brent) {
-    return fluct_pp_b(args...);
-  } else {
-    return fluct_pp_s(args...);
-  }
-}
-
+double fluct_pp(double E, double a, double mu_e, double mu_h, const system_data & sys);
 /*
  * Because the behavior of the pole is not simple,
  * the following functions compute several different
@@ -135,7 +128,7 @@ double fluct_Ec(double a, double mu_e, double mu_h, const system_data & sys);
  */
 
 double fluct_n_ex(double a, double mu_e, double mu_h, const system_data & sys);
-double fluct_n_ex_c(double a, double ac_max, double mu_e, double mu_h, const system_data & sys);
+double fluct_n_ex_c(double a, double mu_e, double mu_h, const system_data & sys);
 
 /*
  * Branch contibution.

@@ -106,7 +106,6 @@ double ideal_mu_v(double v, const system_data & sys) {
     return 0.5 * (v - v_max) + ideal_mu_v(v_max, sys);
   }
 
-
   // defined in analytic_utils.h
   ideal_mu_v_s params_s{v, sys};
   double z0, z{v > 0 ? sys.m_pe * v : 0.5 * v};
