@@ -281,7 +281,7 @@ double y_eq_s_f(double y, void * params) {
 double y_eq_s(double v) {
   // defined in common_utils.h
   y_eq_s_s params{v};
-  double z_min{global_eps}, z_max{1 - global_eps}, z;
+  double z_min{1e-12}, z_max{1 - 1e-12}, z;
 
   gsl_function funct;
   funct.function = &y_eq_s_f;

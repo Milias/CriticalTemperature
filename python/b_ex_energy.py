@@ -6,14 +6,6 @@ sys = system_data(m_e, m_h, eps_r, T)
 
 print('Groundstate energy (Coulomb): %f, %f meV' % (sys.E_1, 1e3 * sys.E_1 * sys.energy_th))
 
-x = linspace(0, 1, N)
-y = x**2/(1-x)
-
-plt.semilogy(x, y, 'r-')
-plt.show()
-
-exit()
-
 E_shift = sqrt(32 * pi) * (sys.c_aEM / sys.eps_r)**1.5 * (sys.m_pT / 8)**0.75
 
 print('Shift: %f' % E_shift)

@@ -572,3 +572,23 @@ double analytic_b_ex_E(double lambda_s, const system_data & sys) {
   return z;
 }
 
+double analytic_iod_mb(double n, double lambda_s, const system_data & sys) {
+  double b_ex{analytic_b_ex_E(lambda_s, sys)};
+
+  if (isnan(b_ex)) {
+    return b_ex;
+  }
+
+  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe + sys.m_ph, -1.5) / n * std::exp( - b_ex / (4 * M_PI) )};
+
+  return y_eq_s(v);
+}
+
+double analytic_iod_mb_l(double n, double lambda_s, const system_data & sys) {
+  double b_ex{sys.get_E_n<1>() + sys.delta_E / lambda_s};
+
+  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe + sys.m_ph, -1.5) / n * std::exp( - b_ex / (4 * M_PI) )};
+
+  return y_eq_s(v);
+}
+

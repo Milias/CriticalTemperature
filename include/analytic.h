@@ -136,8 +136,21 @@ std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, con
  */
 
 std::vector<double> analytic_b_ex_wf_s_py(double E, double lambda_s, const system_data & sys);
-
 double analytic_b_ex_wf_n_py(double E, double lambda_s, const system_data & sys);
-
 double analytic_b_ex_E(double lambda_s, const system_data & sys);
+
+/*
+ * Degree of ionization.
+ *
+ * Computes the degree of ionization for excitons
+ * in the system. It is computed at high enough
+ * temperature, so that the Maxwell-Boltzmann
+ * distribution is a close enough approximation.
+ *
+ * The binding energy is computed from the screening
+ * length given by "analytic_b_ex_E".
+ */
+
+double analytic_iod_mb(double n, double lambda_s, const system_data & sys);
+double analytic_iod_mb_l(double n, double lambda_s, const system_data & sys);
 

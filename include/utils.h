@@ -74,6 +74,7 @@ struct system_data {
   double energy_th; // eV
   double m_pT; // dimensionless
   double E_1; // dimensionless
+  double delta_E; // dimensionless
 
   /*
    * Constructor methods
@@ -129,5 +130,14 @@ struct system_data {
    * and chemical potential given.
    */
   double get_z1(double E, double mu_t) const;
+
+  /*
+   * Compute the energy level with a given
+   * quantum number n assuming Coulomb
+   * potential.
+   */
+  template <uint32_t n = 1> double get_E_n() const {
+    return E_1 / (n*n);
+  }
 };
 
