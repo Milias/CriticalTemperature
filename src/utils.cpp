@@ -16,6 +16,7 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
 {
   lambda_th = f_lambda_th(beta, m_p);
   m_pT = m_p / energy_th;
+  E_1 = - 0.5 * std::pow(c_aEM / eps_r, 2) * m_pT;
 }
 
 void system_data::set_temperature(double T) {

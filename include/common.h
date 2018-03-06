@@ -78,6 +78,13 @@ double erf_r(double x, double y, uint32_t n = 64, double eps = 1e-16);
 // imag(erf(x + i * y))
 double erf_i(double x, double y, uint32_t n = 64, double eps = 1e-16);
 
+/*
+ * Solve the equation
+ *
+ * y^2 / (1 - y) == v
+ */
+double y_eq_s(double v);
+
 #ifndef SWIG
 
 template <typename T> T constexpr sqrtNewtonRaphson(T x, T curr, T prev) {
@@ -99,11 +106,6 @@ template <typename T> T constexpr const_sqrt(T x) {
 }
 
 std::complex<double> erf_c(std::complex<double> & z);
-
-double invPolylogExp_f(double z, void * params);
-double invPolylogExp_df(double z, void * params);
-double invPolylogExpM_f(double z, void * params);
-double invPolylogExpM_df(double z, void * params);
 
 #endif
 

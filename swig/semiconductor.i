@@ -1,12 +1,12 @@
+#define SWIGPYTHON_BUILTIN
+
 %module semiconductor
 
 %include "stdint.i"
 %include "std_complex.i"
 %include "std_vector.i"
 
-namespace std {
-   %template(DoubleVector) vector<double>;
-}
+%template(DoubleVector) std::vector<double>;
 
 %{
 #include "common.h"

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "common_utils.h"
 
 /*** Initialization ***/
 
@@ -269,6 +270,40 @@ double erf_i(double x, double y, uint32_t n, double eps) {
   }
 
   return constant_add + val_curr + val_prev;
+}
+
+double y_eq_s_f(double y, void * params) {
+  y_eq_s_s * s{static_cast<y_eq_s_s*>(params)};
+
+  return y*y / (1 - y) - s->v;
+}
+
+double y_eq_s(double v) {
+  // defined in common_utils.h
+  y_eq_s_s params{v};
+  double z_min{global_eps}, z_max{1 - global_eps}, z;
+
+  gsl_function funct;
+  funct.function = &y_eq_s_f;
+  funct.params = &params;
+
+  const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+  gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+  gsl_root_fsolver_set(s, &funct, z_min, z_max);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fsolver_iterate(s);
+    z = gsl_root_fsolver_root(s);
+    z_min = gsl_root_fsolver_x_lower(s);
+    z_max = gsl_root_fsolver_x_upper(s);
+
+    status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+    //printf("%f, %f, %f\n", lambda_s, z, funct.function(z, &params));
+  }
+
+  gsl_root_fsolver_free(s);
+  return z;
 }
 
 std::complex<double> erf_c(std::complex<double> & z) {

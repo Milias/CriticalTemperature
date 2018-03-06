@@ -890,7 +890,7 @@ int fluct_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   double mu_h{ideal_mu_h(mu_e, s->sys)};
 
-  double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
+  double n_id{ideal_n(mu_e, s->sys.m_pe)};
 
   double ls{ideal_ls(n_id, s->sys)};
   double new_a{analytic_a_ls(ls, s->sys)};
@@ -925,7 +925,7 @@ template<uint32_t N, uint32_t M> double fluct_mu_df_nm(double mu_e, double a, co
       /*
        * dn_eq/dmu
        */
-      return 2 * ideal_dn_dmu(mu_e, s->sys.m_pe) + fluct_dn_dmu(mu_e, a, s->sys);
+      return ideal_dn_dmu(mu_e, s->sys.m_pe) + fluct_dn_dmu(mu_e, a, s->sys);
 
     } else if constexpr(M == 1) {
       /*
@@ -939,7 +939,7 @@ template<uint32_t N, uint32_t M> double fluct_mu_df_nm(double mu_e, double a, co
       /*
        * da_eq/dmu
        */
-      double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
+      double n_id{ideal_n(mu_e, s->sys.m_pe)};
       double ls{ideal_ls(n_id, s->sys)};
       return derivative_c2(&analytic_a_ls, ls, ls * 1e-6, s->sys);
 

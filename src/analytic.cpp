@@ -1,5 +1,4 @@
 #include "analytic.h"
-#include "analytic_utils.h"
 
 /*** Density ***/
 
@@ -67,7 +66,7 @@ double analytic_dn_da(double mu_e, double a, const system_data & sys) {
 /*** Chemical potential ***/
 
 double ideal_mu(double n, double m_pi) {
-  return 4 * M_PI * invPolylogExpM(1.5, 0.25 * n * std::pow(m_pi, 1.5));
+  return 4 * M_PI * invPolylogExpM(1.5, 0.5 * n * std::pow(m_pi, 1.5));
 }
 
 double ideal_mu_dn(double n, double m_pi) {
@@ -139,15 +138,14 @@ double ideal_ls(double n_id, const system_data & sys) {
 }
 
 double analytic_a_ls(double ls, const system_data & sys) {
-  typedef std::array<double, 2> state;
-  typedef boost::numeric::odeint::runge_kutta_cash_karp54<state> error_stepper_type;
-  typedef boost::numeric::odeint::controlled_runge_kutta<error_stepper_type> controlled_stepper_type;
-
   /*
    * NOTE: the scattering lengths here, like a0 and a1,
    * are not one over the scattering length as in the
    * rest of the program, but directly the dimensionless
    * scattering length.
+   *
+   * "state", "error_stepper_type" and "controlled_stepper_type"
+   * are defined in "analytic_utils.h".
    */
   state y{{0.0, 1.0}};
   double x0{1e-10}, x1{1<<6};
@@ -188,7 +186,7 @@ int analytic_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double mu_h{ideal_mu_h(mu_e, s->sys)};
   double mu_t{mu_e + mu_h};
 
-  double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
+  double n_id{ideal_n(mu_e, s->sys.m_pe)};
 
   double ls{ideal_ls(n_id, s->sys)};
   double new_a{analytic_a_ls(ls, s->sys)};
@@ -218,7 +216,7 @@ std::vector<double> analytic_mu_f(double mu_e, double a, double n, const system_
 }
 
 double analytic_mu_init_a(double n, double a, const system_data & sys) {
-  return -0.25 * a*a + 4 * M_PI * invPolylogExp(1.5, 0.25 * std::pow(sys.m_sigma, -1.5) * n);
+  return -0.25 * a*a + 4 * M_PI * invPolylogExp(1.5, 0.5 * std::pow(sys.m_sigma, -1.5) * n);
 }
 
 double analytic_mu_init_mu(double n, double a, const system_data & sys) {
@@ -277,7 +275,7 @@ template<uint32_t N, uint32_t M> double analytic_mu_df_nm(double mu_e, double a,
       /*
        * dn_eq/dmu
        */
-      return 2 * ideal_dn_dmu(mu_e, s->sys.m_pe) + analytic_dn_dmu(mu_e, a, s->sys);
+      return ideal_dn_dmu(mu_e, s->sys.m_pe) + analytic_dn_dmu(mu_e, a, s->sys);
 
     } else if constexpr(M == 1) {
       /*
@@ -291,7 +289,7 @@ template<uint32_t N, uint32_t M> double analytic_mu_df_nm(double mu_e, double a,
       /*
        * da_eq/dmu
        */
-      double n_id{2*ideal_n(mu_e, s->sys.m_pe)};
+      double n_id{ideal_n(mu_e, s->sys.m_pe)};
       double ls{ideal_ls(n_id, s->sys)};
       return derivative_c2(&analytic_a_ls, ls, ls * 1e-6, s->sys);
 
@@ -379,5 +377,198 @@ std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, con
   gsl_vector_free(x);
 
   return r;
+}
+
+std::tuple<std::vector<state>, std::vector<double>> analytic_b_ex_wf_s(double E, double lambda_s, const system_data & sys) {
+  /*
+   * Computes the wavefunction for a given E, and returns
+   * (u(x), u'(x), x) for x \in (0, x1].
+   *
+   * The iterator stops when |u'(x1)| > u'(x0) == 1.
+   */
+
+  constexpr uint32_t x1_exp{0};
+
+  state y{{0.0, 1.0}};
+  double x0{1e-10}, x1{1<<x1_exp};
+
+  controlled_stepper_type controlled_stepper;
+  analytic_a_n_s<state> wf{lambda_s, sys, E};
+
+  std::vector<state> f_vec;
+  std::vector<double> t_vec;
+
+  for (uint32_t i = 0; i < max_iter; i++) {
+    integrate_adaptive(controlled_stepper, wf, y, x0, x1, global_eps, ode_observer<state>{f_vec, t_vec});
+
+    if (std::abs(y[1]) > f_vec[0][1]) {
+      break;
+    } else {
+      x0 = x1;
+      x1 = 1<<(i+1+x1_exp);
+    }
+  }
+
+  return {f_vec, t_vec};
+}
+
+double analytic_b_ex_wf_sl(double E, double lambda_s, const system_data & sys) {
+  /*
+   * Computes the wavefunction for a given E, and returns
+   * (u(x), u'(x), x) for x \in (0, x1].
+   *
+   * The iterator stops when |u'(x1)| > u'(x0) == 1.
+   *
+   * Returns only the last value.
+   */
+
+  constexpr uint32_t x1_exp{0};
+
+  state y{{0.0, 1.0}};
+  double x0{1e-10}, x1{1<<x1_exp};
+
+  controlled_stepper_type controlled_stepper;
+  analytic_a_n_s<state> wf{lambda_s, sys, E};
+
+  for (uint32_t i = 0; i < max_iter; i++) {
+    integrate_adaptive(controlled_stepper, wf, y, x0, x1, global_eps);
+
+    if (std::abs(y[1]) > 1 || std::abs(y[0]) > 1e6) {
+      break;
+    } else {
+      x0 = x1;
+      x1 = 1<<(i+1+x1_exp);
+    }
+  }
+
+  return y[0];
+}
+
+uint32_t analytic_b_ex_wf_n(const std::vector<state> & f_vec) {
+  /*
+   * Computes the number of nodes of the given wavefunction
+   * by iterating and increasing the counter when two successive
+   * points change sign.
+   */
+
+  uint32_t nodes{0};
+
+  for (uint32_t i = 1; i < f_vec.size(); i++) {
+    if (f_vec[i][0] * f_vec[i - 1][0] < 0) {
+      nodes++;
+    }
+
+    if (std::abs(f_vec[i][1]) > f_vec[0][1]) {
+      break;
+    }
+  }
+
+  return nodes;
+}
+
+uint32_t analytic_b_ex_wf_n(double E, double lambda_s, const system_data & sys) {
+  auto [f_vec, t_vec] = analytic_b_ex_wf_s(E, lambda_s, sys);
+  return analytic_b_ex_wf_n(f_vec);
+}
+
+std::vector<double> analytic_b_ex_wf_s_py(double E, double lambda_s, const system_data & sys) {
+  /*
+   * Returns the solution for the wavefunction in a way
+   * that can be easily used in python.
+   *
+   * Only returns values that satisfy |u'(x)| < 1.
+   */
+
+  auto [f_vec, t_vec] = analytic_b_ex_wf_s(E, lambda_s, sys);
+
+  std::vector<double> r;
+
+  for (uint32_t i = 0; i < f_vec.size(); i++) {
+    r.push_back(f_vec[i][0]);
+    r.push_back(f_vec[i][1]);
+    r.push_back(t_vec[i]);
+
+    if (std::abs(f_vec[i][1]) > f_vec[0][1]) { break; }
+  }
+
+  return r;
+}
+
+double analytic_b_ex_wf_n_py(double E, double lambda_s, const system_data & sys) {
+  auto [f_vec, t_vec] = analytic_b_ex_wf_s(E, lambda_s, sys);
+  return analytic_b_ex_wf_n(f_vec);
+}
+
+double analytic_b_ex_E_f(double E, void * params) {
+  // defined in analytic_utils.h
+  analytic_b_ex_s * s{static_cast<analytic_b_ex_s*>(params)};
+
+  return analytic_b_ex_wf_sl(E, s->lambda_s, s->sys);
+}
+
+double analytic_b_ex_E(double lambda_s, const system_data & sys) {
+  /*
+   * Computes the energy of the groundstate, starting
+   * from the energy level of a purely Coulomb potential.
+   *
+   * Using Brent's algorithm.
+   */
+
+  // defined in analytic_utils.h
+  analytic_b_ex_s params{lambda_s, sys};
+  double z_min{sys.E_1}, z_max, z;
+
+  /*
+   * "f" is the factor the original energy gets reduced
+   * by on each iteration.
+   *
+   * If the change on nodes is equal to 1, then break
+   * the loop.
+   *
+   * If the change is larger, it means that the step is
+   * too large, so reduce it and go back to the previous
+   * step.
+   */
+  double f{1e-1};
+  for (uint32_t i = 0, n0 = 0, n = 0; i < max_iter; i++) {
+    z_max = z_min * std::pow(1 - f, i);
+    n = analytic_b_ex_wf_n(z_max, lambda_s, sys);
+
+    //printf("n: %d, z: %f, %f\n", n, z_min, z_max);
+
+    if (n == n0 + 1) {
+      break;
+    } else if (n > n0 + 1) {
+      f *= 0.5;
+      i = 0;
+      z_max = z_min;
+    } else if (- z_max < global_eps) {
+      return std::numeric_limits<double>::quiet_NaN();
+    } else {
+      z_min = z_max;
+    }
+  }
+
+  gsl_function funct;
+  funct.function = &analytic_b_ex_E_f;
+  funct.params = &params;
+
+  const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
+  gsl_root_fsolver * s = gsl_root_fsolver_alloc(T);
+
+  gsl_root_fsolver_set(s, &funct, z_min, z_max);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fsolver_iterate(s);
+    z = gsl_root_fsolver_root(s);
+    z_min = gsl_root_fsolver_x_lower(s);
+    z_max = gsl_root_fsolver_x_upper(s);
+
+    status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+    //printf("%f, %f, %f\n", lambda_s, z, funct.function(z, &params));
+  }
+
+  gsl_root_fsolver_free(s);
+  return z;
 }
 

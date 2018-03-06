@@ -63,6 +63,9 @@ struct system_data {
    *
    * Changes to these should be done
    * through the method system_data::set_temperature(double T).
+   *
+   * E_1 is the groundstate energy given a
+   * Coulomb interaction.
    */
 
   double T; // K
@@ -70,6 +73,7 @@ struct system_data {
   double lambda_th; // m
   double energy_th; // eV
   double m_pT; // dimensionless
+  double E_1; // dimensionless
 
   /*
    * Constructor methods
