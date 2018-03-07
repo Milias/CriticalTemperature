@@ -8,14 +8,6 @@
 
 #include "common.h"
 #include "templates.h"
+#include "wavefunction.h"
 #include "analytic.h"
-
-/*
- * Exciton binding energy.
- *
- * The differential equation that fixes the ground-
- * state energy is different.
- */
-
-double analytic_2d_b_ex_E(double lambda_s, const system_data & sys);
 

@@ -87,6 +87,22 @@ double y_eq_s(double v);
 
 #ifndef SWIG
 
+/*
+ * Struct used when saving the full solution
+ * for an ODE.
+ */
+
+template <typename state, typename time = double>
+struct ode_observer {
+  std::vector<state> & f_vec;
+  std::vector<time> & t_vec;
+
+  void operator()(const state & f, time t) {
+    f_vec.push_back(f);
+    t_vec.push_back(t);
+  }
+};
+
 template <typename T> T constexpr sqrtNewtonRaphson(T x, T curr, T prev) {
   return curr == prev ? curr : sqrtNewtonRaphson<T>(x, 0.5 * (curr + x / curr), curr);
 }

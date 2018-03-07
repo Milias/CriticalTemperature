@@ -15,7 +15,7 @@
 
 #include "common.h"
 #include "templates.h"
-#include "analytic_utils.h"
+#include "wavefunction.h"
 
 /*** Density ***/
 
@@ -128,18 +128,6 @@ std::vector<double> analytic_mu(double n, const system_data & sys);
 std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, const system_data & sys);
 
 /*
- * Exciton binding energy.
- *
- * Computed solving Schrodinger's equation with an
- * energy value such that at some large value x >> 1
- * it doesn't diverge.
- */
-
-std::vector<double> analytic_b_ex_wf_s_py(double E, double lambda_s, const system_data & sys);
-double analytic_b_ex_wf_n_py(double E, double lambda_s, const system_data & sys);
-double analytic_b_ex_E(double lambda_s, const system_data & sys);
-
-/*
  * Degree of ionization.
  *
  * Computes the degree of ionization for excitons
@@ -151,6 +139,6 @@ double analytic_b_ex_E(double lambda_s, const system_data & sys);
  * length given by "analytic_b_ex_E".
  */
 
-double analytic_iod_mb(double n, double lambda_s, const system_data & sys);
-double analytic_iod_mb_l(double n, double lambda_s, const system_data & sys);
+double mb_iod(double n, double lambda_s, const system_data & sys);
+double mb_iod_l(double n, double lambda_s, const system_data & sys);
 
