@@ -6,18 +6,16 @@ sys = system_data(m_e, m_h, eps_r, T)
 
 print('Groundstate energy (Coulomb): %f, %f meV' % (sys.E_1, 1e3 * sys.E_1 * sys.energy_th))
 
-E_shift = sqrt(32 * pi) * (sys.c_aEM / sys.eps_r)**1.5 * (sys.m_pT / 8)**0.75
+print('Shift: %f' % sys.delta_E)
 
-print('Shift: %f' % E_shift)
+x = linspace(1e-10, 0.2, N)
+y = array([analytic_b_ex_E(1/x, sys) for x in x])
+y2 = sys.delta_E * x + sys.E_1
 
-x = logspace(-3, 0, N)
-y = array([analytic_b_ex_E(1/x, sys) for x in x]) - sys.E_1
-y2 = E_shift * x
-
-plt.semilogx(x, y, 'r-')
-plt.semilogx(x, y2, 'b-')
+plt.plot(x, y, 'r-')
+plt.plot(x, y2, 'b-')
 plt.autoscale(enable = True, axis = 'x', tight = True)
-plt.axhline(y = -sys.E_1, color = 'g', linestyle = '--')
-plt.axhline(y = 0, color = 'k', linestyle = '-')
+plt.axhline(y = sys.E_1, color = 'g', linestyle = '--')
+#plt.axhline(y = 0, color = 'k', linestyle = '-')
 plt.show()
 

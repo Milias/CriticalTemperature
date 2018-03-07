@@ -26,11 +26,17 @@ typedef boost::numeric::odeint::controlled_runge_kutta<error_stepper_type> contr
  * scattering length assuming a Yukawa potential
  * for the interaction between electrons and holes.
  */
+
 template <typename T>
 class analytic_a_n_s {
   private:
     double pot(double x) {
-      return - sys.c_aEM / sys.eps_r * std::sqrt(2 * sys.m_pT) * std::exp(-4 * std::sqrt(sys.c_aEM * M_PI / sys.eps_r * std::sqrt(sys.m_pT / 8)) * x / lambda_s) / x;
+      return
+        - sys.c_aEM / sys.eps_r *
+        std::sqrt(2 * sys.m_pT) *
+        std::exp(
+          -4 * std::sqrt(sys.c_aEM * M_PI / sys.eps_r * std::sqrt(sys.m_pT / 8)) * x / lambda_s
+        ) / x;
     }
 
   public:
