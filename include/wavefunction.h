@@ -9,6 +9,8 @@
 #include "templates.h"
 #include "wavefunction_utils.h"
 
+#ifndef SWIG
+
 typedef std::array<double, 2> state;
 typedef boost::numeric::odeint::runge_kutta_cash_karp54<state> error_stepper_type;
 typedef boost::numeric::odeint::controlled_runge_kutta<error_stepper_type> controlled_stepper_type;
@@ -19,21 +21,28 @@ typedef boost::numeric::odeint::controlled_runge_kutta<error_stepper_type> contr
  * for the interaction between electrons and holes.
  */
 
-template <typename state, uint32_t pot_index = 0>
+template <typename state, uint32_t pot_index = 0, uint32_t dim = 3>
 class wf_c {
   private:
     double pot_yuk_3d(double x) const {
       return
-        - sys.c_aEM / sys.eps_r *
-        std::sqrt(2 * sys.m_pT) *
+        - 2 * std::sqrt(-sys.E_1) *
         std::exp(
           -4 * std::sqrt(sys.c_aEM * M_PI / sys.eps_r * std::sqrt(sys.m_pT / 8)) * x / lambda_s
         ) / x;
     }
 
-    constexpr static double (wf_c<state>::*pot_func [])(double) const {{ &wf_c<state>::pot_yuk_3d }};
+    double pot_cou_3d(double x) const {
+      return
+        - 2 * std::sqrt(-sys.E_1) / x;
+    }
 
-    double pot(double x) const {
+    constexpr static double (wf_c<state, pot_index, dim>::*pot_func [])(double) const {
+      {&wf_c<state, pot_index, dim>::pot_yuk_3d},
+      {&wf_c<state, pot_index, dim>::pot_cou_3d}
+    };
+
+    constexpr double pot(double x) const {
       return (this->*pot_func[pot_index])(x);
     }
 
@@ -48,13 +57,23 @@ class wf_c {
     double E{0};
 
     void operator()(const state & y, state & dy, double x) {
-      double m{std::sqrt(-E)};
       dy[0] = y[1];
-      dy[1] = (pot(x) + m / x) * y[0] + (2 * m - 1 / x) * y[1];
+
+      if (x > global_eps) {
+        if constexpr(dim == 2) {
+          dy[1] = ( pot(x) - 0.25 / (x*x) - E ) * y[0];
+          //dy[1] = ( std::sqrt(-E) / x + pot(x) ) * y[0] + ( 2 * std::sqrt(-E) - 1 / x ) * y[1];
+          //dy[1] = - (1 - x)/x * y[1] - (pot(-1) - std::sqrt(-E))/2/std::sqrt(-E)/x * y[0];
+        } else if constexpr(dim == 3) {
+          dy[1] = ( pot(x) - E ) * y[0];
+        }
+      } else {
+        dy[1] = 0;
+      }
     }
 };
 
-template <bool save = false, uint32_t pot_index>
+template <bool save = false, uint32_t pot_index, uint32_t dim>
 auto wf_s(double E, double lambda_s, const system_data & sys) {
   /*
    * Computes the wavefunction for a given E, and returns
@@ -67,10 +86,11 @@ auto wf_s(double E, double lambda_s, const system_data & sys) {
   constexpr uint32_t x1_exp{0};
 
   state y{{0.0, 1.0}};
-  double x0{1e-10}, x1{1<<x1_exp};
+  double x0{0}, x1{1<<x1_exp};
 
   controlled_stepper_type controlled_stepper;
-  wf_c<state, pot_index> wf{lambda_s, sys, E};
+
+  wf_c<state, pot_index, dim> wf{lambda_s, sys, E};
 
   if constexpr(save) {
     std::vector<state> f_vec;
@@ -111,9 +131,9 @@ auto wf_s(double E, double lambda_s, const system_data & sys) {
 
 uint32_t wf_n(const std::vector<state> & f_vec);
 
-template <uint32_t pot_index>
+template <uint32_t pot_index = 0, uint32_t dim = 3>
 uint32_t wf_n(double E, double lambda_s, const system_data & sys) {
-  auto [f_vec, t_vec] = wf_s<true, pot_index>(E, lambda_s, sys);
+  auto [f_vec, t_vec] = wf_s<true, pot_index, dim>(E, lambda_s, sys);
   return wf_n(f_vec);
 }
 
@@ -121,14 +141,14 @@ uint32_t wf_n(double E, double lambda_s, const system_data & sys) {
  * Computes the groundstate energy.
  */
 
-template <uint32_t pot_index>
+template <uint32_t pot_index, uint32_t dim>
 double wf_E_f(double E, void * params) {
   wf_E_s * s{static_cast<wf_E_s*>(params)};
 
-  return wf_s<false, pot_index>(E, s->lambda_s, s->sys);
+  return wf_s<false, pot_index, dim>(E, s->lambda_s, s->sys);
 }
 
-template <uint32_t pot_index>
+template <uint32_t pot_index = 0, uint32_t dim = 3>
 double wf_E(double lambda_s, const system_data & sys) {
   /*
    * Computes the energy of the groundstate, starting
@@ -136,10 +156,19 @@ double wf_E(double lambda_s, const system_data & sys) {
    *
    * Using Brent's algorithm.
    */
+  constexpr int32_t local_max_iter{1024};
 
   // defined in analytic_utils.h
   wf_E_s params{lambda_s, sys};
-  double z_min{sys.E_1}, z_max, z;
+  double z_min, z_max, z;
+
+  if constexpr(dim == 2) {
+    z_min = sys.get_E_n(0.5);
+    //z_max = sys.get_E_n(1.5);
+  } else {
+    z_min = sys.get_E_n<1>();
+    //z_max = sys.get_E_n<2>();
+  }
 
   /*
    * "f" is the factor the original energy gets reduced
@@ -152,10 +181,11 @@ double wf_E(double lambda_s, const system_data & sys) {
    * too large, so reduce it and go back to the previous
    * step.
    */
+  ///*
   double f{1e-1};
-  for (uint32_t i = 0, n0 = 0, n = 0; i < max_iter; i++) {
+  for (uint32_t i = 0, n0 = 0, n = 0; i < local_max_iter; i++) {
     z_max = z_min * std::pow(1 - f, i);
-    n = wf_n<pot_index>(z_max, lambda_s, sys);
+    n = wf_n<pot_index, dim>(z_max, lambda_s, sys);
 
     //printf("n: %d, z: %f, %f\n", n, z_min, z_max);
 
@@ -165,15 +195,16 @@ double wf_E(double lambda_s, const system_data & sys) {
       f *= 0.5;
       i = 0;
       z_max = z_min;
-    } else if (- z_max < global_eps) {
+    } else if (z_max > -global_eps) {
       return std::numeric_limits<double>::quiet_NaN();
     } else {
       z_min = z_max;
     }
   }
+  //*/
 
   gsl_function funct;
-  funct.function = &wf_E_f<pot_index>;
+  funct.function = &wf_E_f<pot_index, dim>;
   funct.params = &params;
 
   const gsl_root_fsolver_type * T = gsl_root_fsolver_brent;
@@ -181,7 +212,7 @@ double wf_E(double lambda_s, const system_data & sys) {
 
   gsl_root_fsolver_set(s, &funct, z_min, z_max);
 
-  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < local_max_iter; iter++) {
     status = gsl_root_fsolver_iterate(s);
     z = gsl_root_fsolver_root(s);
     z_min = gsl_root_fsolver_x_lower(s);
@@ -194,4 +225,21 @@ double wf_E(double lambda_s, const system_data & sys) {
   gsl_root_fsolver_free(s);
   return z;
 }
+
+#endif
+
+std::vector<double> wf_s_py(double E, double lambda_s, const system_data & sys);
+std::vector<double> wf_2d_s_py(double E, double lambda_s, const system_data & sys);
+
+uint32_t wf_n_py(double E, double lambda_s, const system_data & sys);
+uint32_t wf_2d_n_py(double E, double lambda_s, const system_data & sys);
+
+double wf_E_py(double lambda_s, const system_data & sys);
+double wf_2d_E_py(double lambda_s, const system_data & sys);
+
+uint32_t wf_n_cou_py(double E, const system_data & sys);
+uint32_t wf_2d_n_cou_py(double E, const system_data & sys);
+
+double wf_E_cou_py(const system_data & sys);
+double wf_2d_E_cou_py(const system_data & sys);
 

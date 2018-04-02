@@ -381,13 +381,13 @@ std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, con
 }
 
 double mb_iod(double n, double lambda_s, const system_data & sys) {
-  double b_ex{wf_E<0>(lambda_s, sys)};
+  double b_ex{wf_E<0, 3>(lambda_s, sys)};
 
   if (isnan(b_ex)) {
     return std::numeric_limits<double>::quiet_NaN();
   }
 
-  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe + sys.m_ph, -1.5) / n * std::exp( - b_ex / (4 * M_PI) )};
+  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe * sys.m_ph / sys.m_sigma, -1.5) / n * std::exp( b_ex / (4 * M_PI) )};
 
   return y_eq_s(v);
 }
@@ -395,7 +395,7 @@ double mb_iod(double n, double lambda_s, const system_data & sys) {
 double mb_iod_l(double n, double lambda_s, const system_data & sys) {
   double b_ex{sys.get_E_n<1>() + sys.delta_E / lambda_s};
 
-  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe + sys.m_ph, -1.5) / n * std::exp( - b_ex / (4 * M_PI) )};
+  double v{2 * std::pow(2 * M_PI, 3) * std::pow(sys.m_pe * sys.m_ph / sys.m_sigma, -1.5) / n * std::exp( b_ex / (4 * M_PI) )};
 
   return y_eq_s(v);
 }

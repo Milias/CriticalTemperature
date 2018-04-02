@@ -136,7 +136,7 @@ std::vector<double> analytic_mu_follow(double n, std::vector<double> x_init, con
  * distribution is a close enough approximation.
  *
  * The binding energy is computed from the screening
- * length given by "analytic_b_ex_E".
+ * length given by "wf_E<dim = 3>".
  */
 
 double mb_iod(double n, double lambda_s, const system_data & sys);

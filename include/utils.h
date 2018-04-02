@@ -139,5 +139,7 @@ struct system_data {
   template <uint32_t n = 1> double get_E_n() const {
     return E_1 / (n*n);
   }
+
+  double get_E_n(double n) const;
 };
 

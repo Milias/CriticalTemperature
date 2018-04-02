@@ -11,6 +11,7 @@
 %{
 #include "common.h"
 #include "utils.h"
+#include "wavefunction.h"
 #include "analytic.h"
 #include "fluctuations.h"
 #include "analytic_2d.h"
@@ -18,6 +19,7 @@
 
 %include "common.h"
 %include "utils.h"
+%include "wavefunction.h"
 %include "analytic.h"
 %include "fluctuations.h"
 %include "analytic_2d.h"
