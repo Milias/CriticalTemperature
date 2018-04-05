@@ -36,8 +36,23 @@ double ideal_2d_n(double mu_i, double m_pi);
 double analytic_2d_n_ex(double mu_t, double a, const system_data & sys);
 double analytic_2d_n_sc(double mu_t, double a, const system_data & sys);
 
-
 /*** Chemical potential ***/
+/*
+ * "analytic_2d_mu_ex" computes the excitonic
+ * chemical potential given some excitonic
+ * density and scattering length.
+ */
 
+double ideal_2d_mu(double n_id, const system_data & sys);
 double ideal_2d_mu_h(double mu_e, const system_data & sys);
+double analytic_2d_mu_ex(double a, double n_ex, const system_data & sys);
+
+/*** Scattering and screening lengths ***/
+
+double ideal_2d_ls(double n_id, const system_data & sys);
+double analytic_2d_a_ls(double ls, const system_data & sys);
+
+/*** Solving for chemical potential ***/
+
+std::vector<double> analytic_2d_mu(double n, const system_data & sys);
 

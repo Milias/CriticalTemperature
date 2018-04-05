@@ -14,3 +14,8 @@ struct analytic_2d_n_sc_s {
   const system_data & sys;
 };
 
+struct analytic_2d_mu_s {
+  double n;
+  const system_data & sys;
+};
+

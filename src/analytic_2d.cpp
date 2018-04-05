@@ -26,19 +26,14 @@ double ideal_2d_n(double mu_i, double m_pi) {
 }
 
 double analytic_2d_n_ex(double mu_t, double a, const system_data & sys) {
-  double exp_val{mu_t + 2 * M_1_PI * a*a};
-
-  if (exp_val > 0) {
-    return 0;
-  }
-
-  return 0.25 * M_1_PI / (sys.m_pe * (1 + sys.m_pe)) * (-std::log(1 - std::exp(exp_val)));
+  double exp_val{mu_t + 8 * M_1_PI * a*a};
+  return 0.5 * M_1_PI / (sys.m_pe * (1 + sys.m_pe)) * (-std::log(1 - std::exp(exp_val)));
 }
 
 double analytic_2d_n_sc_f(double y, void * params) {
   // defined in analytic_2d_utils.h
   analytic_2d_n_sc_s * s{static_cast<analytic_2d_n_sc_s*>(params)};
-  return 0.5 * M_1_PI * s->a*s->a / (s->sys.m_pe * (1 + s->sys.m_pe) * ( M_PI * M_PI + std::pow(std::log(y), 2) )) * (-std::log(1 - std::exp(s->mu_t - 2 * M_1_PI * s->a*s->a * y)));
+  return 2 * M_1_PI * s->a*s->a / (s->sys.m_pe * (1 + s->sys.m_pe) * ( M_PI * M_PI + std::pow(std::log(y), 2) )) * (-std::log(1 - std::exp(s->mu_t - 8 * M_1_PI * s->a*s->a * y)));
 }
 
 double analytic_2d_n_sc(double mu_t, double a, const system_data & sys) {
@@ -60,7 +55,127 @@ double analytic_2d_n_sc(double mu_t, double a, const system_data & sys) {
   return sum_result<n_int>(result);
 }
 
+double ideal_2d_mu(double n_id, const system_data & sys) {
+  return 4 * M_PI * std::log(std::exp(n_id * M_PI * sys.m_pe) - 1);
+}
+
 double ideal_2d_mu_h(double mu_e, const system_data & sys) {
   return 4 * M_PI * std::log(std::exp(sys.m_ph / sys.m_pe * std::log(1 + std::exp(0.25 * mu_e * M_1_PI))) - 1);
+}
+
+double analytic_2d_mu_ex(double a, double n_ex, const system_data & sys) {
+  return std::log(1 - std::exp(- 4 * M_PI * sys.m_pe * (1 + sys.m_pe) * n_ex)) - 8 * M_1_PI * a*a;
+}
+
+double ideal_2d_ls(double n_id, const system_data & sys) {
+  return 2 * M_PI / std::sqrt(
+      (1 - std::exp(-M_PI * sys.m_pe * n_id)) / sys.m_pe
+    + (1 - std::exp(-M_PI * sys.m_ph * n_id)) / sys.m_ph
+  );
+}
+
+double analytic_2d_a_ls(double ls, const system_data & sys) {
+  /*
+   * NOTE: the scattering lengths here, like a0 and a1,
+   * are not one over the scattering length as in the
+   * rest of the program, but directly the dimensionless
+   * scattering length.
+   */
+  state y{{0.0, 1.0}};
+  double x0{1e-10}, x1{1<<8};
+  double a0{x1}, a1;
+
+  controlled_stepper_type controlled_stepper;
+  wf_c<state, 0, 2> wf{ls, sys};
+
+  for(uint8_t i = 0; i < max_iter; i++) {
+    integrate_adaptive(controlled_stepper, wf, y, x0, x1, global_eps);
+
+    a1 = x1 - y[0] / y[1];
+
+    if (2 * std::abs(a1 - a0) / (a0 + a1) > global_eps) {
+      x0 = x1;
+      x1 *= 2;
+
+      a0 = a1;
+    } else {
+      break;
+    }
+  }
+
+  return 1.0 / a1;
+}
+
+int analytic_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
+  constexpr uint32_t n_eq{2};
+  // defined in analytic_2d_utils.h
+  analytic_2d_mu_s * s{static_cast<analytic_2d_mu_s*>(params)};
+
+  double mu_e{gsl_vector_get(x, 0)};
+  double a{gsl_vector_get(x, 1)};
+
+  double mu_h{ideal_2d_mu_h(mu_e, s->sys)};
+  double mu_t{mu_e + mu_h};
+
+  double n_id{ideal_2d_n(mu_e, s->sys.m_pe)};
+
+  double ls{ideal_2d_ls(n_id, s->sys)};
+  double new_a{analytic_2d_a_ls(ls, s->sys)};
+
+  double yv[n_eq] = {0};
+  yv[0] = - s->n + n_id + analytic_2d_n_ex(mu_t, new_a, s->sys) + analytic_2d_n_sc(mu_t, new_a, s->sys);
+  yv[1] = - a + new_a;
+  for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
+
+  return GSL_SUCCESS;
+}
+
+std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
+  constexpr uint32_t n_eq{2};
+  analytic_2d_mu_s params_s{n, sys};
+
+  gsl_multiroot_function f = {&analytic_2d_mu_f, n_eq, &params_s};
+
+  double init_mu{ideal_2d_mu(n, sys)};
+
+  double x_init[n_eq] = {
+    init_mu,
+    std::sqrt(- 8 * M_1_PI * init_mu)
+  };
+
+  //printf("first: %.3f, %.10f\n", n, x_init[0]);
+
+  gsl_vector * x = gsl_vector_alloc(n_eq);
+
+  for(size_t i = 0; i < n_eq; i++) { gsl_vector_set(x, i, x_init[i]); }
+
+  const gsl_multiroot_fsolver_type * T = gsl_multiroot_fsolver_hybrids;
+  gsl_multiroot_fsolver * s = gsl_multiroot_fsolver_alloc(T, n_eq);
+  gsl_multiroot_fsolver_set(s, &f, x);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    //printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    status = gsl_multiroot_fsolver_iterate(s);
+    if (status) { break; }
+    status = gsl_multiroot_test_residual(s->f, 1e-15);
+
+    /*
+    printf("x: ");
+    for(size_t i = 0; i < n_eq; i++) { printf("%f, ", gsl_vector_get(s->x, i)); }
+
+    printf("f: ");
+    for(size_t i = 0; i < n_eq; i++) { printf("%e, ", gsl_vector_get(s->f, i)); }
+    printf("\n");
+    */
+  }
+
+  std::vector<double> r(n_eq);
+
+  for(size_t i = 0; i < n_eq; i++) { r[i] = gsl_vector_get(s->x, i); }
+
+  gsl_multiroot_fsolver_free(s);
+  gsl_vector_free(x);
+
+  return r;
 }
 

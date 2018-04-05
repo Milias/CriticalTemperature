@@ -15,14 +15,14 @@ description = """Testing 2D analytic densities.
 
 Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.m_e, sys.m_h, sys.eps_r, sys.T)
 
-mu_e = -0.1
+mu_e = -20
 mu_h = ideal_2d_mu_h(mu_e, sys)
 
 mu_t = mu_e + mu_h
 
-a_max = sqrt(-mu_t * pi / 2)
+a_max = sqrt(-mu_t * pi / 8)
 
-a = iter_linspace(0, 2 * a_max, N)
+a = iter_linspace(0.9 * a_max, a_max, N)
 
 batch = job_api.new_batch(name, description)
 
