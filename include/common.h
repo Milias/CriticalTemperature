@@ -123,5 +123,7 @@ template <typename T> T constexpr const_sqrt(T x) {
 
 std::complex<double> erf_c(std::complex<double> & z);
 
+template <typename T> T constexpr sign(T x) { return x / std::abs(x); }
+
 #endif
 

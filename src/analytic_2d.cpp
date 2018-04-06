@@ -26,33 +26,52 @@ double ideal_2d_n(double mu_i, double m_pi) {
 }
 
 double analytic_2d_n_ex(double mu_t, double a, const system_data & sys) {
-  double exp_val{mu_t + 8 * M_1_PI * a*a};
-  return 0.5 * M_1_PI / (sys.m_pe * (1 + sys.m_pe)) * (-std::log(1 - std::exp(exp_val)));
+  if (a < 0) { return 0; }
+
+  double exp_val{mu_t + 4 * a*a};
+  if (exp_val > 9) { return std::numeric_limits<double>::quiet_NaN(); }
+
+  return 0.25 * M_1_PI * sys.m_sigma * (-std::log(1 - std::exp(exp_val)));
 }
 
-double analytic_2d_n_sc_f(double y, void * params) {
+double analytic_2d_n_sc_f1(double y, void * params) {
   // defined in analytic_2d_utils.h
   analytic_2d_n_sc_s * s{static_cast<analytic_2d_n_sc_s*>(params)};
-  return 2 * M_1_PI * s->a*s->a / (s->sys.m_pe * (1 + s->sys.m_pe) * ( M_PI * M_PI + std::pow(std::log(y), 2) )) * (-std::log(1 - std::exp(s->mu_t - 8 * M_1_PI * s->a*s->a * y)));
+
+  return 1 / ( 1 + std::pow(y * M_1_PI, 2) )
+    * (-std::log(1 - std::exp(s->mu_t - 4 * s->a*s->a * std::exp(-y))));
+}
+
+double analytic_2d_n_sc_f2(double y, void * params) {
+  // defined in analytic_2d_utils.h
+  analytic_2d_n_sc_s * s{static_cast<analytic_2d_n_sc_s*>(params)};
+
+  return 1 / ( y * ( 1 + std::pow(std::log(y) * M_1_PI, 2) ) )
+    * (-std::log(1 - std::exp(s->mu_t - 4 * s->a*s->a * y)));
 }
 
 double analytic_2d_n_sc(double mu_t, double a, const system_data & sys) {
-  constexpr uint32_t n_int{1};
-  constexpr uint32_t local_ws_size{1<<4};
+  constexpr uint32_t n_int{2};
+  constexpr uint32_t local_ws_size{1<<6};
   double result[n_int] = {0}, error[n_int] = {0};
 
   // defined in analytic_2d_utils.h
   analytic_2d_n_sc_s params_s{mu_t, a, sys};
 
-  gsl_function integrand;
-  integrand.function = analytic_2d_n_sc_f;
-  integrand.params = &params_s;
+  gsl_function integrand1;
+  integrand1.function = analytic_2d_n_sc_f1;
+  integrand1.params = &params_s;
+
+  gsl_function integrand2;
+  integrand2.function = analytic_2d_n_sc_f2;
+  integrand2.params = &params_s;
 
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
-  gsl_integration_qagiu(&integrand, 0, 0, global_eps, local_ws_size, ws, result, error);
+  gsl_integration_qagiu(&integrand1, 0, 0, global_eps, local_ws_size, ws, result, error);
+  gsl_integration_qagiu(&integrand2, 1, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
   gsl_integration_workspace_free(ws);
 
-  return sum_result<n_int>(result);
+  return sys.m_sigma * 0.25 * M_1_PI * M_1_PI * sum_result<n_int>(result);
 }
 
 double ideal_2d_mu(double n_id, const system_data & sys) {
@@ -64,7 +83,68 @@ double ideal_2d_mu_h(double mu_e, const system_data & sys) {
 }
 
 double analytic_2d_mu_ex(double a, double n_ex, const system_data & sys) {
-  return std::log(1 - std::exp(- 4 * M_PI * sys.m_pe * (1 + sys.m_pe) * n_ex)) - 8 * M_1_PI * a*a;
+  return std::log(1 - std::exp(- 2 * M_PI / sys.m_sigma * n_ex)) - 4 * a*a;
+}
+
+double ideal_2d_mu_v_f(double mu_e, void * params) {
+  // defined in analytic_2d_utils.h
+  ideal_2d_mu_v_s * s{static_cast<ideal_2d_mu_v_s*>(params)};
+  return mu_e + ideal_2d_mu_h(mu_e, s->sys) - s->v;
+}
+
+double ideal_2d_mu_v_df(double mu_e, void * params) {
+  // defined in analytic_2d_utils.h
+  ideal_2d_mu_v_s * s{static_cast<ideal_2d_mu_v_s*>(params)};
+  double m_ratio{s->sys.m_ph / s->sys.m_pe};
+
+  return 1 + m_ratio
+    / (
+        (1 + std::exp(- 0.25 * M_1_PI * mu_e))
+        * (1 - std::exp( - m_ratio * std::log(1 + std::exp(0.25 * M_1_PI * mu_e))))
+      );
+}
+
+void ideal_2d_mu_v_fdf(double z, void * params, double * f, double * df) {
+  f[0] = ideal_2d_mu_v_f(z, params);
+  df[0] = ideal_2d_mu_v_df(z, params);
+}
+
+double ideal_2d_mu_v(double v, const system_data & sys) {
+  /*
+    Solves the equation mu_e + mu_h == v for mu_e,
+    assuming n_id,e == n_id,h.
+  */
+
+  double v_max{-1300};
+  if (v < v_max) {
+    return 0.5 * (v - v_max) + ideal_2d_mu_v(v_max, sys);
+  }
+
+  // defined in analytic_2d_utils.h
+  ideal_2d_mu_v_s params_s{v, sys};
+  double z0, z{v > 0 ? sys.m_pe * v : 0.5 * v};
+
+  gsl_function_fdf funct;
+  funct.f = &ideal_2d_mu_v_f;
+  funct.df = &ideal_2d_mu_v_df;
+  funct.fdf = &ideal_2d_mu_v_fdf;
+  funct.params = &params_s;
+
+  const gsl_root_fdfsolver_type * T = gsl_root_fdfsolver_steffenson;
+  gsl_root_fdfsolver * s = gsl_root_fdfsolver_alloc(T);
+
+  gsl_root_fdfsolver_set(s, &funct, z);
+
+  for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
+    status = gsl_root_fdfsolver_iterate(s);
+    z0 = z;
+
+    z = gsl_root_fdfsolver_root(s);
+    status = gsl_root_test_delta(z, z0, 0, global_eps);
+  }
+
+  gsl_root_fdfsolver_free(s);
+  return z;
 }
 
 double ideal_2d_ls(double n_id, const system_data & sys) {
@@ -140,7 +220,7 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
 
   double x_init[n_eq] = {
     init_mu,
-    std::sqrt(- 8 * M_1_PI * init_mu)
+    0.5 * std::sqrt(- init_mu)
   };
 
   //printf("first: %.3f, %.10f\n", n, x_init[0]);
