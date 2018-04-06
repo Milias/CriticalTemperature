@@ -3,8 +3,8 @@ from common import *
 api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5EaYZw6U4xEv7/EHa2f+w=='
 job_api = JobAPI(api_token)
 
-bs = 1<<0
-N = 1<<14
+bs = 1<<3
+N = 1<<17
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300 # K
 
@@ -15,14 +15,15 @@ description = """Testing 2D analytic densities.
 
 Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.m_e, sys.m_h, sys.eps_r, sys.T)
 
-mu_e = -20
+mu_t = -1
+mu_e = ideal_2d_mu_v(mu_t, sys)
 mu_h = ideal_2d_mu_h(mu_e, sys)
 
-mu_t = mu_e + mu_h
+print('mu_e: %f, mu_h: %f' % (mu_e, mu_h))
 
-a_max = sqrt(-mu_t * pi / 8)
+a_max = sqrt(-mu_t / 4)
 
-a = iter_linspace(0.9 * a_max, a_max, N)
+a = iter_linspace(-2, a_max, N)
 
 batch = job_api.new_batch(name, description)
 

@@ -7,6 +7,11 @@
 
 #include "common.h"
 
+struct ideal_2d_mu_v_s {
+  double v;
+  const system_data & sys;
+};
+
 struct analytic_2d_n_sc_s {
   double mu_t;
   double a;

@@ -45,6 +45,7 @@ double analytic_2d_n_sc(double mu_t, double a, const system_data & sys);
 
 double ideal_2d_mu(double n_id, const system_data & sys);
 double ideal_2d_mu_h(double mu_e, const system_data & sys);
+double ideal_2d_mu_v(double v, const system_data & sys);
 double analytic_2d_mu_ex(double a, double n_ex, const system_data & sys);
 
 /*** Scattering and screening lengths ***/
