@@ -4,12 +4,12 @@ api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5E
 job_api = JobAPI(api_token)
 job_api.load_batch()
 
-n_id, n_ex, n_sc = job_api.loaded_jobs
+n_id, n_ex, n_sc, ls_id = job_api.loaded_jobs
 
 n, a, sys_iter = n_ex.args
 sys = next(sys_iter)
 
-n_id_arr, n_ex_arr, n_sc_arr = tuple([array(n.result[:-1]) for n in (n_id, n_ex, n_sc)])
+n_id_arr, n_ex_arr, n_sc_arr = tuple([array(n.result[:-1]) for n in job_api.loaded_jobs])
 
 n_total = (n_id_arr + n_ex_arr + n_sc_arr)
 n_total = ones_like(n_total)
@@ -29,17 +29,19 @@ exit()
 
 y = n_ex_arr / n_total
 y2 = n_sc_arr / n_total
-#y3 = n_id_arr / n_total
+y3 = n_id_arr / n_total
 y4 = (n_ex_arr + n_sc_arr) / n_total
 
 plot_type = 'plot'
 
 getattr(plt, plot_type)(x, y , 'r-', label = 'Excitonic')
 getattr(plt, plot_type)(x, y2, 'b-', label = 'Scattering')
-#getattr(plt, plot_type)(x, y3, 'g-', label = 'Ideal')
-getattr(plt, plot_type)(x, y4, 'm--', label = r'$n_{ex} + n_{sc}$')
+getattr(plt, plot_type)(x, y3, 'g-', label = 'Ideal')
+#getattr(plt, plot_type)(x, y4, 'm--', label = r'$n_{ex} + n_{sc}$')
 plt.legend(loc = 0)
 plt.tight_layout()
+plt.autoscale(enable = True, axis = 'x', tight = True)
+#plt.axis([x[0], x[-1], -0.3, 0.6])
 
 plt.show()
 

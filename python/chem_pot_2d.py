@@ -3,7 +3,7 @@ from common import *
 api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5EaYZw6U4xEv7/EHa2f+w=='
 job_api = JobAPI(api_token)
 
-bs = 1<<0
+bs = 1<<2
 N = 1<<16
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300 # K
@@ -16,7 +16,11 @@ density, in 2D.
 
 Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.m_e, sys.m_h, sys.eps_r, sys.T)
 
-n0, n1 = 4e6 * sys.lambda_th**2, 4e13 * sys.lambda_th**2
+print('lambda_th: %f nm, energy_th: %f meV' % (sys.lambda_th * 1e9, sys.energy_th * 1e3))
+
+#n0, n1 = 3e14 * sys.lambda_th**2, 4e16 * sys.lambda_th**2
+n0, n1 = 1e-2, 6
+print('n0: %e, n1: %e' % (n0, n1))
 n = iter_linspace(n0, n1, N)
 
 batch = job_api.new_batch(name, description)
