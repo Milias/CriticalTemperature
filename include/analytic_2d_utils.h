@@ -14,7 +14,7 @@ struct ideal_2d_mu_v_s {
 
 struct analytic_2d_n_sc_s {
   double mu_t;
-  double a;
+  double chi_ex;
 
   const system_data & sys;
 };

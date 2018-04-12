@@ -30,11 +30,15 @@ double mb_2d_iod_l(double n, double lambda_s, const system_data & sys);
 
 /*
  * Same as in the 3D case.
+ *
+ * Note that here we take the binding energy of
+ * the exciton as a parameter, not the scattering
+ * length.
  */
 
 double ideal_2d_n(double mu_i, double m_pi);
-double analytic_2d_n_ex(double mu_t, double a, const system_data & sys);
-double analytic_2d_n_sc(double mu_t, double a, const system_data & sys);
+double analytic_2d_n_ex(double mu_t, double chi_ex, const system_data & sys);
+double analytic_2d_n_sc(double mu_t, double chi_ex, const system_data & sys);
 
 /*** Chemical potential ***/
 /*

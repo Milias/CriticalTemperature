@@ -18,7 +18,8 @@ Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.
 
 print('lambda_th: %f nm, energy_th: %f meV' % (sys.lambda_th * 1e9, sys.energy_th * 1e3))
 
-n0, n1 = 1e-2, 5
+#n0, n1 = 3e14 * sys.lambda_th**2, 4e16 * sys.lambda_th**2
+n0, n1 = 1e-2, 6
 print('n0: %e, n1: %e' % (n0, n1))
 n = iter_linspace(n0, n1, N)
 
