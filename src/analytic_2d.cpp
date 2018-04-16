@@ -22,12 +22,21 @@ double mb_2d_iod_l(double n, double lambda_s, const system_data & sys) {
 }
 
 double ideal_2d_n(double mu_i, double m_pi) {
+  if (mu_i < -200) {
+    return M_1_PI / m_pi * std::exp(0.25 * mu_i * M_1_PI);
+
+  }
+
   return M_1_PI / m_pi * std::log(1 + std::exp(0.25 * mu_i * M_1_PI));
 }
 
 double analytic_2d_n_ex(double mu_t, double chi_ex, const system_data & sys) {
   double exp_val{mu_t - chi_ex};
   if (exp_val > 9) { return std::numeric_limits<double>::quiet_NaN(); }
+
+  if (exp_val > -global_eps) {
+    return 0.25 * M_1_PI * sys.m_sigma * std::exp(exp_val);
+  }
 
   return 0.25 * M_1_PI * sys.m_sigma * (-std::log(1 - std::exp(exp_val)));
 }
@@ -75,11 +84,19 @@ double analytic_2d_n_sc(double mu_t, double chi_ex, const system_data & sys) {
 }
 
 double ideal_2d_mu(double n_id, const system_data & sys) {
+  if (n_id < global_eps) {
+    return 4 * M_PI * std::log(n_id * M_PI * sys.m_pe);
+  }
+
   return 4 * M_PI * std::log(std::exp(n_id * M_PI * sys.m_pe) - 1);
 }
 
 double ideal_2d_mu_h(double mu_e, const system_data & sys) {
-  return 4 * M_PI * std::log(std::exp(sys.m_ph / sys.m_pe * std::log(1 + std::exp(0.25 * mu_e * M_1_PI))) - 1);
+  if (mu_e > -200) {
+    return 4 * M_PI * std::log(std::exp(sys.m_ph / sys.m_pe * std::log(1 + std::exp(0.25 * mu_e * M_1_PI))) - 1);
+  } else {
+    return 4 * M_PI * std::log(sys.m_ph / sys.m_pe) + mu_e;
+  }
 }
 
 double analytic_2d_mu_ex(double chi_ex, double n_ex, const system_data & sys) {
@@ -199,7 +216,7 @@ int analytic_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double mu_h{ideal_2d_mu_h(mu_e, s->sys)};
   double mu_t{mu_e + mu_h};
 
-  //printf("mu_e: %f, mu_t: %f\n", mu_e, mu_t);
+  printf("mu_e: %f, mu_t: %f\n", mu_e, mu_t);
 
   if (mu_t >= 0) {
     mu_t = -global_eps;
@@ -208,17 +225,17 @@ int analytic_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   double n_id{ideal_2d_n(mu_e, s->sys.m_pe)};
   double new_ls{ideal_2d_ls(n_id, s->sys)};
-  double chi_ex{wf_E<0, 2>(ls, s->sys)};
+  double chi_ex{wf_E<0, 2>(new_ls, s->sys)};
 
-  //printf("ls: %f, new_a: %f, max_a: %f\n", ls, new_a, std::sqrt(-2 * mu_t) * std::exp(M_EULER));
+  printf("new_ls: %f, chi_ex: %f\n", new_ls, chi_ex);
 
   double n_ex{analytic_2d_n_ex(mu_t, chi_ex, s->sys)};
   double n_sc{analytic_2d_n_sc(mu_t, chi_ex, s->sys)};
 
-  //printf("n_id: %f, n_ex: %f, n_sc: %f\n", n_id, n_ex, n_sc);
+  printf("n_id: %e, n_ex: %e, n_sc: %e\n", n_id, n_ex, n_sc);
 
   double yv[n_eq] = {0};
-  yv[0] = - s->n + n_id + n_ex + n_sc;
+  yv[0] = - s->n + n_id + n_ex;
   yv[1] = - ls + new_ls;
   for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
 
@@ -232,15 +249,16 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
   gsl_multiroot_function f = {&analytic_2d_mu_f, n_eq, &params_s};
 
   //double init_mu{ideal_2d_mu(n, sys)};
-  double init_mu{ideal_2d_mu_v(-1, sys)};
-  //double mu_t{init_mu + ideal_2d_mu_h(init_mu, sys)};
+  double init_ls{ideal_2d_ls(n, sys)};
+  double chi_ex{wf_E<0, 2>(init_ls, sys)};
+  double init_mu{ideal_2d_mu_v(1.1 * chi_ex, sys)};
 
   double x_init[n_eq] = {
     init_mu,
-    ideal_2d_ls(n, sys)
+    init_ls
   };
 
-  //printf("first: %.3f, %.10f, %.10f, %.10f\n", n, x_init[0], x_init[1], mu_t);
+  printf("first: %.3f, %.10f, %.10f, %.10f, chi_ex: %.2f\n", n, x_init[0], x_init[1], ideal_2d_mu_h(init_mu, sys), chi_ex);
 
   gsl_vector * x = gsl_vector_alloc(n_eq);
 
@@ -251,20 +269,18 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
   gsl_multiroot_fsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    //printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
 
     status = gsl_multiroot_fsolver_iterate(s);
     if (status) { break; }
     status = gsl_multiroot_test_residual(s->f, global_eps);
 
-    /*
     printf("x: ");
     for(size_t i = 0; i < n_eq; i++) { printf("%f, ", gsl_vector_get(s->x, i)); }
 
     printf("f: ");
     for(size_t i = 0; i < n_eq; i++) { printf("%e, ", gsl_vector_get(s->f, i)); }
     printf("\n");
-    */
   }
 
   std::vector<double> r(n_eq);

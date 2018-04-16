@@ -158,6 +158,10 @@ double wf_E(double lambda_s, const system_data & sys) {
    */
   constexpr int32_t local_max_iter{1024};
 
+  if (lambda_s > 1e2) {
+    return wf_E<1, dim>(0, sys);
+  }
+
   // defined in analytic_utils.h
   wf_E_s params{lambda_s, sys};
   double z_min, z_max, z;
