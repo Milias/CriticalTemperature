@@ -21,6 +21,7 @@
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_dawson.h>
+#include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sum.h>
 
 #include <mpfr.h>
@@ -32,6 +33,8 @@
 #include <arb_hypgeom.h>
 
 #include <acb.h>
+
+#include <optim/optim.hpp>
 
 #include "utils.h"
 
@@ -127,3 +130,6 @@ template <typename T> T constexpr sign(T x) { return x / std::abs(x); }
 
 #endif
 
+/*** Struve Function ***/
+
+double struve(double v, double x);

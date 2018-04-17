@@ -6,9 +6,13 @@ job_api = JobAPI(api_token)
 bs = 1<<4
 N = 1<<18
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300 # K
+m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 30 # K
 
 sys = system_data(m_e, m_h, eps_r, T)
+
+print(optim_test())
+print(analytic_2d_mu(1e12 * sys.lambda_th**2, sys))
+exit()
 
 name = 'Testing 2D'
 description = """Testing 2D analytic densities.
@@ -21,9 +25,7 @@ mu_h = ideal_2d_mu_h(mu_e, sys)
 
 print('mu_e: %f, mu_h: %f' % (mu_e, mu_h))
 
-a_max = sqrt(-2 * mu_t) * exp(euler_gamma)
-
-a = iter_linspace(0, a_max, N)
+chi_ex = iter_linspace(mu_t + global_eps, -global_eps, N)
 
 batch = job_api.new_batch(name, description)
 
@@ -39,7 +41,7 @@ n_id = job_api.submit(
 n_ex = job_api.submit(
   analytic_2d_n_ex,
   itertools.repeat(mu_t, N),
-  a,
+  chi_ex,
   itertools.repeat(sys, N),
   size = N,
   block_size = bs,
@@ -49,7 +51,7 @@ n_ex = job_api.submit(
 n_sc = job_api.submit(
   analytic_2d_n_sc,
   itertools.repeat(mu_t, N),
-  a,
+  chi_ex,
   itertools.repeat(sys, N),
   size = N,
   block_size = bs,

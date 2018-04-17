@@ -55,9 +55,12 @@ double analytic_2d_mu_ex(double a, double n_ex, const system_data & sys);
 /*** Scattering and screening lengths ***/
 
 double ideal_2d_ls(double n_id, const system_data & sys);
+double ideal_2d_ls_mu(double mu_e, double mu_h, const system_data & sys);
 double analytic_2d_a_ls(double ls, const system_data & sys);
 
 /*** Solving for chemical potential ***/
 
 std::vector<double> analytic_2d_mu(double n, const system_data & sys);
+
+int optim_test();
 

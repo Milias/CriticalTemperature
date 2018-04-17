@@ -34,10 +34,6 @@ double analytic_2d_n_ex(double mu_t, double chi_ex, const system_data & sys) {
   double exp_val{mu_t - chi_ex};
   if (exp_val > 9) { return std::numeric_limits<double>::quiet_NaN(); }
 
-  if (exp_val > -global_eps) {
-    return 0.25 * M_1_PI * sys.m_sigma * std::exp(exp_val);
-  }
-
   return 0.25 * M_1_PI * sys.m_sigma * (-std::log(1 - std::exp(exp_val)));
 }
 
@@ -76,11 +72,11 @@ double analytic_2d_n_sc(double mu_t, double chi_ex, const system_data & sys) {
   gsl_integration_workspace * ws = gsl_integration_workspace_alloc(local_ws_size);
 
   gsl_integration_qagiu(&integrand1, 0, 0, global_eps, local_ws_size, ws, result, error);
-  gsl_integration_qagiu(&integrand2, 1 / chi_ex, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
+  gsl_integration_qagiu(&integrand2, -1 / chi_ex, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
 
   gsl_integration_workspace_free(ws);
 
-  return sys.m_sigma * 0.25 * M_1_PI * sum_result<n_int>(result);
+  return - sys.m_sigma * 0.25 * M_1_PI * sum_result<n_int>(result);
 }
 
 double ideal_2d_mu(double n_id, const system_data & sys) {
@@ -165,9 +161,20 @@ double ideal_2d_mu_v(double v, const system_data & sys) {
 }
 
 double ideal_2d_ls(double n_id, const system_data & sys) {
-  return 2 * M_PI / std::sqrt(
-      (1 - std::exp(-M_PI * sys.m_pe * n_id)) / sys.m_pe
-    + (1 - std::exp(-M_PI * sys.m_ph * n_id)) / sys.m_ph
+  return 2 * M_PI * M_PI * sys.eps_r / (sys.c_aEM * std::sqrt(2 * sys.m_pT)
+    * (
+      (1 - std::exp(- M_PI * sys.m_pe * n_id)) / sys.m_pe
+      + (1 - std::exp(- M_PI * sys.m_ph * n_id)) / sys.m_ph
+    )
+  );
+}
+
+double ideal_2d_ls_mu(double mu_e, double mu_h, const system_data & sys) {
+  return 2 * M_PI * M_PI * sys.eps_r / (sys.c_aEM * std::sqrt(2 * sys.m_pT)
+    * (
+      1 / ((1 + std::exp(- 0.25 * M_1_PI * mu_e)) * sys.m_pe)
+      + 1 / ((1 + std::exp(- 0.25 * M_1_PI * mu_h)) * sys.m_ph)
+    )
   );
 }
 
@@ -216,16 +223,18 @@ int analytic_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double mu_h{ideal_2d_mu_h(mu_e, s->sys)};
   double mu_t{mu_e + mu_h};
 
-  printf("mu_e: %f, mu_t: %f\n", mu_e, mu_t);
-
-  if (mu_t >= 0) {
+  if (mu_t > -global_eps) {
     mu_t = -global_eps;
     mu_e = ideal_2d_mu_v(mu_t, s->sys);
   }
 
+  printf("mu_e: %f, mu_t: %f\n", mu_e, mu_t);
+
+  //double new_ls{ideal_2d_ls(n_id, s->sys)};
+
   double n_id{ideal_2d_n(mu_e, s->sys.m_pe)};
-  double new_ls{ideal_2d_ls(n_id, s->sys)};
-  double chi_ex{wf_E<0, 2>(new_ls, s->sys)};
+  double new_ls{ideal_2d_ls_mu(mu_e, mu_h, s->sys)};
+  double chi_ex{wf_E<2, 2>(new_ls, s->sys)};
 
   printf("new_ls: %f, chi_ex: %f\n", new_ls, chi_ex);
 
@@ -234,9 +243,11 @@ int analytic_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   printf("n_id: %e, n_ex: %e, n_sc: %e\n", n_id, n_ex, n_sc);
 
+  assert(chi_ex > mu_t && "Binding energy has to be above chemical potential");
+
   double yv[n_eq] = {0};
-  yv[0] = - s->n + n_id + n_ex;
-  yv[1] = - ls + new_ls;
+  yv[0] = - s->n + n_id + n_ex + n_sc;
+  yv[1] = - new_ls + ls;
   for (uint32_t i = 0; i < n_eq; i++) { gsl_vector_set(f, i, yv[i]); }
 
   return GSL_SUCCESS;
@@ -250,8 +261,8 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
 
   //double init_mu{ideal_2d_mu(n, sys)};
   double init_ls{ideal_2d_ls(n, sys)};
-  double chi_ex{wf_E<0, 2>(init_ls, sys)};
-  double init_mu{ideal_2d_mu_v(1.1 * chi_ex, sys)};
+  double chi_ex{wf_E<2, 2>(init_ls, sys)};
+  double init_mu{ideal_2d_mu_v(2 * chi_ex, sys)};
 
   double x_init[n_eq] = {
     init_mu,
@@ -269,7 +280,7 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
   gsl_multiroot_fsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    printf("iter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    printf("\niter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
 
     status = gsl_multiroot_fsolver_iterate(s);
     if (status) { break; }
@@ -292,4 +303,68 @@ std::vector<double> analytic_2d_mu(double n, const system_data & sys) {
 
   return r;
 }
-
+ 
+struct rastrigin_fn_data {
+    double A;
+};
+ 
+double rastrigin_fn(const arma::vec& vals_inp, arma::vec* /*grad_out*/, void* opt_data)
+{
+    const int n = vals_inp.n_elem;
+ 
+    rastrigin_fn_data* objfn_data = reinterpret_cast<rastrigin_fn_data*>(opt_data);
+    const double A = objfn_data->A;
+ 
+    double obj_val = A*n + arma::accu( arma::pow(vals_inp,2) - A*arma::cos(2*arma::datum::pi*vals_inp) );
+    //
+    return obj_val;
+}
+ 
+double ackley_fn(const arma::vec& vals_inp, arma::vec* /*grad_out*/, void* /*opt_data*/)
+{
+    const double x = vals_inp(0);
+    const double y = vals_inp(1);
+    const double pi = arma::datum::pi;
+ 
+    double obj_val = -20*std::exp( -0.2*std::sqrt(0.5*(x*x + y*y)) ) - std::exp( 0.5*(std::cos(2*pi*x) + std::cos(2*pi*y)) ) + std::exp(1) + 20;
+    //
+    return obj_val;
+}
+ 
+int optim_test()
+{
+    //
+    // Rastrigin function
+ 
+    rastrigin_fn_data test_data;
+    test_data.A = 10;
+ 
+    arma::vec x = arma::ones(2,1) + 1.0; // initial values: (2,2)
+ 
+    bool success = optim::de(x,rastrigin_fn,&test_data);
+ 
+    if (success) {
+        std::cout << "de: Rastrigin test completed successfully." << std::endl;
+    } else {
+        std::cout << "de: Rastrigin test completed unsuccessfully." << std::endl;
+    }
+ 
+    arma::cout << "de: solution to Rastrigin test:\n" << x << arma::endl;
+ 
+    //
+    // Ackley function
+ 
+    arma::vec x_2 = arma::ones(2,1) + 1.0; // initial values: (2,2)
+ 
+    bool success_2 = optim::de(x_2,ackley_fn,nullptr);
+ 
+    if (success_2) {
+        std::cout << "de: Ackley test completed successfully." << std::endl;
+    } else {
+        std::cout << "de: Ackley test completed unsuccessfully." << std::endl;
+    }
+ 
+    arma::cout << "de: solution to Ackley test:\n" << x_2 << arma::endl;
+ 
+    return 0;
+}

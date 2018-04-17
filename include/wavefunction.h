@@ -26,20 +26,30 @@ class wf_c {
   private:
     double pot_yuk_3d(double x) const {
       return
-        - 2 * std::sqrt(-sys.E_1) *
-        std::exp(
-          -4 * std::sqrt(sys.c_aEM * M_PI / sys.eps_r * std::sqrt(sys.m_pT / 8)) * x / lambda_s
-        ) / x;
+        - M_SQRT2 * sys.c_aEM / (sys.eps_r) * std::sqrt(sys.m_pT) *
+        std::exp(- x / lambda_s) / x;
     }
 
-    double pot_cou_3d(double x) const {
+    double pot_cou(double x) const {
       return
-        - 2 * std::sqrt(-sys.E_1) / x;
+        - M_SQRT2 * sys.c_aEM / (sys.eps_r) * std::sqrt(sys.m_pT) / x;
+    }
+
+    double pot_limit_2d(double x) const {
+      double y{x / lambda_s};
+      double rest{
+        1 / y
+        + gsl_sf_bessel_J0(y) * (std::log(0.5 * y) + M_EULER)
+        + derivative_c2(&gsl_sf_hyperg_0F1, 1.0, 1e-7, -0.25 * y*y)
+        - 0.5 * M_PI * struve(0, y)
+      };
+      return - M_SQRT2 * sys.c_aEM / (sys.eps_r * lambda_s) * std::sqrt(sys.m_pT) * rest;
     }
 
     constexpr static double (wf_c<state, pot_index, dim>::*pot_func [])(double) const {
       {&wf_c<state, pot_index, dim>::pot_yuk_3d},
-      {&wf_c<state, pot_index, dim>::pot_cou_3d}
+      {&wf_c<state, pot_index, dim>::pot_cou},
+      {&wf_c<state, pot_index, dim>::pot_limit_2d}
     };
 
     constexpr double pot(double x) const {
@@ -62,8 +72,6 @@ class wf_c {
       if (x > global_eps) {
         if constexpr(dim == 2) {
           dy[1] = ( pot(x) - 0.25 / (x*x) - E ) * y[0];
-          //dy[1] = ( std::sqrt(-E) / x + pot(x) ) * y[0] + ( 2 * std::sqrt(-E) - 1 / x ) * y[1];
-          //dy[1] = - (1 - x)/x * y[1] - (pot(-1) - std::sqrt(-E))/2/std::sqrt(-E)/x * y[0];
         } else if constexpr(dim == 3) {
           dy[1] = ( pot(x) - E ) * y[0];
         }
@@ -156,11 +164,7 @@ double wf_E(double lambda_s, const system_data & sys) {
    *
    * Using Brent's algorithm.
    */
-  constexpr int32_t local_max_iter{1024};
-
-  if (lambda_s > 1e2) {
-    return wf_E<1, dim>(0, sys);
-  }
+  constexpr int32_t local_max_iter{128};
 
   // defined in analytic_utils.h
   wf_E_s params{lambda_s, sys};
@@ -168,6 +172,7 @@ double wf_E(double lambda_s, const system_data & sys) {
 
   if constexpr(dim == 2) {
     z_min = sys.get_E_n(0.5);
+    //z_min = -10000;
     //z_max = sys.get_E_n(1.5);
   } else {
     z_min = sys.get_E_n<1>();
@@ -191,7 +196,7 @@ double wf_E(double lambda_s, const system_data & sys) {
     z_max = z_min * std::pow(1 - f, i);
     n = wf_n<pot_index, dim>(z_max, lambda_s, sys);
 
-    //printf("n: %d, z: %f, %f\n", n, z_min, z_max);
+    //printf("searching -- n: %d, z: %f, %f\n", n, z_min, z_max);
 
     if (n == n0 + 1) {
       break;
@@ -199,7 +204,7 @@ double wf_E(double lambda_s, const system_data & sys) {
       f *= 0.5;
       i = 0;
       z_max = z_min;
-    } else if (z_max > -global_eps) {
+    } else if (z_max > -1e-6) {
       return std::numeric_limits<double>::quiet_NaN();
     } else {
       z_min = z_max;
@@ -223,7 +228,7 @@ double wf_E(double lambda_s, const system_data & sys) {
     z_max = gsl_root_fsolver_x_upper(s);
 
     status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
-    //printf("%f, %f, %f\n", lambda_s, z, funct.function(z, &params));
+    //printf("iterating -- %f, %f, %f\n", lambda_s, z, funct.function(z, &params));
   }
 
   gsl_root_fsolver_free(s);
@@ -231,6 +236,8 @@ double wf_E(double lambda_s, const system_data & sys) {
 }
 
 #endif
+
+double pot_limit_2d(double y);
 
 std::vector<double> wf_s_py(double E, double lambda_s, const system_data & sys);
 std::vector<double> wf_2d_s_py(double E, double lambda_s, const system_data & sys);
@@ -246,4 +253,7 @@ uint32_t wf_2d_n_cou_py(double E, const system_data & sys);
 
 double wf_E_cou_py(const system_data & sys);
 double wf_2d_E_cou_py(const system_data & sys);
+
+double wf_2d_E_lim_py(double lambda_s, const system_data & sys);
+uint32_t wf_2d_n_lim_py(double E, double lambda_s, const system_data & sys);
 

@@ -4,6 +4,8 @@ import itertools
 
 from numpy import *
 import matplotlib.pyplot as plt
+import scipy.special
+import scipy.misc
 
 from semiconductor import *
 from job_api import JobAPI

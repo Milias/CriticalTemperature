@@ -14,7 +14,7 @@ def find_files(path, ext):
 src_path = 'src'
 swig_path = 'swig'
 
-includes = [ 'include', '/usr/include/python3.6m' ]
+includes = [ 'include', '/usr/include/python3.6m', '/usr/local/include' ]
 
 output_bin = 'bin'
 output_lib = output_bin + '/semiconductor.so'
@@ -22,6 +22,7 @@ output_swig_so = 'src/semiconductor_wrapper.os'
 output_py = 'bin/main.py'
 
 lib_sources = [ e for e in find_files(src_path, '.cpp') if not 'wrapper' in e ]
+
 swig_sources = find_files(swig_path, '.i')
 py_modules = find_files('python', '.py')
 
@@ -29,7 +30,7 @@ swig_py = 'bin/semiconductor.py'
 swig_cpp = 'src/semiconductor_wrapper.cpp'
 
 cc_flags = ['-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native']
-incl_libs = ['gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb']
+incl_libs = ['gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',  'optim']
 swig_flags = ['-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall', '-modern', '-fastdispatch', '-nosafecstrings', '-fvirtual', '-noproxydel', '-fastproxy', '-fastinit', '-fastquery', '-modernargs', '-nobuildnone', '-dirvtable']
 
 swig_cmd = 'swig %s -o $TARGET -Iinclude -outdir %s $SOURCE' % (' '.join(swig_flags), output_bin)
@@ -56,7 +57,15 @@ env.ParseConfig("python-config --libs")
 py = env.Install(output_bin, py_modules)
 swig_gen = env.Command(swig_cpp, swig_sources, swig_cmd)
 swig_so = env.SharedObject(target = output_swig_so, source = swig_cpp, )
-lib = env.SharedLibrary(target = output_lib, source = [ output_swig_so ] + lib_sources, SHLIBPREFIX = '_')
+lib = env.SharedLibrary(
+    target = output_lib,
+    source = [ output_swig_so ] + lib_sources,
+    SHLIBPREFIX = '_',
+    LIBPATH = [
+      '/usr/lib',
+      '/usr/local/lib'
+    ]
+)
 
 Clean(py, ['bin/__pycache__'])
 Clean(swig_gen, swig_py)
