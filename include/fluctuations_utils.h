@@ -4,7 +4,6 @@
  */
 
 #pragma once
-
 #include "common.h"
 
 struct fluct_T_i_s {

@@ -4,18 +4,28 @@ api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5E
 job_api = JobAPI(api_token)
 
 bs = 1<<4
-N = 1<<18
+N = 1<<12
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 30 # K
 sys = system_data(m_e, m_h, eps_r, T)
 
-"""
-mu_e, ls = analytic_2d_mu(7e15 * sys.lambda_th**2, sys)
-chi_ex = wf_2d_E_lim_py(ls, sys)
+print((sys.m_pe, sys.m_ph))
+
+mu_e = 1
 mu_h = ideal_2d_mu_h(mu_e, sys)
-print((mu_e, mu_h, mu_e + mu_h, chi_ex, ls))
+E = 4
+
+print((mu_e, mu_h, mu_e + mu_h))
+
+x = linspace(0, 1e3, N)
+
+y = array([fluct_2d_I2(z, E, mu_e, mu_h, sys) for z in x])
+
+plt.plot(x, real(y), 'r-')
+plt.plot(x, imag(y), 'b-')
+plt.show()
+
 exit()
-"""
 
 name = 'Testing 2D'
 description = """Testing 2D analytic densities.

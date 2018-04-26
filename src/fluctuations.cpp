@@ -435,7 +435,7 @@ double fluct_pp_b(double E, double a, double mu_e, double mu_h, const system_dat
   /*
     Computes the value z0 that satisfies the following:
 
-    pi / (2 * a) + pi * sqrt((1-(mr_p / mr_m)^2)*E/4 - z0 - mu_e - mu_h) + fluct_es_f(z0, ...) == 0
+    pi / (2 * a) - pi * sqrt((1-(mr_p / mr_m)^2)*E/4 - z0 - mu_e - mu_h) + fluct_es_f(z0, ...) == 0
 
     Brent version.
   */

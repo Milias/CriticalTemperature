@@ -21,6 +21,8 @@ struct analytic_2d_n_sc_s {
 
 struct analytic_2d_mu_s {
   double n;
+  double ls_max;
+
   const system_data & sys;
 };
 

@@ -36,14 +36,18 @@ class wf_c {
     }
 
     double pot_limit_2d(double x) const {
-      double y{x / lambda_s};
-      double rest{
-        1 / y
-        + gsl_sf_bessel_J0(y) * (std::log(0.5 * y) + M_EULER)
-        + derivative_c2(&gsl_sf_hyperg_0F1, 1.0, 1e-7, -0.25 * y*y)
-        - 0.5 * M_PI * struve(0, y)
-      };
-      return - M_SQRT2 * sys.c_aEM / (sys.eps_r * lambda_s) * std::sqrt(sys.m_pT) * rest;
+      if (lambda_s > 0) {
+        double y{x * lambda_s};
+        double rest{
+          1 / y
+          + gsl_sf_bessel_J0(y) * (std::log(0.5 * y) + M_EULER)
+          + derivative_c2(&gsl_sf_hyperg_0F1, 1.0, 1e-7, -0.25 * y*y)
+          - 0.5 * M_PI * struve(0, y)
+        };
+        return - M_SQRT2 * sys.c_aEM / (sys.eps_r / lambda_s) * std::sqrt(sys.m_pT) * rest;
+      } else {
+        return pot_cou(x);
+      }
     }
 
     constexpr static double (wf_c<state, pot_index, dim>::*pot_func [])(double) const {
@@ -233,6 +237,11 @@ double wf_E(double lambda_s, const system_data & sys) {
 
   gsl_root_fsolver_free(s);
   return z;
+}
+
+template <uint32_t pot_index = 0, uint32_t dim = 3>
+double wf_E_dls(double lambda_s, const system_data & sys) {
+  return derivative_f3(wf_E<pot_index, dim>, lambda_s, 1e-6 * lambda_s, sys);
 }
 
 #endif
