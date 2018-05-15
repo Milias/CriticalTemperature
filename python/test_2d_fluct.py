@@ -11,15 +11,53 @@ sys = system_data(m_e, m_h, eps_r, T)
 
 print((sys.m_pe, sys.m_ph))
 
-mu_e = 1
+chi_ex = -1
+mu_e = ideal_2d_mu_v(-2, sys)
 mu_h = ideal_2d_mu_h(mu_e, sys)
-E = 4
+mu_t = mu_e + mu_h
 
-print((mu_e, mu_h, mu_e + mu_h))
+print((mu_e, mu_h, mu_t))
 
-x = linspace(0, 1e3, N)
+#print(fluct_2d_I2(1871.52 - mu_e - mu_h - chi_ex * exp(-19.196536), sys.m_sigma * 1871.52, mu_e, mu_h, sys))
+#print(fluct_2d_I2(1 - mu_e - mu_h - chi_ex * 10, sys.m_sigma * 1, mu_e, mu_h, sys))
+#print(fluct_2d_I2_p(10, 1, chi_ex, mu_e, mu_h, sys))
+#print(fluct_2d_n_sc(chi_ex, mu_e, mu_h, sys))
+#exit()
 
-y = array([fluct_2d_I2(z, E, mu_e, mu_h, sys) for z in x])
+z = 1
+t = 1
+
+x = linspace(1, 200, N)
+
+#y = array([fluct_2d_I2_b(x - mu_t - chi_ex * z, sys.m_sigma * x, mu_e, mu_h, sys.m_pe) for x in x]).reshape(N, 2)
+#y = array([fluct_2d_I2_b(x - mu_t - chi_ex * exp(-t), sys.m_sigma * x, mu_e, mu_h, sys.m_pe) for x in x]).reshape(N, 2)
+#y = y[:, 0] + 1j * y[:, 1]
+#y2 = y[:, 1] - y[:, 0]
+
+#yt = array([fluct_2d_I2(x - mu_t - chi_ex * exp(-t), sys.m_sigma * x, mu_e, mu_h, sys) for x in x])
+
+t0 = time.time()
+yz = array([fluct_2d_I2(z - mu_t - chi_ex * x, sys.m_sigma * z, mu_e, mu_h, sys) for x in x])
+print(time.time() - t0)
+
+t0 = time.time()
+yz_v2 = array([fluct_2d_I2_p(x, z, chi_ex, mu_e, mu_h, sys) for x in x])
+print(time.time() - t0)
+
+#print(y)
+
+#plt.plot(x, y2, 'g.-')
+#plt.plot(x, real(yt), 'r.-')
+#plt.plot(x, imag(yt), 'b.-')
+plt.plot(x, real(yz), 'r-')
+plt.plot(x, imag(yz), 'b-')
+plt.plot(x, real(yz_v2), 'm--')
+plt.plot(x, imag(yz_v2), 'g--')
+plt.show()
+exit()
+
+x = linspace(mu_t, 0, N)
+y = array([complex(fluct_2d_n_ex(z, mu_e, mu_h, sys), 0) for z in x])
 
 plt.plot(x, real(y), 'r-')
 plt.plot(x, imag(y), 'b-')

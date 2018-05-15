@@ -29,7 +29,8 @@ void system_data::set_temperature(double T) {
 }
 
 double system_data::get_z1(double E, double mu_t) const {
-  return 0.25 * (1 - std::pow(m_ph - m_pe, 2)) * E - mu_t;
+  return E / m_sigma - mu_t;
+  //return 0.25 * (1 - std::pow(m_ph - m_pe, 2)) * E - mu_t;
 }
 
 double system_data::get_E_n(double n) const {
