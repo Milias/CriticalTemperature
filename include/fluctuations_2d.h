@@ -13,12 +13,16 @@
 #include "templates.h"
 #include "analytic_2d.h"
 
-std::vector<double> fluct_2d_I2_b(double z, double E, double mu_e, double mu_h, double m);
-std::complex<double> fluct_2d_I2(double z, double E, double mu_e, double mu_h, const system_data & sys);
+double fluct_2d_I2(double z, double E, double mu_e, double mu_h, const system_data & sys);
+double fluct_2d_I2_dz(double z, double E, double mu_e, double mu_h, const system_data & sys);
+
 std::complex<double> fluct_2d_I2_p(double z, double E, double chi_ex, double mu_e, double mu_h, const system_data & sys);
 
 double fluct_2d_pp(double E, double chi_ex, double mu_e, double mu_h, const system_data & sys);
 
 double fluct_2d_n_ex(double chi_ex, double mu_e, double mu_h, const system_data & sys);
 double fluct_2d_n_sc(double chi_ex, double mu_e, double mu_h, const system_data & sys);
+double fluct_2d_n_sc_v2(double chi_ex, double mu_e, double mu_h, const system_data & sys);
+
+std::vector<double> fluct_2d_mu(double n, const system_data & sys);
 

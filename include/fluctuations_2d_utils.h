@@ -15,6 +15,21 @@ struct fluct_2d_I2_s {
   const system_data & sys;
 };
 
+struct fluct_2d_I2_dz_s {
+  double ye_min;
+  double yh_min;
+
+  double ye_min2;
+  double yh_min2;
+
+  double z0;
+  double E;
+  double mu_e;
+  double mu_h;
+
+  const system_data & sys;
+};
+
 struct fluct_2d_I2_p_s {
   double x_0e;
   double dx_0e;
@@ -64,6 +79,13 @@ struct fluct_2d_n_sc_s {
   double chi_ex;
   double mu_e;
   double mu_h;
+
+  const system_data & sys;
+};
+
+struct fluct_2d_mu_s {
+  double n;
+  double ls_max;
 
   const system_data & sys;
 };
