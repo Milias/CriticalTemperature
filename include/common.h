@@ -45,7 +45,7 @@ constexpr mp_prec_t prec{64};
 
 /*** gsl constants ***/
 
-constexpr double global_eps{1e-12};
+constexpr double global_eps{1e-10};
 constexpr int max_iter{64};
 
 /*** Initialization ***/

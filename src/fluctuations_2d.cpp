@@ -616,12 +616,12 @@ double fluct_2d_n_sc(double chi_ex, double mu_e, double mu_h, const system_data 
   gsl_integration_qagiu(integrand + 1, 1, 0, global_eps, local_ws_size, ws, result + 1, error + 1);
   gsl_integration_workspace_free(ws);
 
-  ///*
+  /*
   for (uint32_t i = 0; i < n_int; i++) {
     printf("fluct_2d_n_sc: %d: %f (%e)\n", i, result[i], error[i]);
   }
   printf("\n");
-  //*/
+  */
 
   return 0.125 * M_1_PI * M_1_PI * sys.m_sigma * sum_result<n_int>(result);
 }
@@ -668,8 +668,12 @@ int fluct_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double u{gsl_vector_get(x, 0)};
   double v{gsl_vector_get(x, 1)};
 
-  if (std::isnan(u)) { u = 0; }
-  if (std::isnan(v)) { v = 0; }
+  //
+  printf("prev u: %f, v: %f\n", u, v);
+
+  if (std::isnan(u) || std::isnan(v)) {
+    return GSL_EDOM;
+  }
 
   double ls{s->ls_max / (std::exp(-v) + 1)};
   double mu_e{
@@ -685,6 +689,7 @@ int fluct_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
 
   double n_ex{fluct_2d_n_ex(chi_ex, mu_e, mu_h, s->sys)};
   double n_sc{fluct_2d_n_sc(chi_ex, mu_e, mu_h, s->sys)};
+  //double n_sc{0};
 
   ///*
   printf("u: %f, v: %f\n", u, v);
@@ -723,13 +728,15 @@ std::vector<double> fluct_2d_mu(double n, const system_data & sys) {
   gsl_multiroot_fsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    printf("\niter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    //printf("\niter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
 
+    auto t0{std::chrono::high_resolution_clock::now()};
     status = gsl_multiroot_fsolver_iterate(s);
-    if (status) { break; }
-    status = gsl_multiroot_test_residual(s->f, global_eps);
+    double dt = (std::chrono::high_resolution_clock::now() - t0).count();
 
     ///*
+    printf("dt: %f s\n", 1e-9 * dt);
+    printf("Status: %s\n", gsl_strerror(status));
     printf("x: ");
     for(size_t i = 0; i < n_eq; i++) { printf("%f, ", gsl_vector_get(s->x, i)); }
 
@@ -737,6 +744,9 @@ std::vector<double> fluct_2d_mu(double n, const system_data & sys) {
     for(size_t i = 0; i < n_eq; i++) { printf("%e, ", gsl_vector_get(s->f, i)); }
     printf("\n");
     //*/
+
+    if (status) { break; }
+    status = gsl_multiroot_test_residual(s->f, global_eps);
   }
 
   std::vector<double> r(n_eq);
