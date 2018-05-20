@@ -42,7 +42,6 @@ getattr(plt, plot_type)(x, y4, 'm.--', label = r'$n_{ex} + n_{sc}$')
 plt.legend(loc = 0)
 plt.tight_layout()
 plt.autoscale(enable = True, axis = 'x', tight = True)
-#plt.axis([x[0], x[-1], -0.3, 0.6])
 
 plt.show()
 
