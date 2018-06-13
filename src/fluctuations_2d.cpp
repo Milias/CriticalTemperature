@@ -668,7 +668,6 @@ int fluct_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   double u{gsl_vector_get(x, 0)};
   double v{gsl_vector_get(x, 1)};
 
-  //
   printf("prev u: %f, v: %f\n", u, v);
 
   if (std::isnan(u) || std::isnan(v)) {
@@ -676,20 +675,21 @@ int fluct_2d_mu_f(const gsl_vector * x, void * params, gsl_vector * f) {
   }
 
   double ls{s->ls_max / (std::exp(-v) + 1)};
+
+  double chi_ex{wf_E<2, 2>(ls, s->sys)};
   double mu_e{
-    ideal_2d_mu_v(wf_E<2, 2>(ls, s->sys) - log(1 + std::exp(u)), s->sys)
+    ideal_2d_mu_v(chi_ex - log(1 + std::exp(u)), s->sys)
   };
 
   double mu_h{ideal_2d_mu_h(mu_e, s->sys)};
   double mu_t{mu_e + mu_h};
-  double chi_ex{wf_E<2, 2>(ls, s->sys)};
 
   double n_id{ideal_2d_n(mu_e, s->sys.m_pe)};
   double new_ls{ideal_2d_ls_mu(mu_e, mu_h, s->sys)};
 
   double n_ex{fluct_2d_n_ex(chi_ex, mu_e, mu_h, s->sys)};
-  double n_sc{fluct_2d_n_sc(chi_ex, mu_e, mu_h, s->sys)};
-  //double n_sc{0};
+  //double n_sc{fluct_2d_n_sc(chi_ex, mu_e, mu_h, s->sys)};
+  double n_sc{0};
 
   ///*
   printf("u: %f, v: %f\n", u, v);
@@ -728,7 +728,7 @@ std::vector<double> fluct_2d_mu(double n, const system_data & sys) {
   gsl_multiroot_fsolver_set(s, &f, x);
 
   for (int status = GSL_CONTINUE, iter = 0; status == GSL_CONTINUE && iter < max_iter; iter++) {
-    //printf("\niter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
+    printf("\niter %d: %.3f, %.10f, %.10f\n", iter, n, gsl_vector_get(s->x, 0), gsl_vector_get(s->x, 1));
 
     auto t0{std::chrono::high_resolution_clock::now()};
     status = gsl_multiroot_fsolver_iterate(s);

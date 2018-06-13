@@ -4,14 +4,14 @@ api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5E
 job_api = JobAPI(api_token)
 
 bs = 1<<0
-N = 1<<12
+N = 1<<7
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 10 # K
+m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1 # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 print((sys.m_pe, sys.m_ph))
 
-chi_ex = -100
+chi_ex = -1
 mu_e = ideal_2d_mu_v(1.1 * chi_ex, sys)
 mu_h = ideal_2d_mu_h(mu_e, sys)
 mu_t = mu_e + mu_h
@@ -31,7 +31,8 @@ mu_t = mu_e + mu_h
 #print(fluct_2d_n_sc(chi_ex, mu_e, mu_h, sys))
 #print('v1: %f s' % (time.time() - t0))
 
-n = 50
+"""
+n = 3
 print('n: %.1e cm^-2' % (1e-4 * n * sys.lambda_th**-2))
 
 t0 = time.time()
@@ -47,12 +48,12 @@ n_ex = fluct_2d_n_ex(chi_ex, mu_e, mu_h, sys)
 n_sc = fluct_2d_n_sc(chi_ex, mu_e, mu_h, sys)
 
 print('n_id: %e, n_ex: %e, n_sc: %e' % (n_id, n_ex, n_sc))
+print('dif: %e' % (n - n_id - n_ex - n_sc))
 
 print('%.2f s' % (time.time() - t0))
 
 exit()
 
-#"""
 z = 1
 t = 1
 E = 0
@@ -107,7 +108,7 @@ plt.plot(x, imag(y), 'b-')
 plt.show()
 
 exit()
-#"""
+"""
 
 name = 'Testing 2D'
 description = """Testing 2D analytic densities.
@@ -116,7 +117,7 @@ Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.
 
 print('mu_e: %f, mu_h: %f' % (mu_e, mu_h))
 
-mu_t = iter_linspace(10 * chi_ex, chi_ex - global_eps, N)
+mu_t = iter_linspace(1.1 * chi_ex, 0.5 * chi_ex, N)
 
 batch = job_api.new_batch(name, description)
 
