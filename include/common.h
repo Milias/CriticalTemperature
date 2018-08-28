@@ -127,9 +127,11 @@ template <typename T> T constexpr const_sqrt(T x) {
 std::complex<double> erf_c(std::complex<double> & z);
 
 template <typename T> T constexpr sign(T x) { return x == 0 ? 0 : (x > 0 ? 1 : -1); }
+template <typename T> T constexpr kron(T a, T b) { return a == b ? 1 : 0; }
 
 #endif
 
 /*** Struve Function ***/
 
 double struve(double v, double x);
+

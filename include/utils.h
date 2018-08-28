@@ -28,6 +28,7 @@ struct system_data {
   constexpr static double c_m_e{0.5109989461e6}; // eV
   constexpr static double c_hbar{6.582119514e-16}; // eV s
   constexpr static double c_light{299792458}; // m s^-1
+  constexpr static double c_hbarc{1.9732697879518254e-07}; // eV m
   /*
    * Electromagnetic fine-structure constant,
    * approx ~ 1 / 137.
@@ -54,6 +55,7 @@ struct system_data {
    */
 
   const double m_p; // eV
+  const double m_2p; // eV
   const double m_pe; // dimensionless
   const double m_ph; // dimensionless
   const double m_sigma; // dimensionless
@@ -75,6 +77,13 @@ struct system_data {
   double m_pT; // dimensionless
   double E_1; // dimensionless
   double delta_E; // dimensionless
+
+  /*
+   * Temperature-less units
+   *
+   */
+
+  const double zt_len; // m
 
   /*
    * Constructor methods
@@ -107,7 +116,7 @@ struct system_data {
    * lambda_th = c * hbar * sqrt(2 * pi * beta / m_p)
    */
   double f_lambda_th(double beta, double m_p) {
-    return c_light * c_hbar * std::sqrt(2 * M_PI * beta / m_p);
+    return c_hbarc * std::sqrt(2 * M_PI * beta / m_p);
   }
 
   /*

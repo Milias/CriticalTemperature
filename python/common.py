@@ -7,7 +7,7 @@ import cmath
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, SymLogNorm
 
 import scipy.special
 import scipy.misc

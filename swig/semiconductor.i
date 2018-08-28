@@ -16,6 +16,7 @@
 #include "fluctuations.h"
 #include "analytic_2d.h"
 #include "fluctuations_2d.h"
+#include "plasmons.h"
 %}
 
 %include "common.h"
@@ -25,4 +26,5 @@
 %include "fluctuations.h"
 %include "analytic_2d.h"
 %include "fluctuations_2d.h"
+%include "plasmons.h"
 

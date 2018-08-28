@@ -96,3 +96,4 @@ double wf_2d_E_lim_py(double lambda_s, const system_data & sys) {
 uint32_t wf_2d_n_lim_py(double E, double lambda_s, const system_data & sys) {
   return wf_n<2, 2>(E, lambda_s, sys);
 }
+
