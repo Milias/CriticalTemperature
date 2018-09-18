@@ -59,6 +59,7 @@ struct system_data {
   const double m_pe; // dimensionless
   const double m_ph; // dimensionless
   const double m_sigma; // dimensionless
+  const double m_eh; // dimensionless
 
   /*
    * Temperature-scaled quantities

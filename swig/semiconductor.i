@@ -7,6 +7,7 @@
 %include "std_vector.i"
 
 %template(DoubleVector) std::vector<double>;
+%template(Uint32Vector) std::vector<uint32_t>;
 
 %{
 #include "common.h"

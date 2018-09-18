@@ -338,7 +338,7 @@ class JobAPI:
     for job in JobAPI_Iterator(self):
       try:
         self.__process_job(job)
-      except:
+      except Exception as exc:
         self.__update_job({'status_id': 5})
-        raise
+        raise exc
 

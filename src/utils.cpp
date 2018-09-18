@@ -11,6 +11,7 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
   m_pe(m_h / (m_e + m_h)),
   m_ph(m_e / (m_e + m_h)),
   m_sigma((m_e + m_h) * (1.0 / m_e + 1.0 / m_h)),
+  m_eh(m_e / m_h),
   T(T),
   beta(f_beta(T)),
   energy_th(f_energy_th(T)),

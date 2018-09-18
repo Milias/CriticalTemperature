@@ -52,7 +52,7 @@ env.Replace(SWIGPATH = includes[0])
 env.Replace(SWIGOUTDIR = output_bin)
 env.Replace(SWIGCXXFILESUFFIX = 'cpp')
 
-env.ParseConfig("python-config --libs")
+env.ParseConfig('python-config --libs')
 
 py = env.Install(output_bin, py_modules)
 swig_gen = env.Command(swig_cpp, swig_sources, swig_cmd)

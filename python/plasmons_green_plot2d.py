@@ -6,8 +6,8 @@ job_api.load_batch()
 
 green, = job_api.loaded_jobs
 
-W, K, mu_e_iter, mu_h_iter, sys_iter = green.args
-mu_e, mu_h, sys = [next(it) for it in (mu_e_iter, mu_h_iter, sys_iter)]
+W, K, mu_e_iter, mu_h_iter, v_1_iter, sys_iter, delta_iter = green.args
+mu_e, mu_h, v_1, sys = [next(it) for it in (mu_e_iter, mu_h_iter, v_1_iter, sys_iter)]
 
 N = int(sqrt(W.size))
 
@@ -18,10 +18,38 @@ green_arr = green_arr.reshape((N, N, 2))
 zr, zi = green_arr[:,:,0], green_arr[:,:,1]
 
 print((amin(zi), amax(zi)))
-p = 1e-3
+p = 5e-6
 
 #zr = clip(zr, -0.2, 0.2)[::-1, :]
 zi = clip(zi, p * amin(zi), p * amax(zi))[::-1, :]
+kvec = linspace(amin(K), amax(K), 4 * N + 1)
+wvec = linspace(0, amax(W), 4 * N + 1)
+
+wvec1 = sqrt(v_1 * (mu_e + mu_h) / (2 * pi * sys.eps_r) * abs(kvec))
+wvec2 = -wvec1
+
+wvec1b = sqrt(
+  abs(kvec) * v_1 * (mu_e + mu_h) / (4 * pi * sys.eps_r)
+  * (
+    1 + sqrt(
+      1
+      + 24 * pi * sys.eps_r * (sys.m_pe * mu_e**2 + sys.m_ph * mu_h**2) * abs(kvec) / ( v_1 * (mu_e + mu_h)**2 )
+    )
+  )
+)
+wvec2b = - wvec1b
+
+wvec1c = sys.m_pe * kvec**2 - 2 * sqrt(sys.m_pe * mu_e) * abs(kvec)
+wvec2c = sys.m_ph * kvec**2 - 2 * sqrt(sys.m_ph * mu_h) * abs(kvec)
+
+wvec3c = sys.m_pe * kvec**2 + 2 * sqrt(sys.m_pe * mu_e) * abs(kvec)
+wvec4c = sys.m_ph * kvec**2 + 2 * sqrt(sys.m_ph * mu_h) * abs(kvec)
+
+kmax = plasmon_kmax(mu_e, mu_h, v_1, sys)
+wmax = sys.m_pe * kmax**2 + 2 * sqrt(sys.m_pe * mu_e) * kmax
+
+wplvec1 = array([plasmon_disp(abs(k), mu_e, mu_h, v_1, sys) for k in kvec])
+wplvec2 = -wplvec1
 
 plt.imshow(
   zi,
@@ -33,8 +61,38 @@ plt.imshow(
     amin(W),
     amax(W)
   ),
-  norm = SymLogNorm(linthresh = p)
+  #norm = SymLogNorm(linthresh = 1e-4 * amax(zi))
 )
+
+plt.plot(kvec, wvec1, 'b--')
+plt.plot(kvec, wvec2, 'b--')
+
+plt.plot(kvec, wvec1b, 'k--')
+plt.plot(kvec, wvec2b, 'k--')
+
+plt.plot(kvec, wplvec1, 'k-')
+plt.plot(kvec, wplvec2, 'w-')
+
+plt.plot(kvec, wvec1c, 'g-')
+plt.plot(kvec, wvec2c, 'g--')
+plt.plot(kvec, -wvec1c, 'g-')
+plt.plot(kvec, -wvec2c, 'g--')
+
+plt.plot(kvec, wvec3c, 'm-')
+plt.plot(kvec, wvec4c, 'm--')
+plt.plot(kvec, -wvec3c, 'm-')
+plt.plot(kvec, -wvec4c, 'm--')
+
+plt.plot([0, kmax, kmax, 0, 0], [0, 0, wmax, wmax, 0], 'k-')
+
+plt.axis([
+  amin(K),
+  amax(K),
+  amin(W),
+  amax(W)
+])
+
+plt.colorbar()
 
 """
 fig, axarr = plt.subplots(ncols = 2, sharey = True)

@@ -1,16 +1,20 @@
 import time
 import copyreg
 import itertools
+import operator
 
 from numpy import *
 import cmath
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm, SymLogNorm
+import matplotlib.colors
 
 import scipy.special
 import scipy.misc
+import scipy.linalg
 
 from semiconductor import *
 from job_api import JobAPI
