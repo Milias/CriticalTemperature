@@ -32,7 +32,7 @@ class wf_c {
 
     double pot_cou(double x) const {
       return
-        - M_SQRT2 * sys.c_aEM / (sys.eps_r) * std::sqrt(sys.m_pT) / x;
+        - M_SQRT2 * sys.c_aEM * std::sqrt(sys.m_pT) / (sys.eps_r * x);
     }
 
     double pot_limit_2d(double x) const {

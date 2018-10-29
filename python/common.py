@@ -1,3 +1,8 @@
+"""
+  Common functions and modules used by
+  the rest of the python code.
+"""
+
 import time
 import copyreg
 import itertools
@@ -12,6 +17,8 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm, SymLogNorm
 import matplotlib.colors
 
+import scipy.integrate
+import scipy.interpolate
 import scipy.special
 import scipy.misc
 import scipy.linalg
@@ -21,12 +28,23 @@ from job_api import JobAPI
 
 initializeMPFR_GSL()
 
+def register_pickle_func(struct, func):
+  def pickle_func(obj):
+    return struct, (func(obj), )
+
+  copyreg.pickle(struct, pickle_func)
+
+def register_pickle_custom(struct, *params):
+  def pickle_func(obj):
+    return struct, tuple(getattr(obj, p) for p in params)
+
+  copyreg.pickle(struct, pickle_func)
+
 ## Define how to pickle system_data objects
 
-def pickle_system_data(sys):
-  return system_data, (sys.dl_m_e, sys.dl_m_h, sys.eps_r, sys.T)
-
-copyreg.pickle(system_data, pickle_system_data)
+register_pickle_func(Uint32Vector, tuple)
+register_pickle_func(DoubleVector, tuple)
+register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T')
 
 # Generate an iterator that behaves like
 # linspace when func == None.

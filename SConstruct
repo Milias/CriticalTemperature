@@ -29,8 +29,8 @@ py_modules = find_files('python', '.py')
 swig_py = 'bin/semiconductor.py'
 swig_cpp = 'src/semiconductor_wrapper.cpp'
 
-cc_flags = ['-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native']
-incl_libs = ['gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',  'optim']
+cc_flags = ['-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native', '-fopenmp']
+incl_libs = ['gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',  'optim', 'gomp']
 swig_flags = ['-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall', '-modern', '-fastdispatch', '-nosafecstrings', '-fvirtual', '-noproxydel', '-fastproxy', '-fastinit', '-fastquery', '-modernargs', '-nobuildnone', '-dirvtable']
 
 swig_cmd = 'swig %s -o $TARGET -Iinclude -outdir %s $SOURCE' % (' '.join(swig_flags), output_bin)
@@ -46,6 +46,7 @@ env.Alias('lib', output_lib)
 env.Append(CPPPATH = includes)
 env.Replace(CCFLAGS = cc_flags)
 env.Append(LIBS = incl_libs)
+env.Append(LINKFLAGS = ['-fopenmp'])
 
 env.Append(SWIGFLAGS = swig_flags)
 env.Replace(SWIGPATH = includes[0])

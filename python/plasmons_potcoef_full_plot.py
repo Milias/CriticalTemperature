@@ -4,25 +4,17 @@ api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5E
 job_api = JobAPI(api_token)
 job_api.load_batch()
 
-green = job_api.loaded_jobs[0]
-matrix = job_api.loaded_jobs[1:]
+matrix, = job_api.loaded_jobs
 
-wkk_iter, mu_e_iter, mu_h_iter, v_1_iter, sys_iter, delta_iter = green.args
-mu_e, mu_h, v_1, sys = [next(it) for it in (mu_e_iter, mu_h_iter, v_1_iter, sys_iter)]
+wkwk_iter = list(matrix.args[1])
+z_list = list(set(matrix.args[4]))
+mu_e, mu_h, v_1, sys = [next(matrix.args[it]) for it in (5, 6, 7, 8)]
 
-z_list = list(set(matrix[0].args[4]))
-N_total = wkk_iter.__length_hint__
-N_w, N_k, N_z = wkk_iter.N_w, wkk_iter.N_k, len(z_list)
+N_w, N_k, N_z = 1<<0, 1<<10, 1<<5
+N_total = N_w**2 * N_k**2 * N_z
 
-green_arr = array(green.result)
-matrix_arr = [array(n.result) for n in matrix]
-
-green_arr = green_arr.reshape((N_w, N_k * (N_k + 1) // 2, 2))
-green_complex_arr = green_arr[:, :, 0] + 1j * green_arr[:, :, 1]
-
-matrix_arr = [m.reshape((N_z, N_w*N_k, N_w*N_k, 2)) for m in matrix_arr]
-
-matrix_complex_arr = [m[:, :, :, 0] + 1j * m[:, :, :, 1] for m in matrix_arr]
+matrix_arr = array(matrix.result).reshape((N_z, N_w*N_k, N_w*N_k, 2))
+matrix_complex_arr = matrix_arr[:, :, :, 0] + 1j * matrix_arr[:, :, :, 1]
 
 """
 set_printoptions(threshold=nan)
@@ -48,7 +40,8 @@ exit()
 
 #"""
 p = 1
-mat = matrix_arr[0][0,:,:,0]
+z_id = 0
+mat = matrix_arr[z_id,:,:,0]
 matmin, matmax = amin(mat), amax(mat)
 
 zr = clip(
@@ -83,6 +76,22 @@ for i in range(N_w):
     plt.plot(eig_vals[i,j], '.-', label = '(%d,%d)' % (i,j))
 
 plt.legend(loc = 0)
+plt.plot()
+exit()
+"""
+
+z = sort(-array(z_list))
+
+"""
+eig_vals = zeros((N_z, N_k*N_w), dtype = complex)
+for i in range(N_z):
+  eig_vals[i] = scipy.linalg.eigvals(matrix_complex_arr[i])
+  plt.plot(real(eig_vals[i]), '.-', label = 'z: %f, real' % z[i])
+  #plt.plot(imag(eig_vals[i]), '.--', label = 'z: %f, imag' % z[i])
+
+plt.legend(loc = 0)
+plt.show()
+exit()
 """
 
 #eig_vals = scipy.linalg.eigvals(matrix_complex_arr, check_finite = False)
@@ -90,8 +99,7 @@ plt.legend(loc = 0)
 #plt.plot(real(eig_vals), imag(eig_vals), 'o')
 #plt.show()
 
-det_vals = array([scipy.linalg.det(matrix_complex_arr[0][m,:,:]) for m in range(N_z)])
-z = sort(-imag(array(z_list)))
+det_vals = array([scipy.linalg.det(matrix_complex_arr[m,:,:]) for m in range(N_z)])
 
 print(z)
 print(det_vals)
@@ -99,6 +107,6 @@ print(det_vals)
 plt.semilogx(z, real(det_vals), 'r.-')
 plt.semilogx(z, imag(det_vals), 'b.--')
 
-#plt.axis([amin(z), amax(z), -1, 1])
+#plt.axis([amin(z), amax(z), -100, 100])
 plt.show()
 

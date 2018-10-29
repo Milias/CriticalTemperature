@@ -1,0 +1,10 @@
+%clang
+%cpp -std=c++17
+-O3
+-Wall
+-pedantic
+-march=native
+
+# Includes
+-Iinclude
+# -I space_is_not_allowed

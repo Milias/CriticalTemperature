@@ -357,7 +357,7 @@ std::vector<double> analytic_2d_mu_optim(double n, const system_data & sys) {
 
   arma::vec x{x_init, n_eq};
 
-  optim::algo_settings settings;
+  optim::algo_settings_t settings;
   settings.err_tol = global_eps;
   settings.iter_max = 1<<12;
 

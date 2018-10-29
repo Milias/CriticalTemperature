@@ -1,5 +1,9 @@
 from common import *
 
+## Define how to pickle plasmon_elem_s objects
+
+register_pickle_custom(plasmon_elem_s, 'id', 'wkwk', 'val')
+
 class PlasmonPotcoefIterator:
   def filter(self, wkk):
     return wkk[1] < wkk[2] or wkk[0] < 0

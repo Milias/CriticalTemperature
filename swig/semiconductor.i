@@ -8,6 +8,9 @@
 
 %template(DoubleVector) std::vector<double>;
 %template(Uint32Vector) std::vector<uint32_t>;
+%template(ComplexDoubleVector) std::vector<std::complex<double>>;
+%template(DoubleVectorVector) std::vector<std::vector<double>>;
+%template(Uint32VectorVector) std::vector<std::vector<uint32_t>>;
 
 %{
 #include "common.h"

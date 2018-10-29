@@ -9,6 +9,8 @@
 #include <complex>
 
 #include <cmath>
+
+#include <omp.h>
 #include <gmp.h>
 
 #include <gsl/gsl_errno.h>

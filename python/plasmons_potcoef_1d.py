@@ -14,15 +14,17 @@ m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1 # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 name = 'Plasmon Green Function'
-description = """Plasmon Green function.
+description = r"""Plasmon Green function.
 
-Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (sys.m_e, sys.m_h, sys.eps_r, sys.T)
+Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (
+  sys.m_e, sys.m_h, sys.eps_r, sys.T
+)
 
 print((sys.m_e, sys.m_h))
 mu_e, v_1 = 1, 1e2
 mu_h = sys.m_eh * mu_e
 
-k0, k1 = 5.05, 20.06
+k0, k1 = 10, 10
 kvec = sqrt(k0**2 + k1**2 - 2*k0*k1*cos(linspace(0, pi, N_k)))
 kmin, kmax = amin(kvec), amax(kvec)
 wpl0 = plasmon_disp(kmin, mu_e, mu_h, v_1, sys)
