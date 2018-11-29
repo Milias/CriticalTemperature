@@ -1,7 +1,7 @@
 from common import *
 
-N_u0 = 1 << 8
-N_u1 = 1 << 0
+N_u0 = 1 << 7
+N_u1 = 1 << 5
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1  # K
 sys = system_data(m_e, m_h, eps_r, T)
@@ -28,9 +28,9 @@ z_cou_lwl_wf = wf_2d_E_cou_py(sys)
 z_sys_lwl_wf = wf_2d_E_lim_py(sys_ls, sys)
 
 z_cou_lwl = plasmon_det_zero_vu_simp_lwl(vu_vec, id_lwl_vec, N_u0, du0, 1e-8,
-                                         sys)
+                                     sys)
 z_sys_lwl = plasmon_det_zero_vu_simp_lwl(vu_vec, id_lwl_vec, N_u0, du0, sys_ls,
-                                         sys)
+                                     sys)
 
 #z_cou_wf, z_sys_wf = plasmon_static_eB_v([1e-8, 1e3], sys)
 z_cou_wf, z_sys_wf = float('nan'), float('nan')
@@ -66,7 +66,8 @@ plt.axhline(
 z_list = []
 
 t0 = time.time()
-z_list.extend(plasmon_static_eB_v(x_list, sys))
+#z_list.extend(plasmon_static_eB_v(x_list, sys))
+z_list.extend([0] * int(x_list.size))
 print(z_list)
 print('Elapsed: %.2fs' % (time.time() - t0))
 

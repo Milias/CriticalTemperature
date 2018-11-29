@@ -1,66 +1,84 @@
 from common import *
-from plasmon_utils import *
-
-api_token = 'F4RfBdBNx1fLqH2jTsDoJP9xqERAe5z/ummsn16tDdKRmeOtQTZq/htBvJou5FCOF5EaYZw6U4xEv7/EHa2f+w=='
-job_api = JobAPI(api_token)
-
-N_k = 1 << 12
-N_w = (1 << 0)
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1  # K
+#m_e, m_h, eps_r, T = 1, 1, 1, 1  # K
 sys = system_data(m_e, m_h, eps_r, T)
+sys_ls = 0.5 / pi * sys.c_aEM / sys.eps_r * (sys.m_e + sys.m_h) / sys.c_hbarc
 
-name = 'Plasmon Green Function'
-description = """Plasmon Green function.
+N_k = 1 << 9
+N_ls = 12
 
-Parameters: $m_e$ = $%f$, $m_h$ = $%f$, $\eps_r$ = $%f$, $T$ = $%f$ K""" % (
-    sys.m_e, sys.m_h, sys.eps_r, sys.T)
+N_u, N_v = N_k, N_k
+k0, k1, u_max = 2.0, 0, 1
 
-print((sys.m_e, sys.m_h))
-mu_e, v_1 = 1, 0.05
-mu_h = sys.m_eh * mu_e
+k, dk = linspace(0, k0, N_k, retstep=True)
+kk_vec = list(itertools.product(k, repeat=2))
 
-z_wf = wf_2d_E_cou_py(sys) * sys.energy_th
+u, du = linspace(u_max / N_u, u_max, N_u, retstep=True)
+vu_vec = list(itertools.product(u, repeat=2))
 
-print('z_wf: %f' % z_wf)
+r_k = range(N_k)
+id_vec = list(itertools.product(r_k, repeat=2))
+id_vu_vec = list(itertools.product(r_k, repeat=2))
 
-x_list = logspace(-2, 1, 12)
+z_cou_wf = wf_2d_E_cou_py(sys)
+z_sys_wf = wf_2d_E_lim_py(sys_ls, sys)
 
-plt.axhline(y=z_wf, color='g')
+z_cou = plasmon_det_zero_vu_simp_lwl(vu_vec, id_vu_vec, N_k, du, 1e-8, sys)
+z_sys = plasmon_det_zero_vu_simp_lwl(vu_vec, id_vu_vec, N_k, du, sys_ls, sys)
 
-z_list = []
-for ls in x_list:
-    k_pl_max = max(0.5, ls)
-    kmax = k_pl_max
-    print('plasmon_kmax: %f' % k_pl_max)
-    k0 = 6 * kmax
-    k1 = k0
-
-    print('kmax: %f, k0: %f' % (kmax, k0))
-
-    k = linspace(0.0, k0, N_k)
-    kk_prod = itertools.product(k, repeat=2)
-
-    r_k = range(N_k)
-    ids_prod = itertools.product(r_k, repeat=2)
-
-    dk = k[1] - k[0]
-
-    energy_fermi = 8 * pi**2 * (sys.c_aEM * v_1)**2 * sys.m_p
-    print('E_F: %4.3f eV' % energy_fermi)
-
-    t0 = time.time()
-    z = plasmon_sysmat_det_zero_lwl(
-        list(kk_prod), list(ids_prod), dk, N_k, ls, v_1, sys)
-
-    z *= energy_fermi
-
-    print('[%e] (%f), Elapsed: %.2fs' % (ls, z, time.time() - t0))
-
-    z_list.append(z)
+print('sys_ls: \t%8.6f nm' % (1 / sys_ls))
+print('z_cou_2d:\t%8.6f eV' % sys.get_E_n(0.5))
+print(
+    'z_cou_wf:\t%8.6f eV, z_sys_wf:\t%8.6f eV\nz_cou:   \t%8.6f eV, z_sys:   \t%8.6f eV'
+    % (z_cou_wf, z_sys_wf, z_cou, z_sys))
 
 plt.axhline(y=0, color='k')
-z_arr = array(z_list)
-plt.plot(x_list, real(z_arr), 'r.-')
+
+#plt.axhline(y=z_cou, color='g', label='(D) $\epsilon_{B,Cou}$')
+plt.axhline(
+    y=z_cou_wf, color='g', linestyle='--', label='(W) $\epsilon_{B,Cou}$')
+
+plt.axhline(
+    y=z_sys, color='m', label='(D) $\epsilon_{B,lwl}(\lambda_{s,0}^{-1})$')
+plt.axhline(
+    y=z_sys_wf,
+    color='m',
+    linestyle='--',
+    label='(W) $\epsilon_{B,lwl}(\lambda_{s,0}^{-1})$')
+
+x_list = logspace(-4, 1, N_ls)
+
+plt.axhline(y=0, color='k')
+plt.axhline(y=z_cou_wf, color='g', label='Coulomb binding energy')
+plt.axvline(x=sys_ls, color='m', label='$\lambda_{s,0}^{-1}$')
+
+z_list = []
+z_wf_list = []
+for ls in x_list:
+    t0 = time.time()
+    z = plasmon_det_zero_vu_simp_lwl(vu_vec, id_vu_vec, N_k, du, ls, sys)
+
+    z_wf = wf_2d_E_lim_py(ls, sys)
+
+    print('[%e] (%f, %f) r: %f, Elapsed: %.2fs' %
+          (ls, z, z_wf, 2 * abs(z_wf - z) / abs(z_wf + z), time.time() - t0))
+
+    z_list.append(z)
+    z_wf_list.append(z_wf)
+
+z_arr, z_wf_arr = array(z_list), array(z_wf_list)
+
+plt.semilogx(x_list, z_arr, 'r.-', label='Discretization')
+plt.semilogx(x_list, z_wf_arr, 'b.-', label='Wavefunction')
+#plt.plot(x_list, real(z_wf_arr) / real(z_arr), 'g.--')
+
+plt.title('$\epsilon_B$ vs. $\lambda_s^{-1}$\nLong-wavelength limit')
+plt.xlabel('$\lambda_s^{-1}$ / dimensionless')
+plt.ylabel('$\epsilon_B$ / dimensionless')
+
+plt.legend(loc=0)
+
+plt.savefig('plots/poles_lwl_dims.eps')
 
 plt.show()

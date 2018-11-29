@@ -83,3 +83,12 @@ def pickle_iter_linspace(iter_x):
 
 copyreg.pickle(iter_linspace, pickle_iter_linspace)
 
+def color_map(cx_arr):
+    r, ph = abs(cx_arr), angle(cx_arr)
+
+    h = 0.5 + 0.5 * ph / pi
+    s = 0.9 * ones_like(r)
+    v = r / (1.0 + r)
+
+    return array([h, s, v]).T
+

@@ -1,6 +1,6 @@
 from common import *
 
-N_u0 = 1 << 8
+N_u0 = 1 << 9
 N_u1 = 1 << 0
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1  # K
@@ -22,22 +22,22 @@ r_u0, r_u1 = list(range(N_u0)), list(range(N_u1))
 id_lwl_vec = list(itertools.product(r_u0, repeat=2))
 id_vec = list(itertools.product(r_u0, r_u1, repeat=2))
 
-x_list = logspace(-8, 4, 16)
+E_vec = -linspace(0.08, -sys.get_E_n(0.5), 8)
 
 z_cou_lwl_wf = wf_2d_E_cou_py(sys)
 z_sys_lwl_wf = wf_2d_E_lim_py(sys_ls, sys)
 
 z_cou_lwl = plasmon_det_zero_vu_simp_lwl(vu_vec, id_lwl_vec, N_u0, du0, 1e-8,
-                                         sys)
+                                     sys)
 z_sys_lwl = plasmon_det_zero_vu_simp_lwl(vu_vec, id_lwl_vec, N_u0, du0, sys_ls,
-                                         sys)
+                                     sys)
 
 #z_cou_wf, z_sys_wf = plasmon_static_eB_v([1e-8, 1e3], sys)
 z_cou_wf, z_sys_wf = float('nan'), float('nan')
 z_cou = plasmon_det_zero_vu(vuvu_vec, id_vec, du0, du1, N_u0, N_u1, 1e-8,
-                            sys.m_eh * 1e-8, sys, 1e-12)
+                            sys.m_eh * 1e-8, sys, 1e-2)
 z_sys = plasmon_det_zero_vu(vuvu_vec, id_vec, du0, du1, N_u0, N_u1, 1e3,
-                            sys.m_eh * 1e3, sys, 1e-12)
+                            sys.m_eh * 1e3, sys, 1e-2)
 
 print('sys_ls: \t%8.6f nm' % (1 / sys_ls))
 print('###  static  ###')
@@ -51,49 +51,58 @@ print(
 
 plt.axhline(y=0, color='k')
 
-plt.axhline(y=z_cou, color='g', label='(D) $\epsilon_{B,Cou}$')
-plt.axhline(
-    y=z_cou_wf, color='g', linestyle='--', label='(W) $\epsilon_{B,Cou}$')
-
-plt.axhline(
-    y=z_sys, color='m', label='(D) $\epsilon_{B,lwl}(\lambda_{s,0}^{-1})$')
-plt.axhline(
-    y=z_sys_wf,
-    color='m',
-    linestyle='--',
-    label='(W) $\epsilon_{B,lwl}(\lambda_{s,0}^{-1})$')
-
 z_list = []
 
-t0 = time.time()
-z_list.extend(plasmon_static_eB_v(x_list, sys))
-print(z_list)
-print('Elapsed: %.2fs' % (time.time() - t0))
+colors = [
+    matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
+    for h in linspace(0, 0.7, E_vec.size)
+]
 
-for mu_e in x_list:
+mu_e = 1e-2
+
+for E in E_vec:
     mu_h = sys.m_eh * mu_e
 
     t0 = time.time()
-    z = plasmon_det_zero_vu(vuvu_vec, id_vec, du0, du1, N_u0, N_u1, mu_e, mu_h,
-                            sys, 1e-12)
+    wf = wf_2d_static_py(E, mu_e, sys)
+    #wf = wf_2d_s_py(E, mu_e, sys)
 
-    print('[%e] z: %f, Elapsed: %.2fs' % (mu_e, z, time.time() - t0))
+    print('[%e,%f] Elapsed: %.2fs' % (mu_e, E, time.time() - t0))
 
-    z_list.append(z)
+    z_list.append(wf)
 
-z_arr = real(array(z_list)).reshape((2, x_list.size))
+E_d = plasmon_det_zero_vu(vuvu_vec, id_vec, du0, du1, N_u0, N_u1, mu_e, mu_h,
+                          sys, 1e-2)
+wf_d = wf_2d_static_py(E_d, mu_e, sys)
+wf_d = array(wf_d).reshape((len(wf_d) // 3, 3))
 
-if z_arr.shape[0] > 1:
-    plt.semilogx(x_list, z_arr[1, :], '.-', label='(D)')
+plt.plot(wf_d[:, 2], wf_d[:, 0], 'm.-', label='E = %f' % E_d)
+x_max = 0
 
-plt.semilogx(x_list, z_arr[0, :], '.--', label='(W)')
+for c, wf, E in zip(colors, z_list, E_vec):
+    wf_arr = array(wf).reshape((len(wf) // 3, 3))
+    plt.plot(wf_arr[:, 2], wf_arr[:, 0], '-', label='E = %f' % E, color=c)
+    #plt.plot(wf_arr[:, 2], wf_arr[:, 1], '--', color=c)
 
-plt.title('$\epsilon_B$ vs. $\mu_e$\nStatic approximation')
-plt.xlabel('$\mu_e$ / eV')
-plt.ylabel('$\epsilon_B$ / eV')
+    if wf_arr[-1, 2] > x_max:
+        x_max = wf_arr[-1, 2]
+
+x_vec = logspace(-3, log10(x_max), 1 << 10)
+real_potcoef = array(plasmon_real_potcoef_k(x_vec, mu_e, mu_h, sys.v_1, sys))
+real_potcoef_lwl = array([
+    -sys_ls * sys.c_aEM / sys.eps_r * sys.c_hbarc * pot_limit_2d(x * sys_ls)
+    for x in x_vec
+])
+real_potcoef_cou = -sys.c_aEM / sys.eps_r * sys.c_hbarc / x_vec
+
+plt.plot(x_vec, real_potcoef, 'm-')
+plt.plot(x_vec, real_potcoef_cou, 'r-')
+plt.plot(x_vec, real_potcoef_lwl, 'b-')
 
 plt.legend(loc=0)
 
-plt.savefig('plots/poles_static.eps')
+plt.ylim(-1, 1)
+plt.xlim(0, x_max)
+plt.savefig('plots/wf_static.eps')
 
 plt.show()
