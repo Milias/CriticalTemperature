@@ -108,11 +108,10 @@ std::complex<double> plasmon_green_ht(
              erf_cx(std::sqrt(0.25 * sys.beta / E[1]) * nu[3]));
 
     const std::complex<double> result{
-        std::conj(
-            -sys.eps_r * k / (sys.c_hbarc * sys.c_aEM) +
+        -sys.eps_r * k / (sys.c_hbarc * sys.c_aEM) -
             0.125 / (sys.c_alpha * M_SQRTPI) *
                 (pi_screen_nofactor[0] / sys.m_pe +
-                 pi_screen_nofactor[1] / sys.m_ph)),
+                 pi_screen_nofactor[1] / sys.m_ph),
     };
 
     if constexpr (invert) {
@@ -180,7 +179,7 @@ std::vector<std::complex<double>> plasmon_green_ht_v(
     return result;
 }
 
-std::vector<std::complex<double>> plasmon_green_inv_ht_v(
+std::vector<std::complex<double>> plasmon_green_ht_inv_v(
     const std::vector<std::vector<double>> wk_vec,
     double mu_e,
     double mu_h,
@@ -443,6 +442,8 @@ double plasmon_disp_inv_ncb(
     return plasmon_disp_inv_t<false>(w, mu_e, mu_h, sys);
 }
 
+template <std::complex<double> (*green_func)(
+    double, double, double, double, const system_data& sys, double)>
 double plasmon_disp_th_f(double th, void* params) {
     plasmon_disp_th_s* s{static_cast<plasmon_disp_th_s*>(params)};
 
@@ -450,7 +451,7 @@ double plasmon_disp_th_f(double th, void* params) {
         s->k0 * s->k0 + s->k1 * s->k1 - 2 * s->k0 * s->k1 * std::cos(th))};
 
     std::complex<double> result{
-        plasmon_green<0, false>(s->w, k, s->mu_e, s->mu_h, s->sys)};
+        green_func(s->w, k, s->mu_e, s->mu_h, s->sys, s->delta)};
 
     return result.real();
 }
@@ -488,7 +489,7 @@ double plasmon_disp_th(
     };
 
     gsl_function funct;
-    funct.function = &plasmon_disp_th_f;
+    funct.function = &plasmon_disp_th_f<plasmon_green<0, false>>;
     funct.params   = &s;
 
     if (funct.function(z_max, funct.params) < 0) {
@@ -536,9 +537,12 @@ auto plasmon_potcoef_f(double th, void* params) {
     }
 }
 
-template <std::complex<double> (*green_func)(
-    double, double, double, double, const system_data& sys, double)>
-std::complex<double> plasmon_potcoef(
+template <
+    std::complex<double> (*green_func)(
+        double, double, double, double, const system_data& sys, double),
+    typename T     = std::complex<double>,
+    bool find_pole = true>
+T plasmon_potcoef(
     const std::vector<double>& wkk,
     double mu_e,
     double mu_h,
@@ -564,29 +568,41 @@ std::complex<double> plasmon_potcoef(
     integrands[0].function = &plasmon_potcoef_f<1, green_func>;
     integrands[0].params   = &s;
 
-    integrands[1].function = &plasmon_potcoef_f<2, green_func>;
-    integrands[1].params   = &s;
-
     constexpr uint32_t local_ws_size{(1 << 10)};
 
     gsl_integration_workspace* ws =
         gsl_integration_workspace_alloc(local_ws_size);
 
-    double th_pts[3] = {M_PI, plasmon_disp_th(wkk, mu_e, mu_h, sys), 0};
+    if constexpr (find_pole) {
+        double th_pts[3] = {
+            M_PI,
+            plasmon_disp_th(wkk, mu_e, mu_h, sys),
+            0,
+        };
 
-    if (!std::isnan(th_pts[1])) {
-        gsl_integration_qagp(
-            integrands, th_pts, 3, global_eps, 0, local_ws_size, ws, result,
-            error);
+        if (!std::isnan(th_pts[1])) {
+            gsl_integration_qagp(
+                integrands, th_pts, 3, global_eps, 0, local_ws_size, ws,
+                result, error);
+        } else {
+            gsl_integration_qag(
+                integrands, M_PI, 0, global_eps, 0, local_ws_size,
+                GSL_INTEG_GAUSS31, ws, result, error);
+        }
     } else {
         gsl_integration_qag(
             integrands, M_PI, 0, global_eps, 0, local_ws_size,
             GSL_INTEG_GAUSS31, ws, result, error);
     }
 
-    gsl_integration_qags(
-        integrands + 1, 0, M_PI, global_eps, 0, local_ws_size, ws, result + 1,
-        error + 1);
+    if constexpr (std::is_same<T, std::complex<double>>::value) {
+        integrands[1].function = &plasmon_potcoef_f<2, green_func>;
+        integrands[1].params   = &s;
+
+        gsl_integration_qag(
+            integrands + 1, 0, M_PI, global_eps, 0, local_ws_size,
+            GSL_INTEG_GAUSS31, ws, result + 1, error + 1);
+    }
 
     gsl_integration_workspace_free(ws);
 
@@ -597,19 +613,29 @@ std::complex<double> plasmon_potcoef(
     printf("\n");
     */
 
-    return {result[0] * M_1_PI, result[1] * M_1_PI};
+    if constexpr (std::is_same<T, std::complex<double>>::value) {
+        return {result[0] * M_1_PI, result[1] * M_1_PI};
+    } else {
+        return result[0] * M_1_PI;
+    }
 }
 
-template <std::complex<double> (*green_func)(
-    double, double, double, double, const system_data& sys, double)>
-arma::cx_mat plasmon_potcoef_cx_mat_n(
+template <
+    auto (*potcoef_func)(
+        const std::vector<double>& wkk,
+        double mu_e,
+        double mu_h,
+        const system_data& sys,
+        double delta),
+    typename T = std::complex<double>>
+arma::Mat<T> plasmon_potcoef_mat(
     uint32_t N_k,
     uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    arma::cx_cube potcoef(N_k, N_k, N_w);
+    arma::Cube<T> potcoef(N_k, N_k, N_w);
 
     arma::vec u0{arma::linspace(1.0 / N_k, 1.0 - 1.0 / N_k, N_k)};
     arma::vec u1(N_w);
@@ -630,13 +656,12 @@ arma::cx_mat plasmon_potcoef_cx_mat_n(
                     (1.0 - u0(j)) / u0(j),
                 };
 
-                potcoef(i, j, k) =
-                    plasmon_potcoef<green_func>(wkk, mu_e, mu_h, sys, delta);
+                potcoef(i, j, k) = potcoef_func(wkk, mu_e, mu_h, sys, delta);
             }
         }
     }
 
-    arma::cx_mat result(N_k * N_w, N_k * N_w);
+    arma::Mat<T> result(N_k * N_w, N_k * N_w);
 
     for (uint32_t i = 0; i < N_w; i++) {
         for (uint32_t j = 0; j < i; j++) {
@@ -662,7 +687,7 @@ std::vector<std::complex<double>> plasmon_potcoef_cx_mat(
     double mu_h,
     const system_data& sys,
     double delta) {
-    arma::cx_mat result{plasmon_potcoef_cx_mat_n<plasmon_green>(
+    arma::cx_mat result{plasmon_potcoef_mat<plasmon_potcoef<plasmon_green>>(
         N_k, N_w, mu_e, mu_h, sys, delta)};
 
     std::vector<std::complex<double>> result_vec(result.n_elem);
@@ -682,7 +707,8 @@ std::vector<std::complex<double>> plasmon_potcoef_ht_cx_mat(
     double mu_h,
     const system_data& sys,
     double delta) {
-    arma::cx_mat result{plasmon_potcoef_cx_mat_n<plasmon_green_ht>(
+    arma::cx_mat result{plasmon_potcoef_mat<
+        plasmon_potcoef<plasmon_green_ht, std::complex<double>, false>>(
         N_k, N_w, mu_e, mu_h, sys, delta)};
 
     std::vector<std::complex<double>> result_vec(result.n_elem);
@@ -765,16 +791,17 @@ auto plasmon_det_f(T2 z, void* params) {
     }
 }
 
-void plasmon_fill_mat_n(
+template <typename T = std::complex<double>>
+void plasmon_fill_mat(
     uint32_t N_k,
     uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta,
-    const arma::cx_mat& potcoef,
-    arma::cx_mat& mat_elem,
-    arma::sp_cx_mat& mat_G0) {
+    const arma::Mat<T>& potcoef,
+    arma::Mat<T>& mat_elem,
+    arma::SpMat<T>& mat_G0) {
     /*
      * mat_z_G0 = z - mat_G0
      * mat_potcoef = mat_kron + mat_elem / mat_z_G0
@@ -789,17 +816,17 @@ void plasmon_fill_mat_n(
         du1 = u1(1) - u0(0);
 
 #pragma omp parallel for collapse(4)
-        for (uint32_t i = 0; i < N_k; i++) {
-            for (uint32_t k = 0; k < N_k; k++) {
-                for (uint32_t j = 0; j < N_w; j++) {
-                    for (uint32_t l = 0; l < N_w; l++) {
+        for (uint32_t j = 0; j < N_w; j++) {
+            for (uint32_t l = 0; l < N_w; l++) {
+                for (uint32_t i = 0; i < N_k; i++) {
+                    for (uint32_t k = 0; k < N_k; k++) {
                         const std::vector<double> k_v{
                             (1.0 - u0(i)) / u0(i),
                             (1.0 - u0(k)) / u0(k),
                         };
 
                         mat_elem(j + N_w * i, l + N_w * k) =
-                            /*du0 * du1 */ k_v[1] * (1 + std::pow(u1(l), 2)) /
+                            du0 * du1 * k_v[1] * (1 + std::pow(u1(l), 2)) /
                             std::pow(u0(k) * (1 - std::pow(u1(l), 2)), 2) *
                             potcoef(j + N_w * i, l + N_w * k);
 
@@ -835,46 +862,14 @@ void plasmon_fill_mat_n(
     }
 }
 
-std::vector<std::complex<double>> plasmon_fmat_cx(
-    const std::complex<double>& z,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta) {
-    // Constant
-    arma::cx_mat mat_elem(N_k * N_w, N_k * N_w);
-    arma::sp_cx_mat mat_kron{
-        arma::speye<arma::sp_cx_mat>(N_k * N_w, N_k * N_w)};
-
-    arma::sp_cx_mat mat_G0(N_k * N_w, N_k * N_w);
-
-    // Change every step
-    arma::sp_cx_mat mat_z_G0(N_k * N_w, N_k * N_w);
-    arma::cx_mat mat_potcoef{plasmon_potcoef_cx_mat_n<plasmon_green>(
-        N_k, N_w, mu_e, mu_h, sys, delta)};
-
-    plasmon_fill_mat_n(
-        N_k, N_w, mu_e, mu_h, sys, delta, mat_potcoef, mat_elem, mat_G0);
-
-    struct plasmon_mat_s<std::complex<double>> s {
-        mat_elem, mat_kron, mat_G0, mat_z_G0, mat_potcoef
-    };
-
-    mat_potcoef = plasmon_det_f<3, std::complex<double>>(z, &s);
-
-    std::vector<std::complex<double>> result(mat_elem.n_elem);
-
-#pragma omp parallel for
-    for (uint32_t i = 0; i < mat_elem.n_elem; i++) {
-        result[i] = mat_potcoef(i);
-    }
-    return result;
-}
-
-std::vector<std::complex<double>> plasmon_det_cx_n(
-    const std::vector<std::complex<double>>& z_vec,
+template <
+    std::complex<double> (*green_func)(
+        double, double, double, double, const system_data& sys, double),
+    typename T          = std::complex<double>,
+    bool return_matrix  = false,
+    bool print_progress = false>
+auto plasmon_det_t(
+    const std::vector<T>& z_vec,
     uint32_t N_k,
     uint32_t N_w,
     double mu_e,
@@ -884,42 +879,270 @@ std::vector<std::complex<double>> plasmon_det_cx_n(
     uint64_t N_z{z_vec.size()};
 
     // Constant
-    arma::cx_mat mat_elem(N_k * N_w, N_k * N_w);
-    arma::sp_cx_mat mat_kron{
-        arma::speye<arma::sp_cx_mat>(N_k * N_w, N_k * N_w)};
+    arma::Mat<T> mat_elem(N_k * N_w, N_k * N_w);
+    arma::SpMat<T> mat_kron{
+        arma::speye<arma::SpMat<T>>(N_k * N_w, N_k * N_w),
+    };
 
-    arma::sp_cx_mat mat_G0(N_k * N_w, N_k * N_w);
+    arma::SpMat<T> mat_G0(N_k * N_w, N_k * N_w);
 
     // Change every step
-    arma::sp_cx_mat mat_z_G0(N_k * N_w, N_k * N_w);
-    arma::cx_mat mat_potcoef{plasmon_potcoef_cx_mat_n<plasmon_green>(
-        N_k, N_w, mu_e, mu_h, sys, delta)};
+    arma::SpMat<T> mat_z_G0(N_k * N_w, N_k * N_w);
+    arma::Mat<T> mat_potcoef{
+        plasmon_potcoef_mat<plasmon_potcoef<green_func, T>, T>(
+            N_k, N_w, mu_e, mu_h, sys, delta),
+    };
 
-    printf("Initializing\n");
+    if constexpr (print_progress) {
+        printf("Initializing\n");
+    }
 
-    plasmon_fill_mat_n(
+    plasmon_fill_mat<T>(
         N_k, N_w, mu_e, mu_h, sys, delta, mat_potcoef, mat_elem, mat_G0);
 
-    struct plasmon_mat_s<std::complex<double>> s {
+    struct plasmon_mat_s<T> s {
         mat_elem, mat_kron, mat_G0, mat_z_G0, mat_potcoef
     };
 
-    std::vector<std::complex<double>> result(N_z);
+    if constexpr (return_matrix) {
+        std::vector<std::vector<T>> result(N_z);
+        arma::Mat<T> mat_result(N_k * N_w, N_k * N_w);
 
-    //#pragma omp parallel for
-    printf("Starting\n");
-    printf("Progress: %u/%lu\n", 0, N_z);
-    for (uint32_t i = 0, c = 0; i < N_z; i++, c++) {
-        if (10 * c >= N_z) {
-            printf("Progress: %u/%lu\n", i + 1, N_z);
-            c = 0;
+        if constexpr (print_progress) {
+            printf("Starting\n");
+            printf("Progress: %u/%lu\n", 0, N_z);
+        }
+        for (uint32_t i = 0, c = 0; i < N_z; i++, c++) {
+            if constexpr (print_progress) {
+                if (10 * c >= N_z) {
+                    printf("Progress: %u/%lu\n", i + 1, N_z);
+                    c = 0;
+                }
+            }
+
+            mat_result = plasmon_det_f<3, T>(z_vec[i], &s);
+
+            result[i].resize(mat_elem.n_elem);
+
+#pragma omp parallel for
+            for (uint32_t j = 0; j < mat_elem.n_elem; j++) {
+                result[i][j] = mat_result(j);
+            }
+        }
+        if constexpr (print_progress) {
+            printf("Progress: %lu/%lu\n", N_z, N_z);
         }
 
-        result[i] = plasmon_det_f<0, std::complex<double>>(z_vec[i], &s);
-    }
-    printf("Progress: %lu/%lu\n", N_z, N_z);
+        return result;
 
-    return result;
+    } else {
+        std::vector<T> result(N_z);
+
+        if constexpr (print_progress) {
+            printf("Starting\n");
+            printf("Progress: %u/%lu\n", 0, N_z);
+        }
+        for (uint32_t i = 0, c = 0; i < N_z; i++, c++) {
+            if constexpr (print_progress) {
+                if (10 * c >= N_z) {
+                    printf("Progress: %u/%lu\n", i + 1, N_z);
+                    c = 0;
+                }
+            }
+
+            result[i] = plasmon_det_f<0, T>(z_vec[i], &s);
+        }
+
+        if constexpr (print_progress) {
+            printf("Progress: %lu/%lu\n", N_z, N_z);
+        }
+
+        return result;
+    }
+}
+
+std::vector<std::complex<double>> plasmon_fmat_cx(
+    const std::complex<double>& z,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green, std::complex<double>, true, true>(
+        {z}, N_k, N_w, mu_e, mu_h, sys, delta)[0];
+}
+
+std::vector<std::complex<double>> plasmon_fmat_ht_cx(
+    const std::complex<double>& z,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green_ht, std::complex<double>, true, true>(
+        {z}, N_k, N_w, mu_e, mu_h, sys, delta)[0];
+}
+
+std::vector<double> plasmon_det(
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green, double, false, true>(
+        z_vec, N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+std::vector<double> plasmon_det_ht(
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green_ht, double, false, true>(
+        z_vec, N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+std::vector<std::complex<double>> plasmon_det_cx(
+    const std::vector<std::complex<double>>& z_vec,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green, std::complex<double>, false, true>(
+        z_vec, N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+std::vector<std::complex<double>> plasmon_det_ht_cx(
+    const std::vector<std::complex<double>>& z_vec,
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_t<plasmon_green_ht, std::complex<double>, false, true>(
+        z_vec, N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+template <
+    std::complex<double> (*green_func)(
+        double, double, double, double, const system_data& sys, double),
+    bool check_sign = true,
+    typename T      = double>
+double plasmon_det_zero_t(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    // Constant
+    arma::Mat<T> mat_elem(N_k * N_w, N_k * N_w);
+    arma::SpMat<T> mat_kron{
+        arma::speye<arma::SpMat<T>>(N_k * N_w, N_k * N_w),
+    };
+
+    arma::SpMat<T> mat_G0(N_k * N_w, N_k * N_w);
+
+    // Change every step
+    arma::SpMat<T> mat_z_G0(N_k * N_w, N_k * N_w);
+    arma::Mat<T> mat_potcoef{
+        plasmon_potcoef_mat<plasmon_potcoef<green_func, T>, T>(
+            N_k, N_w, mu_e, mu_h, sys, delta),
+    };
+
+    plasmon_fill_mat<T>(
+        N_k, N_w, mu_e, mu_h, sys, delta, mat_potcoef, mat_elem, mat_G0);
+
+    struct plasmon_mat_s<T> s {
+        mat_elem, mat_kron, mat_G0, mat_z_G0, mat_potcoef
+    };
+
+    gsl_function funct;
+    funct.function = &plasmon_det_f<0, T>;
+    funct.params   = &s;
+
+    double z{0};
+    double z_min{1e-10}, z_max{-1.5 * sys.get_E_n(0.5)};
+
+    if constexpr (check_sign) {
+        if (funct.function(z_max, funct.params) *
+                funct.function(z_min, funct.params) >
+            0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+    }
+
+    const gsl_root_fsolver_type* solver_type = gsl_root_fsolver_brent;
+    gsl_root_fsolver* solver = gsl_root_fsolver_alloc(solver_type);
+
+    gsl_root_fsolver_set(solver, &funct, z_min, z_max);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < max_iter; iter++) {
+        status = gsl_root_fsolver_iterate(solver);
+        z      = gsl_root_fsolver_root(solver);
+        z_min  = gsl_root_fsolver_x_lower(solver);
+        z_max  = gsl_root_fsolver_x_upper(solver);
+
+        status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+    }
+
+    gsl_root_fsolver_free(solver);
+    return -z;
+}
+
+double plasmon_det_zero(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_zero_t<plasmon_green, true>(
+        N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+double plasmon_det_zero_nsc(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_zero_t<plasmon_green, false>(
+        N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+double plasmon_det_zero_ht(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_zero_t<plasmon_green_ht, true>(
+        N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+double plasmon_det_zero_ht_nsc(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_zero_t<plasmon_green_ht, false>(
+        N_k, N_w, mu_e, mu_h, sys, delta);
 }
 
 std::vector<double> plasmon_mat_lwl(

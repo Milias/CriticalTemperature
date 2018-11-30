@@ -12,8 +12,8 @@ mu_h = sys.m_eh * mu_e
 z = 0.2
 
 t0 = time.time()
-#potcoef = plasmon_potcoef_cx_mat(N_u0, N_u1, mu_e, mu_h, sys)
-potcoef = plasmon_fmat_cx(z, N_u0, N_u1, mu_e, mu_h, sys)
+potcoef = plasmon_potcoef_cx_mat(N_u0, N_u1, mu_e, mu_h, sys)
+#potcoef = plasmon_fmat_cx(z, N_u0, N_u1, mu_e, mu_h, sys)
 print('[%e], Elapsed: %.2fs' % (mu_e, time.time() - t0))
 
 cx_arr = array(potcoef).reshape((N_u1 * N_u0, N_u1 * N_u0))
@@ -39,5 +39,7 @@ plt.imshow(
     colors,
     extent=(0, 1, 0, 1),
 )
+
+plt.axis([0, 1, 0, 1])
 
 plt.show()

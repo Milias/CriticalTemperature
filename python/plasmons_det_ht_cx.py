@@ -6,7 +6,7 @@ N_u0 = 1 << 7
 #N_u1 = (1 << 2) + 1
 N_u1 = (1 << 0)
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1  # K
+m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 u_max = 1
@@ -47,8 +47,8 @@ print('sys_ls: \t%8.6f nm' % (1 / sys.sys_ls))
 print('###   lwl    ###')
 print('z_cou:   \t%8.6f eV, z_sys:   \t%8.6f eV' % (z_cou_lwl, z_sys_lwl))
 
-mu_e = 1e-1
-mu_h = sys.m_eh * mu_e
+mu_e = 4 / sys.beta
+mu_h = sys.get_mu_h_ht(mu_e)
 """
 z_static = plasmon_det_zero_r(vuvu_nw_vec, id_nw_vec, du0, du1_nw, N_u0, 1,
                               mu_e, mu_h, sys)

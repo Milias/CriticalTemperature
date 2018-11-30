@@ -104,9 +104,9 @@ class DynamicDataPlot:
         ax.figure.canvas.draw_idle()
 
 
-N_u = 1 << 9
+N_u = 1 << 8
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
+m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 30  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 u0_max, u1_max = 0.9, 0.9
@@ -117,7 +117,7 @@ mu_e = 1 / sys.beta  # eV
 
 dyn_plot = DynamicDataPlot(sys, N_u, mu_e)
 
-fig = plt.figure(figsize=(16 * 1.2, 9 * 1.2))
+fig = plt.figure(figsize=(16 * 1.3, 9 * 1.3))
 ax = fig.subplots()
 
 img1 = ax.imshow(
@@ -136,8 +136,8 @@ dyn_plot.setImageObject(img1, img2)
 
 ax.set_autoscale_on(False)  # Otherwise, infinite loop
 
-#ax.axis([-u0_max, u0_max, -u1_max, u1_max])
-ax.axis([0, u0_max, -u1_max, u1_max])
+ax.axis([-u0_max, u0_max, -u1_max, u1_max])
+#ax.axis([0, u0_max, -u1_max, u1_max])
 plt.tight_layout()
 
 ax.callbacks.connect('xlim_changed', dyn_plot.update)
