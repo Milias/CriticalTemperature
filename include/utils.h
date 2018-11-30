@@ -155,5 +155,9 @@ struct system_data {
     }
 
     double get_E_n(double n) const;
+
+    double get_mu_h_t0(double mu_e) const;
+    double get_mu_h_ht(double mu_e) const;
+    double get_mu_h(double mu_e) const;
 };
 

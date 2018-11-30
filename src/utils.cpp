@@ -42,3 +42,15 @@ double system_data::get_E_n(double n) const {
     return E_1 / (n * n);
 }
 
+double system_data::get_mu_h_t0(double mu_e) const {
+    return m_eh * mu_e;
+}
+
+double system_data::get_mu_h_ht(double mu_e) const {
+    return mu_e + std::log(m_eh) / beta;
+}
+
+double system_data::get_mu_h(double mu_e) const {
+    return std::log(std::pow(1 + std::exp(beta * mu_e), m_eh) - 1) / beta;
+}
+

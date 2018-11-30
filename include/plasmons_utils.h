@@ -6,6 +6,8 @@ struct plasmon_kmax_s {
     double mu_h;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };
 
 struct plasmon_disp_s {
@@ -14,6 +16,8 @@ struct plasmon_disp_s {
     double mu_h;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };
 
 struct plasmon_disp_inv_s {
@@ -22,6 +26,8 @@ struct plasmon_disp_inv_s {
     double mu_h;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };
 
 struct plasmon_disp_th_s {
@@ -32,6 +38,8 @@ struct plasmon_disp_th_s {
     double mu_h;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };
 
 struct plasmon_potcoef_s {
@@ -43,7 +51,7 @@ struct plasmon_potcoef_s {
 
     const system_data& sys;
 
-    double delta{1e-2};
+    double delta{1e-12};
 };
 
 struct plasmon_potcoef_lwl_s {
@@ -52,24 +60,22 @@ struct plasmon_potcoef_lwl_s {
     double ls;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };
 
-struct plasmon_det_s {
-    const arma::cx_mat& mat_elem;
-    const arma::sp_cx_mat& mat_kron;
-    const arma::sp_cx_mat& mat_G0;
+template <typename T>
+struct plasmon_mat_s {
+    using type = T;
 
-    arma::sp_cx_mat& mat_z_G0;
-    arma::cx_mat& mat_potcoef;
-};
+    const arma::Mat<T>& mat_elem;
+    const arma::SpMat<T>& mat_kron;
+    const arma::SpMat<T>& mat_G0;
 
-struct plasmon_det_rs {
-    const arma::mat& mat_elem;
-    const arma::sp_mat& mat_kron;
-    const arma::sp_mat& mat_G0;
+    arma::SpMat<T>& mat_z_G0;
+    arma::Mat<T>& mat_potcoef;
 
-    arma::sp_mat& mat_z_G0;
-    arma::mat& mat_potcoef;
+    double delta{1e-12};
 };
 
 struct plasmon_real_potcoef_k_s {
@@ -78,4 +84,6 @@ struct plasmon_real_potcoef_k_s {
     double mu_h;
 
     const system_data& sys;
+
+    double delta{1e-12};
 };

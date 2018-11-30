@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <typeinfo>
 #include <utility>
 
 #include <complex>
@@ -79,13 +80,11 @@ double erf_sterm_r(double x, double y, double k);
 double erf_sterm_i(double x, double y, double k);
 
 // real(erf(x + i * y))
-template <uint32_t n = 64>
 double erf_r(double x, double y, double eps = 1e-16);
+
 // imag(erf(x + i * y))
-template <uint32_t n = 64>
 double erf_i(double x, double y, double eps = 1e-16);
 
-template <uint32_t n = 64>
 std::complex<double> erf_cx(const std::complex<double>& z, double eps = 1e-16);
 
 /*
@@ -96,6 +95,18 @@ std::complex<double> erf_cx(const std::complex<double>& z, double eps = 1e-16);
 double y_eq_s(double v);
 
 #ifndef SWIG
+
+// real(erf(x + i * y))
+template <uint32_t n = 64>
+double erf_r_t(double x, double y, double eps = 1e-16);
+
+// imag(erf(x + i * y))
+template <uint32_t n = 64>
+double erf_i_t(double x, double y, double eps = 1e-16);
+
+template <uint32_t n = 64>
+std::complex<double> erf_cx_t(
+    const std::complex<double>& z, double eps = 1e-16);
 
 /*
  * Struct used when saving the full solution

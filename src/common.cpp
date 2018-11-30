@@ -252,8 +252,8 @@ double erf_sterm_i(double x, double y, double k) {
     return std::exp(-0.25 * k * k) * erf_gk(x, y, k) / (k * k + 4 * x * x);
 }
 
-template <uint32_t n = 64>
-double erf_r(double x, double y, double eps) {
+template <uint32_t n>
+double erf_r_t(double x, double y, double eps) {
     const double constant_add = std::erf(x) + std::exp(-x * x) /
                                                   (2 * M_PI * x) *
                                                   (1 - std::cos(2 * x * y));
@@ -272,8 +272,8 @@ double erf_r(double x, double y, double eps) {
     return constant_add + val_curr + val_prev;
 }
 
-template <uint32_t n = 64>
-double erf_i(double x, double y, double eps) {
+template <uint32_t n>
+double erf_i_t(double x, double y, double eps) {
     const double constant_add =
         std::exp(-x * x) / (2 * M_PI * x) * std::sin(2 * x * y);
     const double constant_prod = 2 * std::exp(-x * x) / M_PI;
@@ -291,8 +291,8 @@ double erf_i(double x, double y, double eps) {
     return constant_add + val_curr + val_prev;
 }
 
-template <uint32_t n = 64>
-std::complex<double> erf_cx(const std::complex<double>& z, double eps) {
+template <uint32_t n>
+std::complex<double> erf_cx_t(const std::complex<double>& z, double eps) {
     const std::complex<double> c_add(
         std::erf(z.real()) + std::exp(-std::pow(z.real(), 2)) /
                                  (2 * M_PI * z.real()) *
@@ -319,6 +319,20 @@ std::complex<double> erf_cx(const std::complex<double>& z, double eps) {
     }
 
     return c_add + val_curr + val_prev;
+}
+
+// real(erf(x + i * y))
+double erf_r(double x, double y, double eps) {
+    return erf_r_t(x, y, eps);
+}
+
+// imag(erf(x + i * y))
+double erf_i(double x, double y, double eps) {
+    return erf_i_t(x, y, eps);
+}
+
+std::complex<double> erf_cx(const std::complex<double>& z, double eps) {
+    return erf_cx_t(z, eps);
 }
 
 double y_eq_s_f(double y, void* params) {
