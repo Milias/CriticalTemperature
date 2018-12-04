@@ -292,33 +292,43 @@ double erf_i_t(double x, double y, double eps) {
 }
 
 template <uint32_t n>
-std::complex<double> erf_cx_t(const std::complex<double>& z, double eps) {
-    const std::complex<double> c_add(
-        std::erf(z.real()) + std::exp(-std::pow(z.real(), 2)) /
-                                 (2 * M_PI * z.real()) *
-                                 (1 - std::cos(2 * z.real() * z.imag())),
-        std::exp(-std::pow(z.real(), 2)) / (2 * M_PI * z.real()) *
-            std::sin(2 * z.real() * z.imag()));
-
-    const double c_prod{2 * std::exp(-std::pow(z.real(), 2)) / M_PI};
-
-    std::complex<double> val_prev{0}, val_curr;
-    double err{1};
-
-    val_curr = c_prod * std::complex<double>(
-                            erf_sterm_r(z.real(), z.imag(), 1),
-                            erf_sterm_i(z.real(), z.imag(), 1));
-
-    for (uint32_t k = 2; k < n && err > eps; k++) {
-        val_prev += val_curr;
-        val_curr = c_prod * std::complex<double>(
-                                erf_sterm_r(z.real(), z.imag(), k),
-                                erf_sterm_i(z.real(), z.imag(), k));
-
-        err = std::abs(val_curr - val_prev);
+std::complex<double> erf_cx_t(const std::complex<double>& z) {
+    double c_add_r, c_add_i;
+    if (z.real() == 0) {
+        c_add_r = 0;
+        c_add_i = M_1_PI * z.imag();
+    } else {
+        c_add_r = std::erf(z.real()) +
+                  std::exp(-std::pow(z.real(), 2)) / (2 * M_PI * z.real()) *
+                      (1 - std::cos(2 * z.real() * z.imag()));
+        c_add_i = std::exp(-std::pow(z.real(), 2)) / (2 * M_PI * z.real()) *
+                  std::sin(2 * z.real() * z.imag());
     }
 
-    return c_add + val_curr + val_prev;
+    std::complex<double> c_add(c_add_r, c_add_i);
+
+    const double c_prod{2 * std::exp(-std::pow(z.real(), 2)) * M_1_PI};
+
+    double real_part[n] = {0};
+    double imag_part[n] = {0};
+    double error;
+
+    double real_res, imag_res;
+
+    real_part[0] = c_prod * erf_sterm_r(z.real(), z.imag(), 1) + c_add.real();
+    imag_part[0] = c_prod * erf_sterm_i(z.real(), z.imag(), 1) + c_add.imag();
+
+    for (uint32_t k = 1; k < n; k++) {
+        real_part[k] = c_prod * erf_sterm_r(z.real(), z.imag(), k + 1);
+        imag_part[k] = c_prod * erf_sterm_i(z.real(), z.imag(), k + 1);
+    }
+
+    gsl_sum_levin_u_workspace* w = gsl_sum_levin_u_alloc(n);
+    gsl_sum_levin_u_accel(real_part, n, w, &real_res, &error);
+    gsl_sum_levin_u_accel(imag_part, n, w, &imag_res, &error);
+    gsl_sum_levin_u_free(w);
+
+    return {real_res, imag_res};
 }
 
 // real(erf(x + i * y))
@@ -331,8 +341,13 @@ double erf_i(double x, double y, double eps) {
     return erf_i_t(x, y, eps);
 }
 
-std::complex<double> erf_cx(const std::complex<double>& z, double eps) {
-    return erf_cx_t(z, eps);
+std::complex<double> erf_cx(const std::complex<double>& z) {
+    return erf_cx_t(z);
+}
+
+std::complex<double> erfi_cx(const std::complex<double>& z) {
+    return std::complex<double>(0, -1.0) *
+           erf_cx_t(std::complex<double>(-z.imag(), z.real()));
 }
 
 double y_eq_s_f(double y, void* params) {

@@ -104,16 +104,16 @@ class DynamicDataPlot:
         ax.figure.canvas.draw_idle()
 
 
-N_u = 1 << 8
+N_u = 1 << 9
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 30  # K
+m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
-u0_max, u1_max = 0.9, 0.9
+u0_max, u1_max = 0.7, 0.7
 
 print('β^-1: %f eV' % (1 / sys.beta))
 
-mu_e = 1 / sys.beta  # eV
+mu_e = 0.5 / sys.beta  # eV
 
 dyn_plot = DynamicDataPlot(sys, N_u, mu_e)
 

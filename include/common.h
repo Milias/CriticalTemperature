@@ -39,6 +39,8 @@
 
 #include <optim/optim.hpp>
 
+#include "Faddeeva.hh"
+
 #include "utils.h"
 
 /*** MPFR ***/
@@ -85,7 +87,8 @@ double erf_r(double x, double y, double eps = 1e-16);
 // imag(erf(x + i * y))
 double erf_i(double x, double y, double eps = 1e-16);
 
-std::complex<double> erf_cx(const std::complex<double>& z, double eps = 1e-16);
+std::complex<double> erf_cx(const std::complex<double>& z);
+std::complex<double> erfi_cx(const std::complex<double>& z);
 
 /*
  * Solve the equation
@@ -97,16 +100,15 @@ double y_eq_s(double v);
 #ifndef SWIG
 
 // real(erf(x + i * y))
-template <uint32_t n = 64>
+template <uint32_t n = 32>
 double erf_r_t(double x, double y, double eps = 1e-16);
 
 // imag(erf(x + i * y))
-template <uint32_t n = 64>
+template <uint32_t n = 32>
 double erf_i_t(double x, double y, double eps = 1e-16);
 
-template <uint32_t n = 64>
-std::complex<double> erf_cx_t(
-    const std::complex<double>& z, double eps = 1e-16);
+template <uint32_t n = 32>
+std::complex<double> erf_cx_t(const std::complex<double>& z);
 
 /*
  * Struct used when saving the full solution

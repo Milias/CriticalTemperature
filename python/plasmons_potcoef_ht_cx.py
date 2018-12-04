@@ -1,8 +1,8 @@
 from common import *
 
-N_u0 = 1 << 6
-N_u1 = (1 << 2) + 1
-#N_u1 = (1 << 0)
+N_u0 = 1 << 10
+#N_u1 = (1 << 2) + 1
+N_u1 = (1 << 0)
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)

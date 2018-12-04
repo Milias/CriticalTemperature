@@ -1,6 +1,6 @@
 from common import *
 
-N_u0 = 1 << 10
+N_u0 = 1 << 13
 
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)
@@ -9,10 +9,10 @@ mu_e = 1e1
 mu_h = sys.m_eh * mu_e
 """
 
-mu_e = 4 / sys.beta
+mu_e = 8 / sys.beta
 mu_h = sys.get_mu_h_ht(mu_e)
 
-k0, k1, w0 = 1, 1, 0.1
+k0, k1, w0 = 1, 1.05, 1
 
 u0, du0 = linspace(0, pi, N_u0, retstep=True)
 
@@ -35,11 +35,13 @@ print('[%e], Elapsed: %.2fs' % (mu_e, time.time() - t0))
 green_arr = array(green)
 green_inv_arr = array(green_inv)
 
-#plt.plot(u0, real(green_arr), 'r-')
-#plt.plot(u0, imag(green_arr), 'b-')
+plt.plot(u0, real(green_arr), 'r-')
+plt.plot(u0, imag(green_arr), 'b-')
 
 plt.plot(k_vec, real(green_inv_arr), 'r--')
 plt.plot(k_vec, imag(green_inv_arr), 'b--')
+
+plt.axis([0, pi, -amax(abs(green_arr)), amax(abs(green_arr))])
 
 plt.savefig('plots/green_cx_1d.eps')
 

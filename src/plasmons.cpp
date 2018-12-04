@@ -18,8 +18,11 @@ std::complex<double> plasmon_green(
     double E[2] = {sys.m_pe * sys.c_alpha * k2, sys.m_ph * sys.c_alpha * k2};
 
     std::complex<double> nu[4] = {
-        -w_complex / E[0] - 1.0, -w_complex / E[0] + 1.0,
-        -w_complex / E[1] - 1.0, -w_complex / E[1] + 1.0};
+        -w_complex / E[0] - 1.0,
+        -w_complex / E[0] + 1.0,
+        -w_complex / E[1] - 1.0,
+        -w_complex / E[1] + 1.0,
+    };
 
     if constexpr (remove_term == 0) {
         pi_screen_nofactor[0] =
@@ -70,7 +73,7 @@ std::complex<double> plasmon_green_ht(
     double mu_h,
     const system_data& sys,
     double delta = 1e-12) {
-    const std::complex<double> w_complex(w, delta);
+    const std::complex<double> w_complex(w, 0);
 
     const double k2{k * k};
 
@@ -87,29 +90,27 @@ std::complex<double> plasmon_green_ht(
     };
 
     const std::complex<double> nu_exp[2] = {
-        mu_e - 0.25 * (std::pow(w_complex, 2) + std::pow(E[0], 2)) / E[0],
-        mu_h - 0.25 * (std::pow(w_complex, 2) + std::pow(E[1], 2)) / E[1],
+        -0.25 * (std::pow(w_complex, 2) + std::pow(E[0], 2)) / E[0],
+        -0.25 * (std::pow(w_complex, 2) + std::pow(E[1], 2)) / E[1],
     };
 
     pi_screen_nofactor[0] =
-        std::exp(sys.beta * nu_exp[0]) / std::sqrt(sys.beta * E[0]) *
-        (std::complex<double>(0, 2.0) * std::sinh(0.5 * sys.beta * w_complex) -
-         std::exp(-0.5 * sys.beta * w_complex) *
-             erf_cx(std::sqrt(0.25 * sys.beta / E[0]) * nu[0]) +
-         std::exp(0.5 * sys.beta * w_complex) *
-             erf_cx(std::sqrt(0.25 * sys.beta / E[0]) * nu[1]));
+        std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
+        (std::complex<double>(0, 2.0 * M_SQRTPI) * std::exp(nu_exp[0]) *
+             std::sinh(0.5 * sys.beta * w_complex) -
+         Faddeeva::Dawson(std::sqrt(0.25 * sys.beta / E[0]) * nu[0]) +
+         Faddeeva::Dawson(std::sqrt(0.25 * sys.beta / E[0]) * nu[1]));
 
-    pi_screen_nofactor[0] =
-        std::exp(sys.beta * nu_exp[1]) / std::sqrt(sys.beta * E[1]) *
-        (std::complex<double>(0, 2.0) * std::sinh(0.5 * sys.beta * w_complex) -
-         std::exp(-0.5 * sys.beta * w_complex) *
-             erf_cx(std::sqrt(0.25 * sys.beta / E[1]) * nu[2]) +
-         std::exp(0.5 * sys.beta * w_complex) *
-             erf_cx(std::sqrt(0.25 * sys.beta / E[1]) * nu[3]));
+    pi_screen_nofactor[1] =
+        std::exp(sys.beta * mu_h) / (std::sqrt(sys.beta * E[1]) * M_PI) *
+        (std::complex<double>(0, M_SQRTPI) * std::exp(nu_exp[1]) *
+             std::sinh(0.5 * sys.beta * w_complex) -
+         Faddeeva::Dawson(std::sqrt(0.25 * sys.beta / E[1]) * nu[2]) +
+         Faddeeva::Dawson(std::sqrt(0.25 * sys.beta / E[1]) * nu[3]));
 
     const std::complex<double> result{
         -sys.eps_r * k / (sys.c_hbarc * sys.c_aEM) -
-            0.125 / (sys.c_alpha * M_SQRTPI) *
+            0.25 / sys.c_alpha *
                 (pi_screen_nofactor[0] / sys.m_pe +
                  pi_screen_nofactor[1] / sys.m_ph),
     };
@@ -635,49 +636,70 @@ arma::Mat<T> plasmon_potcoef_mat(
     double mu_h,
     const system_data& sys,
     double delta) {
-    arma::Cube<T> potcoef(N_k, N_k, N_w);
-
+    // printf("%s started\n", __func__);
     arma::vec u0{arma::linspace(1.0 / N_k, 1.0 - 1.0 / N_k, N_k)};
-    arma::vec u1(N_w);
 
-    if (N_w > 1) {
-        u1 = arma::linspace(0, 1.0 - 1.0 / N_w, N_w);
-    } else {
-        u1 = {0.0};
-    }
+    if constexpr (std::is_same<T, std::complex<double>>::value) {
+        arma::Cube<T> potcoef(N_k, N_k, N_w);
+
+        arma::vec u1 = arma::linspace(0, 1.0 - 1.0 / N_w, N_w);
 
 #pragma omp parallel for collapse(3)
-    for (uint32_t i = 0; i < N_k; i++) {
-        for (uint32_t j = 0; j < N_k; j++) {
-            for (uint32_t k = 0; k < N_w; k++) {
+        for (uint32_t i = 0; i < N_k; i++) {
+            for (uint32_t j = 0; j < N_k; j++) {
+                for (uint32_t k = 0; k < N_w; k++) {
+                    const std::vector<double> wkk{
+                        u1(k) / (1.0 - std::pow(u1(k), 2)),
+                        (1.0 - u0(i)) / u0(i),
+                        (1.0 - u0(j)) / u0(j),
+                    };
+
+                    potcoef(i, j, k) =
+                        potcoef_func(wkk, mu_e, mu_h, sys, delta);
+                }
+            }
+        }
+
+        if (N_w > 1) {
+            arma::Mat<T> result(N_k * N_w, N_k * N_w);
+
+            for (uint32_t i = 0; i < N_w; i++) {
+                for (uint32_t j = 0; j < i; j++) {
+                    result.submat(
+                        N_k * i, N_k * j, N_k * (i + 1) - 1,
+                        N_k * (j + 1) - 1) = potcoef.slice(i - j);
+                }
+
+                for (uint32_t j = i; j < N_w; j++) {
+                    result.submat(
+                        N_k * i, N_k * j, N_k * (i + 1) - 1,
+                        N_k * (j + 1) - 1) = arma::conj(potcoef.slice(j - i));
+                }
+            }
+            return result;
+
+        } else {
+            return potcoef.slice(0);
+        }
+
+    } else {
+        arma::Mat<T> potcoef(N_k, N_k);
+
+#pragma omp parallel for collapse(2)
+        for (uint32_t i = 0; i < N_k; i++) {
+            for (uint32_t j = 0; j < N_k; j++) {
                 const std::vector<double> wkk{
-                    u1(k) / (1.0 - std::pow(u1(k), 2)),
+                    0.0,
                     (1.0 - u0(i)) / u0(i),
                     (1.0 - u0(j)) / u0(j),
                 };
 
-                potcoef(i, j, k) = potcoef_func(wkk, mu_e, mu_h, sys, delta);
+                potcoef(i, j) = potcoef_func(wkk, mu_e, mu_h, sys, delta);
             }
         }
+
+        return potcoef;
     }
-
-    arma::Mat<T> result(N_k * N_w, N_k * N_w);
-
-    for (uint32_t i = 0; i < N_w; i++) {
-        for (uint32_t j = 0; j < i; j++) {
-            result.submat(
-                N_k * i, N_k * j, N_k * (i + 1) - 1, N_k * (j + 1) - 1) =
-                potcoef.slice(i - j);
-        }
-
-        for (uint32_t j = i; j < N_w; j++) {
-            result.submat(
-                N_k * i, N_k * j, N_k * (i + 1) - 1, N_k * (j + 1) - 1) =
-                arma::conj(potcoef.slice(j - i));
-        }
-    }
-
-    return result;
 }
 
 std::vector<std::complex<double>> plasmon_potcoef_cx_mat(
@@ -802,6 +824,7 @@ void plasmon_fill_mat(
     const arma::Mat<T>& potcoef,
     arma::Mat<T>& mat_elem,
     arma::SpMat<T>& mat_G0) {
+    // printf("%s started\n", __func__);
     /*
      * mat_z_G0 = z - mat_G0
      * mat_potcoef = mat_kron + mat_elem / mat_z_G0
@@ -816,22 +839,22 @@ void plasmon_fill_mat(
         du1 = u1(1) - u0(0);
 
 #pragma omp parallel for collapse(4)
-        for (uint32_t j = 0; j < N_w; j++) {
-            for (uint32_t l = 0; l < N_w; l++) {
-                for (uint32_t i = 0; i < N_k; i++) {
-                    for (uint32_t k = 0; k < N_k; k++) {
+        for (uint32_t i = 0; i < N_w; i++) {
+            for (uint32_t j = 0; j < N_w; j++) {
+                for (uint32_t k = 0; k < N_k; k++) {
+                    for (uint32_t l = 0; l < N_k; l++) {
                         const std::vector<double> k_v{
-                            (1.0 - u0(i)) / u0(i),
                             (1.0 - u0(k)) / u0(k),
+                            (1.0 - u0(l)) / u0(l),
                         };
 
-                        mat_elem(j + N_w * i, l + N_w * k) =
-                            du0 * du1 * k_v[1] * (1 + std::pow(u1(l), 2)) /
-                            std::pow(u0(k) * (1 - std::pow(u1(l), 2)), 2) *
-                            potcoef(j + N_w * i, l + N_w * k);
+                        mat_elem(i + N_w * k, j + N_w * l) =
+                            du0 * du1 * k_v[1] * (1 + std::pow(u1(j), 2)) /
+                            std::pow(u0(l) * (1 - std::pow(u1(j), 2)), 2) *
+                            potcoef(i + N_w * k, j + N_w * l);
 
-                        if (i == k && j == l) {
-                            mat_G0(j + N_w * i, l + N_w * k) =
+                        if (i == j && k == l) {
+                            mat_G0(i + N_w * k, j + N_w * l) =
                                 -std::pow(sys.c_hbarc * k_v[1], 2) * 0.5 /
                                 sys.m_p;
                         }
@@ -1036,8 +1059,7 @@ std::vector<std::complex<double>> plasmon_det_ht_cx(
 template <
     std::complex<double> (*green_func)(
         double, double, double, double, const system_data& sys, double),
-    bool check_sign = true,
-    typename T      = double>
+    typename T = std::complex<double>>
 double plasmon_det_zero_t(
     uint32_t N_k,
     uint32_t N_w,
@@ -1045,6 +1067,8 @@ double plasmon_det_zero_t(
     double mu_h,
     const system_data& sys,
     double delta) {
+    // printf("%s started\n", __func__);
+
     // Constant
     arma::Mat<T> mat_elem(N_k * N_w, N_k * N_w);
     arma::SpMat<T> mat_kron{
@@ -1068,18 +1092,43 @@ double plasmon_det_zero_t(
     };
 
     gsl_function funct;
-    funct.function = &plasmon_det_f<0, T>;
-    funct.params   = &s;
+    if constexpr (std::is_same<T, std::complex<double>>::value) {
+        funct.function = &plasmon_det_f<1, T>;
+    } else {
+        funct.function = &plasmon_det_f<0, T>;
+    }
+    funct.params = &s;
 
     double z{0};
-    double z_min{1e-10}, z_max{-1.5 * sys.get_E_n(0.5)};
+    double z_min, z_max{-1.5 * sys.get_E_n(0.5)};
+    z_min = 0.5 * z_max;
 
-    if constexpr (check_sign) {
-        if (funct.function(z_max, funct.params) *
-                funct.function(z_min, funct.params) >
-            0) {
-            return std::numeric_limits<double>::quiet_NaN();
+    /*
+     * Expontential sweep
+     */
+
+    const uint32_t max_pow{20};
+    double f_val{0};
+    bool return_nan{true};
+
+    for (uint32_t ii = 1; ii <= max_pow; ii++) {
+        f_val = funct.function(z_min, funct.params);
+
+        if (f_val < 0) {
+            return_nan = false;
+            break;
+
+        } else if (f_val == 0) {
+            return z_max;
+
+        } else {
+            z_max = z_min;
+            z_min *= 0.5;
         }
+    }
+
+    if (return_nan) {
+        return std::numeric_limits<double>::quiet_NaN();
     }
 
     const gsl_root_fsolver_type* solver_type = gsl_root_fsolver_brent;
@@ -1094,6 +1143,8 @@ double plasmon_det_zero_t(
         z_min  = gsl_root_fsolver_x_lower(solver);
         z_max  = gsl_root_fsolver_x_upper(solver);
 
+        // printf("max: %f, min: %f\n", z_max, z_min);
+
         status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
     }
 
@@ -1103,45 +1154,42 @@ double plasmon_det_zero_t(
 
 double plasmon_det_zero(
     uint32_t N_k,
-    uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    return plasmon_det_zero_t<plasmon_green, true>(
-        N_k, N_w, mu_e, mu_h, sys, delta);
-}
-
-double plasmon_det_zero_nsc(
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta) {
-    return plasmon_det_zero_t<plasmon_green, false>(
-        N_k, N_w, mu_e, mu_h, sys, delta);
+    return plasmon_det_zero_t<plasmon_green, double>(
+        N_k, 1, mu_e, mu_h, sys, delta);
 }
 
 double plasmon_det_zero_ht(
     uint32_t N_k,
-    uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    return plasmon_det_zero_t<plasmon_green_ht, true>(
-        N_k, N_w, mu_e, mu_h, sys, delta);
+    return plasmon_det_zero_t<plasmon_green_ht, double>(
+        N_k, 1, mu_e, mu_h, sys, delta);
 }
 
-double plasmon_det_zero_ht_nsc(
+double plasmon_det_zero_cx(
     uint32_t N_k,
     uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    return plasmon_det_zero_t<plasmon_green_ht, false>(
+    return plasmon_det_zero_t<plasmon_green>(N_k, N_w, mu_e, mu_h, sys, delta);
+}
+
+double plasmon_det_zero_ht_cx(
+    uint32_t N_k,
+    uint32_t N_w,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    return plasmon_det_zero_t<plasmon_green_ht>(
         N_k, N_w, mu_e, mu_h, sys, delta);
 }
 
@@ -1426,3 +1474,5 @@ std::vector<double> plasmon_real_pot_v(
 
     return output;
 }
+
+

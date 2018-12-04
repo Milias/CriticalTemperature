@@ -122,15 +122,6 @@ std::vector<std::complex<double>> plasmon_det_ht_cx(
 
 double plasmon_det_zero(
     uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-double plasmon_det_zero_nsc(
-    uint32_t N_k,
-    uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
@@ -138,13 +129,20 @@ double plasmon_det_zero_nsc(
 
 double plasmon_det_zero_ht(
     uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12);
+
+double plasmon_det_zero_cx(
+    uint32_t N_k,
     uint32_t N_w,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta = 1e-12);
 
-double plasmon_det_zero_ht_nsc(
+double plasmon_det_zero_ht_cx(
     uint32_t N_k,
     uint32_t N_w,
     double mu_e,
