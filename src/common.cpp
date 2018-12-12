@@ -10,18 +10,16 @@ void initializeMPFR_GSL() {
 
 /*** Utility functions ***/
 
-double logExp(double x, double xmax) {
-    // log( 1 + exp( x ) )
-    double d_y;
+double logExp(double x) {
+    double r = std::log(1 + std::exp(x));
 
-    if (x < xmax) {
-        // Approximate log(exp(x) + 1) ~ x when x > xmax
-        d_y = log(1 + exp(x));
-    } else {
-        d_y = x;
+    if (r == 0) {
+        return std::exp(x);
+    } else if (std::isinf(r)) {
+        return x;
     }
 
-    return d_y;
+    return r;
 }
 
 double logExp_mpfr(double x, double xmax) {

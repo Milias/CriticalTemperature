@@ -51,6 +51,123 @@ double system_data::get_mu_h_ht(double mu_e) const {
 }
 
 double system_data::get_mu_h(double mu_e) const {
-    return std::log(std::pow(1 + std::exp(beta * mu_e), m_eh) - 1) / beta;
+    double result{
+        std::log(std::pow(1 + std::exp(beta * mu_e), m_eh) - 1) / beta,
+    };
+
+    if (std::isinf(result)) {
+        if (mu_e > 0) {
+            return get_mu_h_t0(mu_e);
+        } else {
+            return get_mu_h_ht(mu_e);
+        }
+    } else {
+        return result;
+    }
 }
 
+double system_data::density_ideal_t0(double mu_e) const {
+    if (mu_e <= 0) {
+        return 0.0;
+    }
+
+    return m_e * M_1_PI * mu_e / std::pow(c_hbarc, 2);
+}
+
+double system_data::density_ideal_ht(double mu_e) const {
+    return m_e * M_1_PI * std::exp(beta * mu_e) /
+           (std::pow(c_hbarc, 2) * beta);
+}
+
+double system_data::density_ideal(double mu_e) const {
+    double result{
+        m_e * M_1_PI * logExp(beta * mu_e) / (std::pow(c_hbarc, 2) * beta),
+    };
+
+    return result;
+}
+
+double system_data::density_exc_ht(double mu_ex, double eb) const {
+    return (m_e + m_h) * M_1_PI * std::exp(beta * (mu_ex - eb)) /
+           (std::pow(c_hbarc, 2) * beta);
+}
+
+double system_data::density_exc_exp(double u, double eb) const {
+    /*
+     * mu_ex = eb * (1 + exp(u))
+     * log(1 - exp(beta * eb * exp(u)))
+     */
+
+    double log_val;
+
+    if (u > -10) {
+        log_val = std::log(1 - std::exp(beta * eb * std::exp(u)));
+    } else if (u > -50) {
+        /*
+         * Compute the logarithm using arbitrary precision.
+         */
+
+        mpfr_t y;
+        mpfr_init_set_d(y, u, MPFR_RNDN);
+        mpfr_exp(y, y, MPFR_RNDN);
+        mpfr_mul_d(y, y, beta * eb, MPFR_RNDN);
+        mpfr_exp(y, y, MPFR_RNDN);
+        mpfr_ui_sub(y, 1, y, MPFR_RNDN);
+        mpfr_log(y, y, MPFR_RNDN);
+        log_val = mpfr_get_d(y, MPFR_RNDN);
+
+        mpfr_clear(y);
+    } else {
+        log_val = std::log(-beta * eb) + u;
+    }
+
+    double result{
+        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * log_val,
+    };
+
+    return result;
+}
+
+double system_data::density_exc(double mu_ex, double eb) const {
+    const double r{
+        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
+            std::log(1 - std::exp(beta * (mu_ex - eb))),
+    };
+
+    if (r == 0.0) {
+        return density_exc_ht(mu_ex, eb);
+    }
+
+    return r;
+}
+
+double system_data::mu_ideal(double n) const {
+    const double r{
+        std::log(
+            std::exp(0.5 * M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1),
+    };
+
+    if (std::isinf(r)) {
+        return 0.5 * M_PI * c_hbarc * c_hbarc / m_e * beta * n;
+    }
+
+    return r;
+}
+
+double system_data::mu_exc_u(double n) const {
+    const double r{
+        std::log(
+            1 / (1 - std::exp(
+                         -M_PI * c_hbarc * c_hbarc / (m_e + m_h) * beta * n)) -
+            1),
+    };
+
+    if (std::isnan(r)) {
+        return std::log(
+            (m_e + m_h) / (M_PI * c_hbarc * c_hbarc * beta * n) - 1);
+    } else if (std::isinf(r)) {
+        return -beta * M_PI * c_hbarc * c_hbarc * n / (m_e + m_h);
+    }
+
+    return r;
+}

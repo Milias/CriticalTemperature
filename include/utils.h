@@ -159,5 +159,16 @@ struct system_data {
     double get_mu_h_t0(double mu_e) const;
     double get_mu_h_ht(double mu_e) const;
     double get_mu_h(double mu_e) const;
+
+    double density_ideal_t0(double mu_e) const;
+    double density_ideal_ht(double mu_e) const;
+    double density_ideal(double mu_e) const;
+
+    double density_exc_ht(double mu_ex, double eb) const;
+    double density_exc_exp(double u, double eb) const;
+    double density_exc(double mu_ex, double eb) const;
+
+    double mu_ideal(double n) const;
+    double mu_exc_u(double n) const;
 };
 

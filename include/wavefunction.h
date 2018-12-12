@@ -53,7 +53,7 @@ private:
     double pot_static_2d(double x) const {
         const double mu_e{lambda_s};
 
-        return plasmon_real_pot(x, mu_e, sys.m_eh * mu_e, sys);
+        return plasmon_rpot(x, mu_e, sys.m_eh * mu_e, sys);
     }
 
     constexpr static double (wf_c<state, pot_index, dim>::*pot_func[])(
@@ -79,15 +79,13 @@ public:
     void operator()(const state& y, state& dy, double x) {
         dy[0] = y[1];
 
-        double alpha = 0.5 * std::pow(sys.c_hbarc, 2) / sys.m_p;
-
         if (x > global_eps) {
             if constexpr (dim == 2) {
                 dy[1] =
-                    ((pot(x) - E) / alpha - 1.0 / (x * x)) * y[0] + y[1] / x;
+                    ((pot(x) - E) / sys.c_alpha - 1.0 / (x * x)) * y[0] + y[1] / x;
 
             } else if constexpr (dim == 3) {
-                dy[1] = (pot(x) - E) * y[0] / alpha;
+                dy[1] = (pot(x) - E) * y[0] / sys.c_alpha;
             }
 
         } else {

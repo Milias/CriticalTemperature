@@ -64,7 +64,7 @@ class DynamicDataPlot:
             ))
 
         self.green = array(
-            plasmon_green_ht_v(
+            plasmon_green_ht_r_v(
                 wk_vec,
                 self.mu_e,
                 self.mu_h,
@@ -110,10 +110,12 @@ m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 u0_max, u1_max = 0.7, 0.7
+#u0_max, u1_max = 0.99, 0.99
 
 print('β^-1: %f eV' % (1 / sys.beta))
 
 mu_e = 0.5 / sys.beta  # eV
+#mu_e = 1e1  # eV
 
 dyn_plot = DynamicDataPlot(sys, N_u, mu_e)
 

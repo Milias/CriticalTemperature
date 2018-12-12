@@ -46,7 +46,7 @@
 /*** MPFR ***/
 
 constexpr bool use_mpfr{false};
-constexpr mp_prec_t prec{64};
+constexpr mp_prec_t prec{256};
 
 /*** gsl constants ***/
 
@@ -59,7 +59,7 @@ void initializeMPFR_GSL();
 
 /*** Utility functions ***/
 
-double logExp(double x, double xmax = 1e3);
+double logExp(double x);
 double logExp_mpfr(double x, double xmax = 1e3);
 
 // real(Li_s(exp(z)))
