@@ -44,12 +44,6 @@ double plasmon_disp_inv(
 double plasmon_disp_inv_ncb(
     double w, double mu_e, double mu_h, const system_data& sys);
 
-double plasmon_disp_th(
-    const std::vector<double> wkk,
-    double mu_e,
-    double mu_h,
-    const system_data& sys);
-
 std::vector<std::complex<double>> plasmon_potcoef_cx_mat(
     uint32_t N_k,
     uint32_t N_w,
@@ -64,60 +58,7 @@ std::vector<std::complex<double>> plasmon_potcoef_ht_cx_mat(
     double mu_e,
     double mu_h,
     const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<std::complex<double>> plasmon_fmat_cx(
     const std::complex<double>& z,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<std::complex<double>> plasmon_fmat_ht_cx(
-    const std::complex<double>& z,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<double> plasmon_det(
-    const std::vector<double>& z_vec,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<double> plasmon_det_ht(
-    const std::vector<double>& z_vec,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<std::complex<double>> plasmon_det_cx(
-    const std::vector<std::complex<double>>& z_vec,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
-    double delta = 1e-12);
-
-std::vector<std::complex<double>> plasmon_det_ht_cx(
-    const std::vector<std::complex<double>>& z_vec,
-    uint32_t N_k,
-    uint32_t N_w,
-    double mu_e,
-    double mu_h,
-    const system_data& sys,
     double delta = 1e-12);
 
 double plasmon_det_zero(
@@ -125,13 +66,29 @@ double plasmon_det_zero(
     double mu_e,
     double mu_h,
     const system_data& sys,
-    double delta = 1e-12);
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
 
 double plasmon_det_zero_ht(
     uint32_t N_k,
     double mu_e,
     double mu_h,
     const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+std::vector<double> plasmon_det_zero_v(
+    uint32_t N_k,
+    const std::vector<double>& mu_vec,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta = 1e-12);
+
+std::vector<double> plasmon_det_zero_ht_v(
+    uint32_t N_k,
+    const std::vector<double>& mu_vec,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta = 1e-12);
 
 double plasmon_det_zero_cx(
@@ -140,7 +97,8 @@ double plasmon_det_zero_cx(
     double mu_e,
     double mu_h,
     const system_data& sys,
-    double delta = 1e-12);
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
 
 double plasmon_det_zero_ht_cx(
     uint32_t N_k,
@@ -148,7 +106,8 @@ double plasmon_det_zero_ht_cx(
     double mu_e,
     double mu_h,
     const system_data& sys,
-    double delta = 1e-12);
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
 
 double plasmon_det_zero_lwl(uint32_t N_k, double ls, const system_data& sys);
 
@@ -180,7 +139,10 @@ std::vector<double> plasmon_rpot_lwl_v(
 double plasmon_exc_mu_zero(const system_data& sys);
 double plasmon_exc_mu_val(double val, const system_data& sys);
 double plasmon_exc_mu_lim_ht(
-    uint32_t N_k, const system_data& sys, double val = 0.0);
+    uint32_t N_k,
+    const system_data& sys,
+    double val   = 0.0,
+    double delta = 1e-12);
 
 std::vector<double> plasmon_density_mu_ht_v(
     const std::vector<double>& u_vec,
@@ -189,6 +151,12 @@ std::vector<double> plasmon_density_mu_ht_v(
     double delta = 1e-12);
 
 std::vector<double> plasmon_density_ht_v(
+    const std::vector<double>& n_vec,
+    uint32_t N_k,
+    const system_data& sys,
+    double delta = 1e-12);
+
+std::vector<double> plasmon_density_exc_ht_v(
     const std::vector<double>& n_vec,
     uint32_t N_k,
     const system_data& sys,

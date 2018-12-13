@@ -13,7 +13,7 @@ colors = [
 for c, T in zip(colors, T_vec):
     sys = system_data(m_e, m_h, eps_r, T)
 
-    n_vec = logspace(-1, 1, 1 << 4)
+    n_vec = logspace(-2, 0, 1 << 4)
 
     u_vec = array(time_func(plasmon_density_ht_v, n_vec, N_k, sys))
 
