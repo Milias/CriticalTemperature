@@ -84,7 +84,21 @@ std::vector<double> plasmon_det_zero_v(
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta = 1e-12);
 
+std::vector<double> plasmon_det_zero_v1(
+    uint32_t N_k,
+    const std::vector<double>& mu_vec,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta = 1e-12);
+
 std::vector<double> plasmon_det_zero_ht_v(
+    uint32_t N_k,
+    const std::vector<double>& mu_vec,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta = 1e-12);
+
+std::vector<double> plasmon_det_zero_ht_v1(
     uint32_t N_k,
     const std::vector<double>& mu_vec,
     const system_data& sys,

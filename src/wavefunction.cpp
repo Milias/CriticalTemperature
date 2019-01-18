@@ -142,3 +142,17 @@ std::vector<double> wf_2d_E_static_v(
 
     return output;
 }
+
+std::vector<double> wf_2d_E_static_v1(
+    const std::vector<double>& mu_vec, const system_data& sys)
+{
+    uint64_t N_mu{mu_vec.size()};
+    std::vector<double> output(N_mu);
+
+#pragma omp parallel for
+    for (uint64_t i = 0; i < N_mu; i++) {
+        output[i] = wf_E<3, 2, 1>(mu_vec[i], sys);
+    }
+
+    return output;
+}

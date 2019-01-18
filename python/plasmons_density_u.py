@@ -2,8 +2,9 @@ from common import *
 
 N_k = 1 << 8
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 10  # K
-T_vec = linspace(100, 300, 3)
+#m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 10  # K
+m_e, m_h, eps_r, T = 0.12, 0.3, 49.0185, 294  # K
+T_vec = linspace(10, 410, 5)
 
 colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -12,14 +13,15 @@ colors = [
 
 for c, T in zip(colors, T_vec):
     sys = system_data(m_e, m_h, eps_r, T)
+    eb = -0.1
 
-    n_vec = logspace(-2, 0, 1 << 4)
+    u_vec = linspace(-20, 5, 1 << 7)
 
-    u_vec = array(time_func(plasmon_density_ht_v, n_vec, N_k, sys))
+    n_vec = array([sys.density_exc_exp(u, eb) for u in u_vec])
 
     plt.plot(
-        n_vec,
         u_vec,
+        n_vec,
         '.-',
         color=c,
         label='T: $%.0f$ K' % sys.T,
@@ -29,10 +31,10 @@ for c, T in zip(colors, T_vec):
 #plt.axhline(y = 0, color = 'k')
 
 plt.title(
-    'Carrier density vs. chemical potential\nMaxwell-Boltzmann -- Static')
-plt.xlabel(r'$n_{total}$')
+    'Exciton density vs. $u$\nMaxwell-Boltzmann -- Static')
+plt.ylabel(r'$n_{exc}$')
 #plt.ylabel('$\mu_e$ / eV')
-plt.ylabel('$u$ / dimensionless')
+plt.xlabel('$u$ / dimensionless')
 
 #plt.ylim(0, None)
 plt.legend(loc=0)

@@ -175,11 +175,13 @@ double system_data::mu_exc_u(double n) const {
             1),
     };
 
-    if (std::isnan(r)) {
-        return std::log(
-            (m_e + m_h) / (M_PI * c_hbarc * c_hbarc * beta * n) - 1);
-    } else if (std::isinf(r)) {
-        return -beta * M_PI * c_hbarc * c_hbarc * n / (m_e + m_h);
+    if (std::isinf(r)) {
+        if (r < 0) {
+            return -beta * M_PI * c_hbarc * c_hbarc * n / (m_e + m_h);
+        } else {
+            return std::log(
+                (m_e + m_h) / (M_PI * c_hbarc * c_hbarc * beta * n));
+        }
     }
 
     return r;

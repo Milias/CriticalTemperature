@@ -53,7 +53,7 @@ private:
     double pot_static_2d(double x) const {
         const double mu_e{lambda_s};
 
-        return plasmon_rpot(x, mu_e, sys.m_eh * mu_e, sys);
+        return plasmon_rpot_ht(x, mu_e, sys.get_mu_h(mu_e), sys);
     }
 
     constexpr static double (wf_c<state, pot_index, dim>::*pot_func[])(
@@ -81,8 +81,8 @@ public:
 
         if (x > global_eps) {
             if constexpr (dim == 2) {
-                dy[1] =
-                    ((pot(x) - E) / sys.c_alpha - 1.0 / (x * x)) * y[0] + y[1] / x;
+                dy[1] = ((pot(x) - E) / sys.c_alpha - 1.0 / (x * x)) * y[0] +
+                        y[1] / x;
 
             } else if constexpr (dim == 3) {
                 dy[1] = (pot(x) - E) * y[0] / sys.c_alpha;
@@ -173,7 +173,7 @@ double wf_E_f(double E, void* params) {
     return wf_s<false, pot_index, dim>(E, s->lambda_s, s->sys);
 }
 
-template <uint32_t pot_index = 0, uint32_t dim = 3>
+template <uint32_t pot_index = 0, uint32_t dim = 3, uint32_t N = 0>
 double wf_E(double lambda_s, const system_data& sys) {
     /*
      * Computes the energy of the groundstate, starting
@@ -188,13 +188,10 @@ double wf_E(double lambda_s, const system_data& sys) {
     double z_min, z_max, z;
 
     if constexpr (dim == 2) {
-        z_min = sys.get_E_n(0.5);
-        // z_min = -10000;
-        // z_max = sys.get_E_n(1.5);
+        z_min = sys.get_E_n(N + 0.5);
 
     } else {
-        z_min = sys.get_E_n<1>();
-        // z_max = sys.get_E_n<2>();
+        z_min = sys.get_E_n<N + 1>();
     }
 
     /*
@@ -295,4 +292,7 @@ uint32_t wf_2d_n_lim_py(double E, double lambda_s, const system_data& sys);
 
 double wf_2d_E_static_py(double mu_e, const system_data& sys);
 std::vector<double> wf_2d_E_static_v(
+    const std::vector<double>& mu_vec, const system_data& sys);
+
+std::vector<double> wf_2d_E_static_v1(
     const std::vector<double>& mu_vec, const system_data& sys);

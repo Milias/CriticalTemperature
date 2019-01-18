@@ -46,7 +46,7 @@
 /*** MPFR ***/
 
 constexpr bool use_mpfr{false};
-constexpr mp_prec_t prec{256};
+constexpr mp_prec_t prec{128};
 
 /*** gsl constants ***/
 

@@ -3,12 +3,13 @@ from common import *
 m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
-N_k = 1 << 9
+N_k = 1 << 8
 N_x = 1 << 10
 
-x_max = 100
+x_max = 40
 
 mu_vec = linspace(-12, 4, 9) / sys.beta
+#mu_vec = logspace(-7, 3, 9)
 x_vec = logspace(log10(x_max / N_x), log10(x_max), N_x)
 
 colors = [
@@ -17,12 +18,9 @@ colors = [
 ]
 
 for c, mu_e in zip(colors, mu_vec):
-    mu_h = sys.get_mu_h(mu_e)
-
-    eb = time_func(plasmon_det_zero_ht, N_k, mu_e, mu_h, sys)
-    plt.axhline(y=eb, color=c, linestyle='--')
-    print('eb: %f eV' % eb)
     """
+    mu_h = sys.get_mu_h_t0(mu_e)
+
     rpot = time_func(plasmon_rpot_v, x_vec, mu_e, mu_h, sys)
     plt.plot(
         x_vec,
@@ -32,7 +30,12 @@ for c, mu_e in zip(colors, mu_vec):
         label=r'$\mu_e$: %3.2f$\times 10^{%1.0f}$' %
         (mu_e * 10**(-int(log10(mu_e))), log10(mu_e)),
     )
+
     """
+    mu_h = sys.get_mu_h(mu_e)
+    eb = time_func(plasmon_det_zero_ht, N_k, mu_e, mu_h, sys)
+    plt.axhline(y=eb, color=c, linestyle='--')
+    print('eb: %f eV' % eb)
 
     rpot_ht = time_func(plasmon_rpot_ht_v, x_vec, mu_e, mu_h, sys)
     plt.plot(
@@ -57,6 +60,7 @@ plt.xlim(0, x_max)
 plt.legend(loc=0)
 
 plt.title('Electron-Hole potential in real space\n$T$ = %.0f K' % sys.T)
+#plt.title('Electron-Hole potential in real space\n$T$ = 0 K')
 plt.xlabel('$x$ / nm')
 plt.ylabel('$V(x)$ / eV')
 

@@ -6,7 +6,6 @@ N_k = 1 << 8
 #N_w = (1 << 2) + 1
 N_w = (1 << 0)
 
-#m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
 m_e, m_h, eps_r, T = 0.12, 0.3, 4.90185, 294  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
@@ -46,21 +45,19 @@ colors = [
 ]
 
 for c, T in zip(colors, T_vec):
-    sys = system_data(m_e, m_h, eps_r, T)
+    mu_max = 4
+    mu_vec = logspace(-8, log10(mu_max), N_x)
 
-    mu_max = min(0.3, 18 / sys.beta)
-    mu_vec = linspace(-mu_max, mu_max, N_x)
+    poles_list = array(time_func(plasmon_det_zero_v, N_k, mu_vec, sys))
+    poles_list_1 = array(time_func(plasmon_det_zero_v1, N_k, mu_vec, sys))
 
-    poles_list = array(time_func(plasmon_det_zero_ht_v, N_k, mu_vec, sys))
-    poles_list_1 = array(time_func(plasmon_det_zero_ht_v1, N_k, mu_vec, sys))
-
-    plt.plot(mu_vec, poles_list, '.-', label='T: %.0f K' % sys.T, color=c)
-    plt.plot(mu_vec, poles_list_1, '.--', label='T: %.0f K' % sys.T, color=c)
+    plt.semilogx(mu_vec, poles_list, '.-', label='T: 0 K', color=c)
+    plt.semilogx(mu_vec, poles_list_1, '.--', label='T: 0 K', color=c)
 
 plt.axvline(x=0, color='k')
 plt.legend(loc=0)
 
-plt.title('Binding energy vs. chemical potential\nMaxwell-Boltzmann -- Static')
+plt.title('Binding energy vs. chemical potential\n$T = 0$ -- Static')
 plt.xlabel('$\mu_e$ / eV')
 plt.ylabel('$\epsilon_B$ / eV')
 

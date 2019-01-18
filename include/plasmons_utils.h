@@ -20,7 +20,8 @@ template <
         double mu_e,
         double mu_h,
         const system_data& sys,
-        double delta)>
+        double delta),
+    bool is_green_complex = false>
 struct plasmon_mat_s {
     using type = T;
 
@@ -51,7 +52,8 @@ struct plasmon_mat_s {
         arma::Row<T> diag_vals_t(N_k);
 
         if constexpr (std::is_same<T, std::complex<double>>::value) {
-            diag_vals_t = arma::Row<T>(diag_vals.t().eval(), arma::zeros(N_k).t());
+            diag_vals_t =
+                arma::Row<T>(diag_vals.t().eval(), arma::zeros(N_k).t());
         } else {
             diag_vals_t = diag_vals.t().eval();
         }
@@ -62,7 +64,8 @@ struct plasmon_mat_s {
     }
 
     void fill_mat_potcoef(double mu_e, double mu_h) {
-        if constexpr (std::is_same<T, std::complex<double>>::value) {
+        if constexpr (
+            std::is_same<T, std::complex<double>>::value && is_green_complex) {
             /*
              * TODO: I think I can rewrite this part so that only
              * result is used, not potcoef.
@@ -114,7 +117,7 @@ struct plasmon_mat_s {
                         (1.0 - u0(j)) / u0(j),
                     };
 
-                    double r = potcoef_func(wkk, mu_e, mu_h, sys, delta);
+                    T r = potcoef_func(wkk, mu_e, mu_h, sys, delta);
 
                     mat_potcoef(i, j) = r;
                     mat_potcoef(j, i) = r;
