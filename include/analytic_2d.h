@@ -69,7 +69,7 @@ double ideal_2d_ls_mu(double mu_e, double mu_h, const system_data & sys);
 /*** Solving for chemical potential ***/
 
 std::vector<double> analytic_2d_mu(double n, const system_data & sys);
-std::vector<double> analytic_2d_mu_optim(double n, const system_data & sys);
+///std::vector<double> analytic_2d_mu_optim(double n, const system_data & sys);
 
 double analytic_2d_mu_f_py(double mu_e, double ls, double n, const system_data & sys);
 

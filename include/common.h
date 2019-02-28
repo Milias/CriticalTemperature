@@ -37,7 +37,8 @@
 
 #include <acb.h>
 
-#include <optim/optim.hpp>
+//#include <optim/optim.hpp>
+#include <armadillo>
 
 #include "Faddeeva.hh"
 

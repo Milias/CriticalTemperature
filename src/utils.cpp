@@ -4,6 +4,8 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     m_e(m_e * c_m_e),
     m_h(m_h * c_m_e),
     eps_r(eps_r),
+    a0(eps_r * c_hbarc * (m_e + m_h) /
+       (c_aEM * c_m_e * m_e * m_h)), // eps_r / c_aEM * c_hbarc / m_p;
     dl_m_e(m_e),
     dl_m_h(m_h),
     m_p(c_m_e * m_e * m_h / (m_e + m_h)),
@@ -88,41 +90,56 @@ double system_data::density_ideal(double mu_e) const {
 }
 
 double system_data::density_exc_ht(double mu_ex, double eb) const {
-    return (m_e + m_h) * M_1_PI * std::exp(beta * (mu_ex - eb)) /
+    return 2 * (m_e + m_h) * M_1_PI * std::exp(beta * (mu_ex - eb)) /
            (std::pow(c_hbarc, 2) * beta);
 }
 
-double system_data::density_exc_exp(double u, double eb) const {
-    /*
-     * mu_ex = eb * (1 + exp(u))
-     * log(1 - exp(beta * eb * exp(u)))
-     */
-
+double system_data::density_exc_exp(double u) const {
     double log_val;
 
     if (u > -10) {
-        log_val = std::log(1 - std::exp(beta * eb * std::exp(u)));
+        log_val = std::log(1.0 - 1.0 / (1.0 + std::exp(u)));
     } else if (u > -50) {
-        /*
-         * Compute the logarithm using arbitrary precision.
-         */
-
         mpfr_t y;
         mpfr_init_set_d(y, u, MPFR_RNDN);
         mpfr_exp(y, y, MPFR_RNDN);
-        mpfr_mul_d(y, y, beta * eb, MPFR_RNDN);
-        mpfr_exp(y, y, MPFR_RNDN);
+        mpfr_add_ui(y, y, 1, MPFR_RNDN);
+        mpfr_ui_div(y, 1, y, MPFR_RNDN);
         mpfr_ui_sub(y, 1, y, MPFR_RNDN);
         mpfr_log(y, y, MPFR_RNDN);
         log_val = mpfr_get_d(y, MPFR_RNDN);
 
         mpfr_clear(y);
     } else {
-        log_val = std::log(-beta * eb) + u;
+        log_val = u;
     }
 
     double result{
-        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * log_val,
+        -2 * (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * log_val,
+    };
+
+    return result;
+}
+
+double system_data::density_exc_exp_ht(double u) const {
+    double log_val;
+
+    if (u > -10) {
+        log_val = 1.0 + std::exp(u);
+    } else if (u > -50) {
+        mpfr_t y;
+        mpfr_init_set_d(y, u, MPFR_RNDN);
+        mpfr_exp(y, y, MPFR_RNDN);
+        mpfr_add_ui(y, y, 1, MPFR_RNDN);
+        log_val = mpfr_get_d(y, MPFR_RNDN);
+
+        mpfr_clear(y);
+    } else {
+        return density_exc_exp(u);
+    }
+
+    double result{
+        2 * (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) / log_val,
     };
 
     return result;
@@ -130,7 +147,7 @@ double system_data::density_exc_exp(double u, double eb) const {
 
 double system_data::density_exc(double mu_ex, double eb) const {
     const double r{
-        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
+        -2 * (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
             std::log(1 - std::exp(beta * (mu_ex - eb))),
     };
 
@@ -143,12 +160,11 @@ double system_data::density_exc(double mu_ex, double eb) const {
 
 double system_data::mu_ideal(double n) const {
     const double r{
-        std::log(
-            std::exp(0.5 * M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1),
+        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1),
     };
 
     if (std::isinf(r)) {
-        return 0.5 * M_PI * c_hbarc * c_hbarc / m_e * beta * n;
+        return M_PI * c_hbarc * c_hbarc / m_e * beta * n;
     }
 
     return r;
@@ -156,12 +172,11 @@ double system_data::mu_ideal(double n) const {
 
 double system_data::mu_h_ideal(double n) const {
     const double r{
-        std::log(
-            std::exp(0.5 * M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1),
+        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1),
     };
 
     if (std::isinf(r)) {
-        return 0.5 * M_PI * c_hbarc * c_hbarc / m_h * beta * n;
+        return M_PI * c_hbarc * c_hbarc / m_h * beta * n;
     }
 
     return r;
@@ -171,16 +186,17 @@ double system_data::mu_exc_u(double n) const {
     const double r{
         std::log(
             1 / (1 - std::exp(
-                         -M_PI * c_hbarc * c_hbarc / (m_e + m_h) * beta * n)) -
+                         -0.5 * M_PI * c_hbarc * c_hbarc / (m_e + m_h) * beta *
+                         n)) -
             1),
     };
 
     if (std::isinf(r)) {
         if (r < 0) {
-            return -beta * M_PI * c_hbarc * c_hbarc * n / (m_e + m_h);
+            return -beta * 0.5 * M_PI * c_hbarc * c_hbarc * n / (m_e + m_h);
         } else {
             return std::log(
-                (m_e + m_h) / (M_PI * c_hbarc * c_hbarc * beta * n));
+                (m_e + m_h) / (0.5 * M_PI * c_hbarc * c_hbarc * beta * n));
         }
     }
 

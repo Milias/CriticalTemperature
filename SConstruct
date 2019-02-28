@@ -37,7 +37,7 @@ cc_flags = [
 ]
 incl_libs = [
     'gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',
-    'optim', 'gomp'
+    'gomp'
 ]
 swig_flags = [
     '-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall',

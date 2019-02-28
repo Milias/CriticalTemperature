@@ -225,6 +225,15 @@ struct plasmon_exc_mu_lim_s {
 };
 
 template <typename T>
+struct plasmon_exc_mu_lim_int_s {
+    T& mat_s;
+    double u;
+    double val;
+
+    double eb_lim{std::numeric_limits<double>::quiet_NaN()};
+};
+
+template <typename T>
 struct plasmon_density_s {
     T& mat_s;
 

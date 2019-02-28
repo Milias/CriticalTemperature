@@ -790,13 +790,18 @@ template <
     typename T,
     T (*green_func)(
         double, double, double, double, const system_data& sys, double),
-    bool sweep = true,
-    uint32_t N = 0>
+    bool sweep    = true,
+    uint32_t N    = 0,
+    bool const_eb = false>
 double plasmon_det_zero_t(
     double mu_e,
     double mu_h,
     plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>& s,
     double eb_min = std::numeric_limits<double>::quiet_NaN()) {
+    if constexpr (const_eb) {
+        return s.sys.get_E_n(N + 0.5);
+    }
+
     constexpr double local_eps{1e-8};
     double z{-s.sys.get_E_n(N + 0.5)};
     double z_min{std::isnan(eb_min) ? z : -eb_min}, z_max{z};
@@ -1440,7 +1445,7 @@ double plasmon_exc_mu_lim_t(
     double val    = 0.0,
     double mu_lim = std::numeric_limits<double>::quiet_NaN(),
     double eb_lim = std::numeric_limits<double>::quiet_NaN()) {
-    if (val == 0 && !std::isnan(mu_lim)) {
+    if (val == 0 && !std::isnan(mu_lim) && false /* TODO: change */) {
         /*
          * In this case we have a trivial solution, because we
          * have already computed it.
@@ -1458,6 +1463,109 @@ double plasmon_exc_mu_lim_t(
 
     gsl_function funct;
     funct.function = &plasmon_exc_mu_lim_f<T, green_func, N, det_zero>;
+    funct.params   = &s;
+
+    double z;
+    double z_min{
+        s.mat_s.sys.get_E_n(0.5) -
+            std::log(s.mat_s.sys.m_eh) / s.mat_s.sys.beta - val,
+    };
+
+    double z_max{
+        val == 0 || std::isnan(mu_lim) ? plasmon_exc_mu_zero(s.mat_s.sys)
+                                       : mu_lim,
+    };
+
+    /*
+    printf(
+        "[%s] z: (%.10f, %.10f), f: (%f, %f)\n", __func__, z_max, z_min,
+        funct.function(z_max, &s), funct.function(z_min, &s));
+    */
+
+    const gsl_root_fsolver_type* solver_type = gsl_root_fsolver_brent;
+    gsl_root_fsolver* solver = gsl_root_fsolver_alloc(solver_type);
+
+    gsl_root_fsolver_set(solver, &funct, z_min, z_max);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < max_iter; iter++) {
+        status = gsl_root_fsolver_iterate(solver);
+        z      = gsl_root_fsolver_root(solver);
+        z_min  = gsl_root_fsolver_x_lower(solver);
+        z_max  = gsl_root_fsolver_x_upper(solver);
+
+        // printf("[%s] z: (%.10f, %.10f)\n", __func__, z_max, z_min);
+
+        status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+    }
+
+    gsl_root_fsolver_free(solver);
+    return z;
+}
+
+template <
+    typename T = double,
+    T (*green_func)(
+        double, double, double, double, const system_data& sys, double),
+    uint32_t N,
+    double (*det_zero)(
+        double,
+        double,
+        plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>&,
+        double)>
+double plasmon_exc_mu_lim_int_f(double mu_e, void* params) {
+    plasmon_exc_mu_lim_int_s<
+        plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>>* s{
+        static_cast<plasmon_exc_mu_lim_s<
+            plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>>*>(
+            params),
+    };
+
+    double mu_h{s->mat_s.sys.get_mu_h(mu_e)};
+    double eb{det_zero(mu_e, mu_h, s->mat_s, s->eb_lim)};
+    double mu_exc{eb - mu_e - mu_h};
+
+    double v0n{
+        4 * M_PI * s->sys.c_hbarc * s->sys.c_hbarc /
+            ((s->sys.m_e + s->sys.m_h) *
+             std::log(
+                 4 * s->sys.c_hbarc * s->sys.c_hbarc /
+                 (mu_exc * (s->sys.m_e + s->sys.m_h) * s->sys.a0 *
+                  s->sys.a0))) *
+            s->sys.density_exc_exp(s->u),
+    };
+
+    return mu_exc + v0n - s->val;
+}
+
+template <
+    typename T = double,
+    T (*green_func)(
+        double, double, double, double, const system_data& sys, double),
+    uint32_t N,
+    double (*det_zero)(
+        double,
+        double,
+        plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>&,
+        double)>
+double plasmon_exc_mu_lim_int_t(
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>& mat_s,
+    double u,
+    double mu_lim = std::numeric_limits<double>::quiet_NaN(),
+    double eb_lim = std::numeric_limits<double>::quiet_NaN()) {
+    const double val{logExp(u) / mat_s.sys.beta};
+
+    plasmon_exc_mu_lim_int_s<
+        plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>>
+        s{
+            mat_s,
+            u,
+            val,
+            eb_lim,
+        };
+
+    gsl_function funct;
+    funct.function = &plasmon_exc_mu_lim_int_f<T, green_func, N, det_zero>;
     funct.params   = &s;
 
     double z;
@@ -1523,19 +1631,18 @@ std::tuple<double, double, double> plasmon_mu_e_u(
     double u,
     plasmon_density_s<
         plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>>* s) {
-    double mu_e, mu_h, eb;
+    double mu_e{0.0}, mu_h{0.0}, eb{0.0};
 
     if (u > -15) {
         mu_e = plasmon_exc_mu_lim_t<T, green_func, N, det_zero>(
             s->mat_s, logExp(u) / s->mat_s.sys.beta, s->mu_e_lim, s->eb_lim);
 
-        mu_h = s->mat_s.sys.get_mu_h(mu_e);
-
-        eb = det_zero(mu_e, mu_h, s->mat_s, s->eb_lim);
+        // mu_h = s->mat_s.sys.get_mu_h_ht(mu_e);
+        // eb = det_zero(mu_e, mu_h, s->mat_s, s->eb_lim);
     } else {
         mu_e = s->mu_e_lim;
-        mu_h = s->mat_s.sys.get_mu_h(mu_e);
-        eb   = s->eb_lim;
+        // mu_h = s->mat_s.sys.get_mu_h_ht(mu_e);
+        // eb   = s->eb_lim;
     }
 
     return {mu_e, mu_h, eb};
@@ -1555,7 +1662,7 @@ template <
     typename TS = void>
 double plasmon_density_mu_f(double u, TS* params) {
     /*
-     * eb - mu_ex = mu_ex * log(1 + exp(u))
+     * beta * (eb - mu_ex) = log(1 + exp(u))
      */
     plasmon_density_s<
         plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, N>>>* s;
@@ -1577,10 +1684,12 @@ double plasmon_density_mu_f(double u, TS* params) {
 
     if constexpr (substract_total) {
         return s->mat_s.sys.density_ideal(mu_e) +
-               s->mat_s.sys.density_exc_exp(u, eb) - s->n_total;
+               s->mat_s.sys.density_exc_exp(u) - s->n_total;
+        // s->mat_s.sys.density_exc(mu_e + mu_h, eb) - s->n_total;
     } else {
         return s->mat_s.sys.density_ideal(mu_e) +
-               s->mat_s.sys.density_exc_exp(u, eb);
+               s->mat_s.sys.density_exc_exp(u);
+        // s->mat_s.sys.density_exc(mu_e + mu_h, eb);
     }
 }
 
@@ -1751,7 +1860,7 @@ double plasmon_density_t(
         z_min  = gsl_root_fsolver_x_lower(solver);
         z_max  = gsl_root_fsolver_x_upper(solver);
 
-        //printf("[%s] min: %.16f, max: %.16f\n", __func__, z_min, z_max);
+        // printf("[%s] min: %.16f, max: %.16f\n", __func__, z_min, z_max);
 
         status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
     }
@@ -1806,11 +1915,9 @@ std::tuple<double, double> plasmon_density_ts(
         z      = gsl_root_fdfsolver_root(solver);
         status = gsl_root_test_residual(f_z, 1e-10);
 
-        /*
         printf(
             "[%s] iter: %d, z: %f, z0: %f, f_z: %e\n", __func__, iter, z, z0,
             f_z);
-        */
     }
 
     gsl_root_fdfsolver_free(solver);
@@ -1831,6 +1938,64 @@ std::vector<double> plasmon_density_ht_v(
     constexpr auto green_func = plasmon_green_ht<T>;
     constexpr auto det_zero   = plasmon_det_zero_t<T, green_func, true>;
     constexpr auto det_zero_f = plasmon_det_zero_t<T, green_func, false>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> mat_s(
+        N_k, 1, sys, delta);
+
+    double mu_e_lim{plasmon_exc_mu_lim_t<T, green_func, 0, det_zero>(mat_s)};
+    double eb_lim{
+        det_zero(
+            mu_e_lim, sys.get_mu_h(mu_e_lim), mat_s,
+            std::numeric_limits<double>::quiet_NaN()),
+    };
+
+    printf("[%s] mu_e: %f, eb: %f\n", __func__, mu_e_lim, eb_lim);
+
+    plasmon_density_s<
+        plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>>>
+        s{
+            mat_s,
+            mu_e_lim,
+            eb_lim,
+        };
+
+    uint64_t N{n_vec.size() + 2};
+    std::vector<double> result(N);
+    std::vector<double> u_vec(N);
+
+    result[0] = mu_e_lim;
+    result[1] = eb_lim;
+
+    printf("Progress: %u/%lu\n", 0, N);
+    for (uint32_t i = 2, c = 0; i < N; i++, c++) {
+        if (10 * c >= N) {
+            printf("Progress: %u/%lu\n", i + 1, N);
+            c = 0;
+        }
+
+        auto [u, mu_e] = plasmon_density_ts<T, green_func, 0, det_zero_f>(
+            n_vec[i - 2],
+            i > 2 ? u_vec[i - 1] : std::numeric_limits<double>::quiet_NaN(),
+            s);
+
+        u_vec[i]  = u;
+        result[i] = mu_e;
+    }
+    printf("Progress: %lu/%lu\n", N, N);
+
+    return result;
+}
+
+std::vector<double> plasmon_density_ht_c_v(
+    const std::vector<double>& n_vec,
+    uint32_t N_k,
+    const system_data& sys,
+    double delta) {
+    using T                   = double;
+    constexpr auto green_func = plasmon_green_ht<T>;
+    constexpr auto det_zero = plasmon_det_zero_t<T, green_func, true, 0, true>;
+    constexpr auto det_zero_f =
+        plasmon_det_zero_t<T, green_func, false, 0, true>;
 
     plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> mat_s(
         N_k, 1, sys, delta);
@@ -1957,6 +2122,30 @@ std::vector<double> plasmon_density_exc_ht_v(
             n_vec[i - 2], s);
     }
     printf("Progress: %lu/%lu\n", N, N);
+
+    return result;
+}
+
+std::vector<std::complex<double>> plasmon_cond_v(
+    const std::vector<double>& q_yield_vec,
+    const std::vector<double>& Na_vec,
+    double L,
+    double mob_R,
+    double mob_I,
+    double pol,
+    double freq,
+    const system_data& sys) {
+    uint64_t N{q_yield_vec.size()};
+    std::vector<std::complex<double>> result(N);
+
+#pragma omp parallel for
+    for (uint64_t i = 0; i < N; i++) {
+        result[i] = std::complex<double>(
+            Na_vec[i] * sys.c_e_charge / L * mob_R * q_yield_vec[i],
+            Na_vec[i] * sys.c_e_charge / L * mob_I * q_yield_vec[i] +
+                2 * M_PI * pol * freq * Na_vec[i] / L *
+                    (1.0 - q_yield_vec[i]));
+    }
 
     return result;
 }

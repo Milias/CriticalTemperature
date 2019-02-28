@@ -24,11 +24,12 @@ struct system_data {
      * Fundamental constants
      */
 
-    constexpr static double c_kB{8.6173303e-5};            // eV K^-1
-    constexpr static double c_m_e{0.5109989461e6};         // eV
-    constexpr static double c_hbar{6.582119514e-16};       // eV s
-    constexpr static double c_light{299792458e9};          // nm s^-1
-    constexpr static double c_hbarc{1.9732697879518254e2}; // eV nm
+    constexpr static double c_kB{8.6173303e-5};             // eV K^-1
+    constexpr static double c_m_e{0.5109989461e6};          // eV
+    constexpr static double c_hbar{6.582119514e-16};        // eV s
+    constexpr static double c_light{299792458e9};           // nm s^-1
+    constexpr static double c_hbarc{1.9732697879518254e2};  // eV nm
+    constexpr static double c_e_charge{1.602176620898e-19}; // C
     /*
      * Electromagnetic fine-structure constant,
      * approx ~ 1 / 137.
@@ -42,6 +43,7 @@ struct system_data {
     const double m_e;   // eV
     const double m_h;   // eV
     const double eps_r; // dimensionless
+    const double a0;    // nm
 
     /*
      * Original constructor arguments
@@ -165,11 +167,11 @@ struct system_data {
     double density_ideal(double mu_e) const;
 
     double density_exc_ht(double mu_ex, double eb) const;
-    double density_exc_exp(double u, double eb) const;
+    double density_exc_exp(double u) const;
+    double density_exc_exp_ht(double u) const;
     double density_exc(double mu_ex, double eb) const;
 
     double mu_ideal(double n) const;
     double mu_h_ideal(double n) const;
     double mu_exc_u(double n) const;
 };
-

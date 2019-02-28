@@ -19,7 +19,7 @@ n_vec = logspace(-5, 1, 1 << 7)
 
 ax = [plt.subplot(2, 2, i + 1) for i in range(4)]
 
-data = None #loadtxt('../data.txt', delimiter=',')
+data = loadtxt('../data.txt', delimiter=',')
 
 for c, (i, T) in zip(colors, enumerate(T_vec)):
     sys = system_data(m_e, m_h, eps_r, T)

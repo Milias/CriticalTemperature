@@ -77,33 +77,35 @@ double plasmon_det_zero_ht(
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta  = 1e-12);
 
+// Groundstate energy
 std::vector<double> plasmon_det_zero_v(
     uint32_t N_k,
     const std::vector<double>& mu_vec,
     const system_data& sys,
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
-    double delta = 1e-12);
+    double delta  = 1e-12);
 
+// First excited state energy
 std::vector<double> plasmon_det_zero_v1(
     uint32_t N_k,
     const std::vector<double>& mu_vec,
     const system_data& sys,
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
-    double delta = 1e-12);
+    double delta  = 1e-12);
 
 std::vector<double> plasmon_det_zero_ht_v(
     uint32_t N_k,
     const std::vector<double>& mu_vec,
     const system_data& sys,
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
-    double delta = 1e-12);
+    double delta  = 1e-12);
 
 std::vector<double> plasmon_det_zero_ht_v1(
     uint32_t N_k,
     const std::vector<double>& mu_vec,
     const system_data& sys,
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
-    double delta = 1e-12);
+    double delta  = 1e-12);
 
 double plasmon_det_zero_cx(
     uint32_t N_k,
@@ -170,8 +172,24 @@ std::vector<double> plasmon_density_ht_v(
     const system_data& sys,
     double delta = 1e-12);
 
+std::vector<double> plasmon_density_ht_c_v(
+    const std::vector<double>& n_vec,
+    uint32_t N_k,
+    const system_data& sys,
+    double delta = 1e-12);
+
 std::vector<double> plasmon_density_exc_ht_v(
     const std::vector<double>& n_vec,
     uint32_t N_k,
     const system_data& sys,
     double delta = 1e-12);
+
+std::vector<std::complex<double>> plasmon_cond_v(
+    const std::vector<double>& n_id_vec,
+    const std::vector<double>& n_exc_vec,
+    double L,
+    double mob_R,
+    double mob_I,
+    double pol,
+    double freq,
+    const system_data& sys);

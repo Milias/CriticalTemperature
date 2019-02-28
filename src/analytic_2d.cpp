@@ -345,8 +345,9 @@ double analytic_2d_mu_f_py(
     }
 }
 
+/*
 double analytic_2d_mu_f_optim(
-    const arma::vec& x, arma::vec* /*df*/, void* params) {
+    const arma::vec& x, arma::vec* df, void* params) {
     // defined in analytic_2d_utils.h
     analytic_2d_mu_s* s{static_cast<analytic_2d_mu_s*>(params)};
 
@@ -407,4 +408,4 @@ std::vector<double> analytic_2d_mu_optim(double n, const system_data& sys) {
 
     return r;
 }
-
+*/

@@ -2,33 +2,22 @@ from common import *
 
 N_u0_lwl = 1 << 8
 
-N_u0 = 1 << 6
-#N_u1 = (1 << 2) + 1
-N_u1 = (1 << 0)
+N_u0 = 1 << 8
+eb_cou = 0.193
 
-m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 300  # K
+m_e, m_h, eps_r, T = 0.12, 0.3, 4.90185, 294  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
-u0_lwl, du0_lwl = linspace(
-    1 / N_u0_lwl, 1 - 1 / N_u0_lwl, N_u0_lwl, retstep=True)
-
-vu_vec = list(itertools.product(u0_lwl, repeat=2))
-r_u0_lwl = list(range(N_u0_lwl))
-id_lwl_vec = list(itertools.product(r_u0_lwl, repeat=2))
+eps_r = sys.c_aEM * sqrt(2 * sys.m_p / eb_cou)
+sys = system_data(m_e, m_h, eps_r, T)
 
 z_cou_lwl = plasmon_det_zero_lwl(
-    vu_vec,
-    id_lwl_vec,
     N_u0_lwl,
-    du0_lwl,
     1e-8,
     sys,
 )
 z_sys_lwl = plasmon_det_zero_lwl(
-    vu_vec,
-    id_lwl_vec,
     N_u0_lwl,
-    du0_lwl,
     sys.sys_ls,
     sys,
 )

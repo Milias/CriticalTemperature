@@ -18,10 +18,13 @@ from matplotlib.colors import LogNorm, SymLogNorm
 import matplotlib.colors
 
 import scipy.integrate
-import scipy.interpolate
-import scipy.special
+from scipy.integrate import (quad, simps)
+from scipy.interpolate import interp1d
+from scipy import special
 import scipy.misc
 import scipy.linalg
+import scipy.stats as stats
+from scipy.optimize import curve_fit
 
 from semiconductor import *
 from job_api import JobAPI
