@@ -231,6 +231,7 @@ for c, (i, T) in zip(colors, enumerate(T_vec)):
         exp_n_id_vec = exp_data[:, 1] * exp_n_vec
         exp_n_exc_vec = (1 - exp_data[:, 1]) * exp_n_vec
 
+    """
     real_x = p_n_id_vec
     real_y = exp_points[:, 1]
 
@@ -254,6 +255,7 @@ for c, (i, T) in zip(colors, enumerate(T_vec)):
     print()
 
     exit()
+    """
 
     print('mob_R: %f±%1.0e, mob_I: %e±%1.0e, pol: %e±%1.0e' %
           (fit_mob_R * 1e4, err_mob_R * 1e4, fit_mob_I * 1e4, err_mob_I * 1e4,

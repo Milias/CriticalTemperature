@@ -2076,6 +2076,25 @@ double plasmon_density_exc_t(
     return mu_e;
 }
 
+std::vector<double> plasmon_exc_mu_lim(
+    uint32_t N_k, const system_data& sys, double delta) {
+    using T                   = double;
+    constexpr auto green_func = plasmon_green_ht<T>;
+    constexpr auto det_zero   = plasmon_det_zero_t<T, green_func, true>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> mat_s(
+        N_k, 1, sys, delta);
+
+    double mu_e_lim{plasmon_exc_mu_lim_t<T, green_func, 0, det_zero>(mat_s)};
+    double eb_lim{
+        det_zero(
+            mu_e_lim, sys.get_mu_h(mu_e_lim), mat_s,
+            std::numeric_limits<double>::quiet_NaN()),
+    };
+
+    return {mu_e_lim, eb_lim};
+}
+
 std::vector<double> plasmon_density_exc_ht_v(
     const std::vector<double>& n_vec,
     uint32_t N_k,

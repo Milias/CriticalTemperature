@@ -183,13 +183,11 @@ double system_data::mu_h_ideal(double n) const {
 }
 
 double system_data::mu_exc_u(double n) const {
-    const double r{
-        std::log(
-            1 / (1 - std::exp(
-                         -0.5 * M_PI * c_hbarc * c_hbarc / (m_e + m_h) * beta *
-                         n)) -
-            1),
-    };
+    const double r{std::log(
+        1.0 / (1.0 -
+               std::exp(
+                   -0.5 * M_PI * c_hbarc * c_hbarc / (m_e + m_h) * beta * n)) -
+        1.0)};
 
     if (std::isinf(r)) {
         if (r < 0) {

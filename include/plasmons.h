@@ -178,6 +178,9 @@ std::vector<double> plasmon_density_ht_c_v(
     const system_data& sys,
     double delta = 1e-12);
 
+std::vector<double> plasmon_exc_mu_lim(
+    uint32_t N_k, const system_data& sys, double delta = 1e-12);
+
 std::vector<double> plasmon_density_exc_ht_v(
     const std::vector<double>& n_vec,
     uint32_t N_k,

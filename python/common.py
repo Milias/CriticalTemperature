@@ -24,7 +24,7 @@ from scipy import special
 import scipy.misc
 import scipy.linalg
 import scipy.stats as stats
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, least_squares, minimize, Bounds
 
 from semiconductor import *
 from job_api import JobAPI
