@@ -7,6 +7,10 @@ import time
 import copyreg
 import itertools
 import operator
+import json
+import uuid
+import base64
+import sys as pysys
 
 from numpy import *
 import cmath
@@ -24,12 +28,40 @@ from scipy import special
 import scipy.misc
 import scipy.linalg
 import scipy.stats as stats
-from scipy.optimize import curve_fit, least_squares, minimize, Bounds
+from scipy.optimize import minimize, root
 
 from semiconductor import *
 from job_api import JobAPI
 
 initializeMPFR_GSL()
+
+
+def save_data(filename, vars_list, extra_data=None):
+    export_data = zeros((vars_list[0].size, len(vars_list)))
+
+    for (i, var) in enumerate(vars_list):
+        export_data[:, i] = var
+
+    savetxt('%s.csv' % filename, export_data, delimiter=',')
+
+    print('Saved to %s' % filename)
+
+    if not extra_data is None:
+        with open('%s.json' % filename, 'w+') as fp:
+            json.dump(extra_data, fp)
+
+
+def load_data(filename, extra_dict = {}):
+    exported_data = loadtxt('%s.csv' % filename, delimiter=',').T
+
+    try:
+        with open('%s.json' % filename, 'r') as fp:
+            data_file = json.load(fp)
+            extra_dict.update(data_file)
+    except Exception as exc:
+        print('load_data: %s' % exc)
+
+    return exported_data
 
 
 def register_pickle_func(struct, func):

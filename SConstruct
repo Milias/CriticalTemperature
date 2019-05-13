@@ -41,9 +41,7 @@ incl_libs = [
 ]
 swig_flags = [
     '-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall',
-    '-modern', '-fastdispatch', '-nosafecstrings', '-fvirtual', '-noproxydel',
-    '-fastproxy', '-fastinit', '-fastquery', '-modernargs', '-nobuildnone',
-    '-dirvtable'
+    '-fastdispatch', '-fvirtual', '-fastproxy', '-dirvtable'
 ]
 
 swig_cmd = 'swig %s -o $TARGET -Iinclude -outdir %s $SOURCE' % (
@@ -75,11 +73,10 @@ swig_so = env.SharedObject(
     target=output_swig_so,
     source=swig_cpp,
 )
-lib = env.SharedLibrary(
-    target=output_lib,
-    source=[output_swig_so] + lib_sources,
-    SHLIBPREFIX='_',
-    LIBPATH=['/usr/lib', '/usr/local/lib'])
+lib = env.SharedLibrary(target=output_lib,
+                        source=[output_swig_so] + lib_sources,
+                        SHLIBPREFIX='_',
+                        LIBPATH=['/usr/lib', '/usr/local/lib'])
 
 Clean(py, ['bin/__pycache__'])
 Clean(swig_gen, swig_py)

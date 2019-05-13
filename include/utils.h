@@ -43,7 +43,6 @@ struct system_data {
     const double m_e;   // eV
     const double m_h;   // eV
     const double eps_r; // dimensionless
-    const double a0;    // nm
 
     /*
      * Original constructor arguments
@@ -63,6 +62,7 @@ struct system_data {
     const double m_sigma; // dimensionless
     const double m_eh;    // dimensionless
     const double c_alpha; // eV nm^2
+    const double a0;    // nm
 
     /*
      * Temperature-scaled quantities

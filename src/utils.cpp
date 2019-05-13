@@ -4,8 +4,6 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     m_e(m_e * c_m_e),
     m_h(m_h * c_m_e),
     eps_r(eps_r),
-    a0(eps_r * c_hbarc * (m_e + m_h) /
-       (c_aEM * c_m_e * m_e * m_h)), // eps_r / c_aEM * c_hbarc / m_p;
     dl_m_e(m_e),
     dl_m_h(m_h),
     m_p(c_m_e * m_e * m_h / (m_e + m_h)),
@@ -15,16 +13,18 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     m_sigma((m_e + m_h) * (1.0 / m_e + 1.0 / m_h)),
     m_eh(m_e / m_h),
     c_alpha(0.5 * c_hbarc * c_hbarc / m_p),
+    a0(eps_r / c_aEM * c_hbarc / m_p),
     T(T),
     beta(f_beta(T)),
     energy_th(f_energy_th(T)),
+    //sys_ls(M_1_PI * c_aEM / eps_r * (m_e + m_h) / c_hbarc),
+    sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
     zt_len(0.5 * c_hbarc / m_2p) {
     lambda_th = f_lambda_th(beta, m_p);
     m_pT      = m_p / energy_th;
     E_1       = -0.5 * m_p * std::pow(c_aEM / eps_r, 2);
     delta_E   = std::pow(2, 1.75) * c_aEM / eps_r *
               std::sqrt(m_pT * M_PI * c_aEM / eps_r * std::sqrt(m_pT));
-    sys_ls = 0.5 * M_1_PI * c_aEM / eps_r * (this->m_e + this->m_h) / c_hbarc;
 }
 
 void system_data::set_temperature(double T) {

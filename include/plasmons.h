@@ -125,7 +125,11 @@ double plasmon_det_zero_ht_cx(
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta  = 1e-12);
 
-double plasmon_det_zero_lwl(uint32_t N_k, double ls, const system_data& sys);
+double plasmon_det_zero_lwl(
+    uint32_t N_k,
+    double ls,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN());
 
 double plasmon_rpot(
     double x, double mu_e, double mu_h, const system_data& sys);

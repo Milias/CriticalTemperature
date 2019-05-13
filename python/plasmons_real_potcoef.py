@@ -4,7 +4,7 @@ m_e, m_h, eps_r, T = 0.28, 0.59, 6.56, 1  # K
 #m_e, m_h, eps_r, T = 0.5, 1, 1, 1  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
-N_x = 1 << 12
+N_x = 1 << 10
 
 x_max = 20
 

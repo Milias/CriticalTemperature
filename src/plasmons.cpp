@@ -166,11 +166,11 @@ double plasmon_green_lwl(
     double _w,
     double k,
     double ls,
-    double _mu_h,
+    double _,
     const system_data& sys,
     double delta = 1e-12) {
     if constexpr (invert) {
-        return 1.0 / (-sys.eps_r * (k + ls) / (sys.c_hbarc * sys.c_aEM));
+        return -sys.c_hbarc * sys.c_aEM / (sys.eps_r * (k + ls));
     } else {
         return -sys.eps_r * (k + ls) / (sys.c_hbarc * sys.c_aEM);
     }
@@ -748,7 +748,7 @@ std::vector<std::complex<double>> plasmon_potcoef_ht_cx_mat(
     double delta) {
     using T = std::complex<double>;
 
-    plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green>> s(
+    plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_ht>> s(
         N_k, N_w, sys, delta);
     s.fill_mat_potcoef(mu_e, mu_h);
 
@@ -803,7 +803,7 @@ double plasmon_det_zero_t(
     }
 
     constexpr double local_eps{1e-8};
-    double z{-s.sys.get_E_n(N + 0.5)};
+    double z{-1.1*s.sys.get_E_n(N + 0.5)};
     double z_min{std::isnan(eb_min) ? z : -eb_min}, z_max{z};
 
     if (z + eb_min < local_eps) {
@@ -838,7 +838,7 @@ double plasmon_det_zero_t(
 
             } else {
                 z_max = z_min;
-                z_min *= 0.7;
+                z_min *= 0.5;
             }
         }
 
@@ -865,8 +865,8 @@ double plasmon_det_zero_t(
 
         /*
         printf(
-            "[%s] eb_min: %f, max: %.16f, min: %.16f\n", __func__, eb_min,
-            z_max, z_min);
+            "[%s,%d] z: %f, eb_min: %f, max: %.16f, min: %.16f\n", __func__,
+            iter, z, eb_min, z_max, z_min);
         */
 
         status = gsl_root_test_interval(z_min, z_max, 0, local_eps);
@@ -1028,12 +1028,13 @@ std::vector<double> plasmon_det_zero_ht_v1(
     return result;
 }
 
-double plasmon_det_zero_lwl(uint32_t N_k, double ls, const system_data& sys) {
+double plasmon_det_zero_lwl(
+    uint32_t N_k, double ls, const system_data& sys, double eb_min) {
     using T = double;
 
     plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_lwl, false, 0>> s(
         N_k, 1, sys, 0);
-    return plasmon_det_zero_t<T, plasmon_green_lwl>(ls, 0, s);
+    return plasmon_det_zero_t<T, plasmon_green_lwl, false>(ls, 0, s, eb_min);
 }
 
 double plasmon_det_zero_cx(

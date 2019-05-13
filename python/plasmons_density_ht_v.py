@@ -1,12 +1,35 @@
 from common import *
 
-N_k = 1 << 8
+N_k = 1 << 10
 
-m_e, m_h, eps_r, T = 0.12, 0.3, 4.90185, 294  # K
+surf_area = 326.4  # nm^2
+eb_cou = 0.193
+#m_e, m_h, eps_r, T = 0.12, 0.3, 4.90185, 294  # K
+m_e, m_h, eps_r, T = 0.22, 0.41, 6.0, 294  # K
+sys = system_data(m_e, m_h, eps_r, T)
+eps_r = sys.c_aEM * sqrt(2 * sys.m_p / eb_cou)
+"""
+Compute eps_r given the actual binding energy given by
+the long wavelength method with ls -> 0.
+"""
+z_cou_sol = root(
+    lambda eps_r: plasmon_det_zero_lwl(
+        N_k,
+        1e-8,
+        system_data(m_e, m_h, eps_r[0], T),
+        -1e-1,
+    ) + eb_cou,
+    [eps_r],
+    method='hybr',
+)
+
+print(z_cou_sol.x)
+print(eps_r)
+
+eps_r = z_cou_sol.x[0]
 sys = system_data(m_e, m_h, eps_r, T)
 
-eps_r = sys.c_aEM * sqrt(2 * sys.m_p / 0.194)
-sys = system_data(m_e, m_h, eps_r, T)
+print(plasmon_det_zero_lwl(N_k, 1e-10, sys, -1e-1))
 
 T_vec = linspace(294, 310, 1)
 
@@ -15,130 +38,43 @@ colors = [
     for h in linspace(0, 0.7, T_vec.size)
 ]
 
-n_vec = logspace(-5, 1, 1 << 7)
+n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
+    'bin/cdse_platelet_data')
 
-ax = [plt.subplot(2, 2, i + 1) for i in range(4)]
+#n_vec = logspace(-3.5, 0.3, 1 << 7)
+n_vec = n_exp_vec / surf_area
 
-data = loadtxt('../data.txt', delimiter=',')
+values_list = []
 
 for c, (i, T) in zip(colors, enumerate(T_vec)):
     sys = system_data(m_e, m_h, eps_r, T)
 
-    if data is None:
-        exc_list = time_func(plasmon_density_ht_v, n_vec, N_k, sys)
-    else:
-        exc_list = data[i]
+    exc_list = time_func(plasmon_density_ht_v, n_vec, N_k, sys)
 
     mu_e_lim, eb_lim = exc_list[:2]
     mu_e_vec = array(exc_list[2:])
 
-    print(exc_list)
+    eb_vec = array(time_func(plasmon_det_zero_ht_v, N_k, mu_e_vec, sys,
+                             eb_lim))
 
-    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-    n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
-    n_exc_vec = n_vec - n_id_vec
+    data_zeroes = zeros((len(exc_list),))
+    data_zeroes[2:] = n_vec
 
-    #poles_list_1 = array(time_func(plasmon_det_zero_ht_v1, N_k, mu_e_vec, sys))
+    values_list.append(array(data_zeroes.tolist()))
+    values_list.append(exc_list[:])
 
-    ax[0].set_title(
-        'Densities vs. photoexcitation density\nMaxwell-Boltzmann -- Static')
-    ax[0].set_xlabel(r'$n$ / nm$^{-2}$')
-    ax[0].set_ylabel(r'$n_{\alpha}$ / nm$^{-2}$')
+    data_zeroes[2:] = eb_vec
+    values_list.append(array(data_zeroes.tolist()))
 
-    ax[0].loglog(
-        n_vec,
-        n_id_vec,
-        '.-',
-        color=c,
-        label='T: $%.0f$ K, $n_e$' % sys.T,
-    )
-
-    ax[0].loglog(
-        n_vec,
-        n_exc_vec,
-        '.--',
-        color=c,
-        label='T: $%.0f$ K, $n_{exc}$' % sys.T,
-    )
-
-    ax[0].legend(loc=0)
-
-    ax[1].set_title(
-        '$y$ vs. photoexcitation density\nMaxwell-Boltzmann -- Static')
-    ax[1].set_xlabel(r'$n$ / nm$^{-2}$')
-    ax[1].set_ylabel(r'$y$ / dimensionless')
-
-    ax[1].semilogx(
-        n_vec,
-        n_id_vec / n_vec,
-        '.-',
-        color=c,
-        label='T: $%.0f$ K' % sys.T,
-    )
-
-    ax[1].legend(loc=0)
-
-    ax[2].set_title(
-        r'$\mu_\alpha$' +
-        ' vs. photoexcitation density\nMaxwell-Boltzmann -- Static')
-    ax[2].set_xlabel(r'$n$ / nm$^{-2}$')
-    ax[2].set_ylabel(r'$\mu_\alpha$ / eV')
-
-    ax[2].semilogx(
-        n_vec,
-        mu_e_vec,
-        '.-',
-        color=c,
-        label='T: $%.0f$ K' % sys.T,
-    )
-
-    ax[2].semilogx(
-        n_vec,
-        mu_h_vec,
-        '.--',
-        color=c,
-    )
-
-    ax[2].axhline(y=mu_e_lim, color=c, linestyle='-')
-    ax[2].axhline(y=sys.get_mu_h(mu_e_lim), color=c, linestyle='--')
-
-    ax[2].legend(loc=0)
-
-    eb_vec = array(
-        time_func(plasmon_det_zero_ht_v, N_k, mu_e_vec, sys, eb_lim))
-
-    ax[3].set_title(
-        'Binding energy and $\mu_{exc}$ vs. photoexcitation density\nMaxwell-Boltzmann -- Static'
-    )
-    ax[3].set_xlabel(r'$n$ / nm$^{-2}$')
-    ax[3].set_ylabel(r'$\epsilon_B$ / eV')
-    """
-    ax[3].semilogx(
-        n_vec, poles_list_1, '.--', label='T: $%.0f$ K' % sys.T, color=c)
-    """
-
-    ax[3].semilogx(
-        n_vec,
-        eb_vec,
-        '.-',
-        color=c,
-        label='T: $%.0f$ K' % sys.T,
-    )
-
-    ax[3].semilogx(
-        n_vec,
-        mu_e_vec + mu_h_vec,
-        '.--',
-        color=c,
-    )
-
-    ax[3].axhline(y=eb_lim, color=c, linestyle='-')
-
-    ax[3].legend(loc=0)
-
-#plt.axvline(x = 0, color = 'k')
-#plt.axhline(y = 0, color = 'k')
-
-#plt.ylim(0, None)
-
-plt.show()
+save_data(
+    'extra/mu_e_data_%s' %
+    base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2],
+    #(array([0, 0, *tuple(n_vec)]), exc_list, array([0, 0, *tuple(eb_vec)])),
+    values_list,
+    {
+        'm_e': m_e,
+        'm_h': m_h,
+        'T_vec': T_vec.tolist(),
+        'eps_r': eps_r
+    },
+)
