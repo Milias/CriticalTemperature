@@ -18,7 +18,7 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     beta(f_beta(T)),
     energy_th(f_energy_th(T)),
     //sys_ls(M_1_PI * c_aEM / eps_r * (m_e + m_h) / c_hbarc),
-    sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
+    sys_ls(2 * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
     zt_len(0.5 * c_hbarc / m_2p) {
     lambda_th = f_lambda_th(beta, m_p);
     m_pT      = m_p / energy_th;
