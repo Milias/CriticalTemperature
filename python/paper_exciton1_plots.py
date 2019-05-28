@@ -49,6 +49,11 @@ def mob_integ_func(u_dc_vec, w_vec, power_norm_vec, mu_dc_bulk, sys):
 
     d_vec = mu_dc_vec * diff_factor  # nm^2 s^-1
 
+    return array([
+        diffusion_cx(array([w_vec[power_norm_vec.argmax()]]), L_vec, d) /
+        diff_factor for d in d_vec
+    ])
+
     mob_vec = array(
         [diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec])
 
@@ -926,14 +931,16 @@ def cond_fit_calc():
                                                    w_vec)
     #w_mean = simps(w_vec * power_norm_vec, w_vec)
     w_mean = w_vec[(w_vec * power_norm_vec).argmax()]
-
-    ax[0].plot(w_vec, w_vec * power_norm_vec / w_mean, 'r')
-    ax[0].plot(w_vec, power_norm_vec, 'b')
+    #w_mean = w_vec[(power_norm_vec).argmax()]
+    """
+    ax[0].loglog(w_vec, w_vec * power_norm_vec / w_mean, 'r')
+    ax[0].loglog(w_vec, power_norm_vec, 'b')
     ax[0].axvline(x = w_mean, color = 'g')
     ax[0].axvline(x = w_vec[power_norm_vec.argmax()], color = 'm')
     ax[0].axvline(x = simps(w_vec * power_norm_vec, w_vec), color = 'k')
     plt.show()
     exit()
+    """
 
     n_exp_vec, cond_real, cond_imag, Na_exp_vec, cond_err_real, cond_err_imag = load_data(
         'bin/cdse_platelet_data')
@@ -958,7 +965,7 @@ def cond_fit_calc():
 
     q_yield_fit_vec = n_id_fit_vec / n_fit_vec
 
-    mu_dc_vec = array([600, 20])  # cm^2 v^-1 s^-1
+    mu_dc_vec = array([720, 75])  # cm^2 v^-1 s^-1
 
     cond_fit = cond_real + 1j * cond_imag
     cond_err = abs(cond_err_real + 1j * cond_err_imag)**2
@@ -989,6 +996,8 @@ def cond_fit_calc():
         },
     )
 
+    print(u_minzed)
+
     print('Minimized u values: %s' % u_minzed.x)
 
     mob_minzed = mu_dc_vec * exp(u_minzed.x)
@@ -1011,6 +1020,9 @@ def cond_fit_calc():
     n_exc_vec = n_vec - n_id_vec
 
     q_yield_vec = n_id_vec / n_vec
+
+    print(0.5 * sum(exp(u_minzed.x)))
+    print(exp(u_minzed.x))
 
     return (mob_minzed,
             mob_integ_func(
@@ -1072,17 +1084,30 @@ def cond_fit(plot_type='plot'):
         for h in linspace(0, 0.7, 1)
     ]
 
+    ax[0].axvline(
+        x=n_exp_vec[0] / surf_area * sys.a0**2,
+        color='m',
+        linestyle=':',
+    )
+
+    ax[0].axvline(
+        x=n_exp_vec[-1] / surf_area * sys.a0**2,
+        color='m',
+        linestyle=':',
+    )
+
     getattr(ax[0], plot_type)(
         n_exp_vec / surf_area * sys.a0**2,
         cond_real * 1e3,
         'o',
-        color='k',
+        markeredgecolor='k',
+        markerfacecolor='#FFFFFF'
     )
 
     getattr(ax[0], plot_type)(
         n_exp_vec / surf_area * sys.a0**2,
         -cond_imag * 1e3,
-        '^',
+        'o',
         color='k',
     )
 
@@ -1117,18 +1142,6 @@ def cond_fit(plot_type='plot'):
         color=colors[0],
     )
 
-    ax[0].axvline(
-        x=n_exp_vec[0] / surf_area * sys.a0**2,
-        color='m',
-        linestyle=':',
-    )
-
-    ax[0].axvline(
-        x=n_exp_vec[-1] / surf_area * sys.a0**2,
-        color='m',
-        linestyle=':',
-    )
-
     ax[0].axhline(
         y=0,
         color='k',
@@ -1153,316 +1166,60 @@ def cond_fit(plot_type='plot'):
     ax_top.set_xticklabels(x_vec_vals)
     ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
 
-    ax[0].legend([('r', '--')], [
-        '$\mu_{dc}: %.0f$ cm$^2$ V$^{-1}$ s$^{-1}$\n$\mu_{R}: %.0f$ cm$^2$ V$^{-1}$ s$^{-1}$\n$\mu_{I}: %.0f$ cm$^2$ V$^{-1}$ s$^{-1}$' % (sum(mob_dc_minzed), real(sum(mob_minzed)), imag(sum(mob_minzed)))
-    ],
-                 handler_map={tuple: AnyObjectHandler()},
-                 loc='lower left')
+    ax[0].legend(
+        [('r', '--')],
+        [
+            """$\mu_{dc,e}$: $%.0f$ cm$^2$ (Vs)$^{-1}$
+$\mu_{dc,h}$: $%.0f$ cm$^2$ (Vs)$^{-1}$
+$\mu$: $%.0f+%.0fi$ cm$^2$ (Vs)$^{-1}$""" %
+            (mob_dc_minzed[0], mob_dc_minzed[1] if len(mob_dc_minzed) > 1 else
+             0, real(sum(mob_minzed)), imag(sum(mob_minzed)))
+        ],
+        handler_map={tuple: AnyObjectHandler()},
+        loc=(0.43, 0.43),
+        #loc='center right',
+        #loc='lower left',
+    )
 
     fig.tight_layout()
 
     return 'cond_fit_%s' % plot_type
 
 
-def cond_fit_old(plot_type='plot'):
+def mobility_2d_sample(plot_type='semilogx'):
     file_id = '9xk12W--Tl6efYR-K76hoQ'
-    fit_file_id = 'imDDS1DJRciMz_-rSvA1RQ'
-
-    n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
-        'bin/cdse_platelet_data')
-
-    cond_factor = 3 / 2
-    cond_factor_mob = 1
-    cond_factor_pol = cond_factor_mob
-
-    for i in [cond_real, cond_imag, cond_err_real, cond_err_imag]:
-        i *= cond_factor
-
-    n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
-                                        globals())
-    n_vec, eb_vec = n_vec[2:], eb_vec[2:]
-    mu_e_lim, eb_lim = exc_list[:2]
-    mu_e_vec = array(exc_list[2:])
-
+    load_data('extra/mu_e_data_%s' % file_id, globals())
     sys = system_data(m_e, m_h, eps_r, T)
 
-    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-    n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
-    n_exc_vec = n_vec - n_id_vec
+    w_vec = logspace(11, 16, 100)
+    w_peak = 5.659114e+12  #w_vec[(power_norm_vec).argmax()]  # angular frequency, s^-1
 
-    n_fit_vec, exc_fit_list, eb_fit_vec = load_data('extra/mu_e_data_%s' %
-                                                    fit_file_id)
-    n_fit_vec, eb_fit_vec = n_fit_vec[2:], eb_fit_vec[2:]
-    mu_e_lim_fit, eb_lim_fit = exc_fit_list[:2]
-    mu_e_fit_vec = array(exc_fit_list[2:])
+    print('%e' % (w_peak * 0.5 / pi))
 
-    mu_h_fit_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_fit_vec])
-    n_id_fit_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_fit_vec])
-    n_exc_fit_vec = n_fit_vec - n_id_fit_vec
-
-    colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, 1)
-    ]
-
-    L, mob_R, mob_I, pol, freq = 2e-3, 54e-4, 7e-4, 3.1e-36, 0.6e12
-    p_Na_vec = N_a_exp_vec * 1e4
-    Na_vec = n_vec * p_Na_vec[0] / (n_exp_vec[0] / surf_area)
-
-    th_pol = 21 / 2**8 * 16 * sys.c_aEM**2 * (sys.c_hbarc * 1e-9 /
-                                              eps_r)**2 * sys.c_e_charge / abs(
-                                                  sys.get_E_n(0.5))**3
-
-    p_th_pol_vec = 21 / 2**8 * 16 * sys.c_aEM**2 * (
-        sys.c_hbarc * 1e-9 / eps_r)**2 * sys.c_e_charge / abs(eb_fit_vec)**3
-
-    q_yield_fit_vec = n_id_fit_vec / n_fit_vec
-    q_yield_exc_fit_vec = n_exc_fit_vec / n_fit_vec
-
-    real_x = (sys.c_e_charge / L * p_Na_vec * q_yield_fit_vec *
-              cond_factor_mob).reshape(-1, 1)
-    real_y = cond_real
-
-    real_model = sm.WLS(real_y,
-                        real_x,
-                        weights=1 / cond_err_real,
-                        has_const=False)
-    real_fit = real_model.fit(use_t=True)
-
-    imag_x = (sys.c_e_charge * p_Na_vec / L * q_yield_fit_vec *
-              cond_factor_mob).reshape(-1, 1)
-    imag_y = cond_imag - p_Na_vec / L * freq * 2 * pi * q_yield_exc_fit_vec * p_th_pol_vec * cond_factor_pol
-
-    imag_model = sm.WLS(
-        imag_y,
-        imag_x,
-        weights=1 / cond_err_imag,
-        has_const=False,
-    )
-    imag_fit = imag_model.fit(use_t=True)
-
-    fit_mob_R, = real_fit.params
-    fit_mob_I, = imag_fit.params
-
-    err_mob_R, err_mob_I = real_fit.bse, imag_fit.bse
-
-    print(complex(fit_mob_R, fit_mob_I) * 1e4)
-
-    #best_mob    = (71.33360959613807 + 99.31278244259349j) * 1e-4
-    best_mob = (84.89884997035625 + 108.56680139651795j) * 1e-4
-    #best_mob    = (34.912722134765346 + 18.789772887540792j) * 1e-4
-
-    print('mob_R: %f±%1.0e, mob_I: %e±%1.0e' %
-          (fit_mob_R * 1e4, err_mob_R * 1e4, fit_mob_I * 1e4, err_mob_I * 1e4))
-
-    ax[0].set_xlabel(r'$n_\gamma a_0^2$')
-    ax[0].set_ylabel(r'$\Delta\sigma$ ($10^{-3}$ S m$^{-1}$)')
-
-    getattr(ax[0], plot_type)(
-        n_exp_vec / surf_area * sys.a0**2,
-        cond_real * 1e3,
-        'o',
-        color='k',
-    )
-
-    getattr(ax[0], plot_type)(
-        n_exp_vec / surf_area * sys.a0**2,
-        -cond_imag * 1e3,
-        '^',
-        color='k',
-    )
-
-    ax[0].errorbar(n_exp_vec / surf_area * sys.a0**2,
-                   cond_real * 1e3,
-                   yerr=cond_err_real * 1e3,
-                   fmt='none',
-                   capsize=5,
-                   color='k')
-
-    ax[0].errorbar(n_exp_vec / surf_area * sys.a0**2,
-                   -cond_imag * 1e3,
-                   yerr=cond_err_imag * 1e3,
-                   fmt='none',
-                   capsize=5,
-                   color='k')
-
-    th_pol_vec = 21 / 2**8 * 16 * sys.c_aEM**2 * (
-        sys.c_hbarc * 1e-9 / eps_r)**2 * sys.c_e_charge / abs(eb_vec)**3
-
-    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-    n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
-    n_exc_vec = n_vec - n_id_vec
-
-    q_yield_vec = n_id_vec / n_vec
-    q_yield_exc_vec = n_exc_vec / n_vec
-
-    cond_vec = (Na_vec * sys.c_e_charge / L * fit_mob_R *
-                q_yield_vec) * cond_factor_mob + 1j * (
-                    Na_vec * sys.c_e_charge / L * fit_mob_I * q_yield_vec +
-                    2 * pi * th_pol_vec * freq * Na_vec / L *
-                    q_yield_exc_vec) * cond_factor_pol
-
-    cond_best_vec = (Na_vec * sys.c_e_charge / L * real(best_mob) *
-                     q_yield_vec) * cond_factor_mob + 1j * (
-                         Na_vec * sys.c_e_charge / L * imag(best_mob) *
-                         q_yield_vec + 2 * pi * th_pol_vec * freq * Na_vec /
-                         L * q_yield_exc_vec) * cond_factor_pol
-
-    getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
-        real(cond_vec) * 1e3,
-        '--',
-        color=colors[0],
-        label=r'Fit. $\mu_R: %.0f±%d$ cm$^2$ V$^{-1}$ s$^{-1}$' %
-        (fit_mob_R * 1e4, err_mob_R * 1e4),
-    )
-    getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
-        -imag(cond_vec) * 1e3,
-        '-',
-        color=colors[0],
-        label=r'Fit. $\mu_I: %.0f±%d$ cm$^2$ V$^{-1}$ s$^{-1}$' %
-        (fit_mob_I * 1e4, err_mob_I * 1e4),
-    )
-
-    getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
-        real(cond_best_vec) * 1e3,
-        '--',
-        color='b',
-        label=r'Diffusion. $\mu_R: %.0f$ cm$^2$ V$^{-1}$ s$^{-1}$' %
-        (real(best_mob) * 1e4),
-    )
-    getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
-        -imag(cond_best_vec) * 1e3,
-        '-',
-        color='b',
-        label=r'Diffusion. $\mu_I: %.0f$ cm$^2$ V$^{-1}$ s$^{-1}$' %
-        (imag(best_mob) * 1e4),
-    )
-
-    ax[0].axvline(
-        x=n_exp_vec[0] / surf_area * sys.a0**2,
-        color='m',
-        linestyle=':',
-    )
-
-    ax[0].axvline(
-        x=n_exp_vec[-1] / surf_area * sys.a0**2,
-        color='m',
-        linestyle=':',
-    )
-
-    ax[0].axhline(
-        y=0,
-        color='k',
-        linestyle='-',
-    )
-
-    lambda_th = sys.c_hbarc * sqrt(2 * pi * sys.beta / sys.m_p)
-    ax[0].axvline(
-        x=4 * sys.a0**2 / lambda_th**2,
-        color='g',
-        label='Saha model limit',
-    )
-
-    ax[0].set_xlim(1 / surf_area * sys.a0**2, 60 / surf_area * sys.a0**2)
-    ax[0].set_ylim(-cond_factor * 12.5, cond_factor * 5)
-
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[1:-1]
-    x_vec_vals = (x_vec_top / sys.a0**2)
-    x_vec_vals = ['%.2f' % v for v in x_vec_vals]
-
-    ax_top = ax[0].twiny()
-    ax_top.set_xlim(ax[0].get_xlim())
-    ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
-
-    #ax[0].legend(loc = 'lower left')
-
-    ax[0].legend([('r', '--'), ('b', '--')], ['Fit', 'Diffusion'],
-                 handler_map={tuple: AnyObjectHandler()},
-                 loc='lower left')
-
-    fig.tight_layout()
-
-    return 'cond_fit_%s' % plot_type
-
-
-def mobility_2d_integ(plot_type='loglog'):
-    exp_power_data = loadtxt('extra/ef_power_spectrum.txt')
-    fit_file_id = 'imDDS1DJRciMz_-rSvA1RQ'
-    load_data('extra/mu_e_data_%s' % fit_file_id, globals())
-
-    sys = system_data(m_e, m_h, eps_r, T_vec[0])
-
-    w_vec = 2 * pi * exp_power_data[1:, 0]
-    w_2_vec = linspace(w_vec[0], w_vec[-1], 2 * w_vec.size)
-    power_norm_vec = exp_power_data[1:, 1] / simps(exp_power_data[1:, 1],
-                                                   w_vec)
-
-    w_peak = w_vec[power_norm_vec.argmax()]  # angular frequency, s^-1
-
-    mu_dc_vec = array([600, 20])  # cm^2 v^-1 s^-1
-
-    #d              = mu / beta / e
+    mu_dc_vec = array([469.79873636, 51.58045606])  # cm^2 v^-1 s^-1
     diff_factor = 1e14 / sys.beta
-
     d_vec = mu_dc_vec * diff_factor  # nm^2 s^-1
-
     mob_vec = (diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec)
 
-    mob = sum(
-        mob_integ_func(zeros_like(mu_dc_vec), w_vec, power_norm_vec, mu_dc_vec,
-                       sys))
-
-    print(mob)
-
-    print('Re(μ): %.2f cm² / Vs, Im(μ): %.2f cm² / Vs' %
-          (real(mob), imag(mob)))
-
-    model_mob = 64.49722036113633 + 149.26761240112566j
-    #model_mob    = 42.998146907424214 + 75.78389097812033j
-    #model_mob    = 28.665431271616136 + 26.794743362783418j
-
-    u_minzed = minimize(
-        lambda u_vec: abs(
-            sum(mob_integ_func(u_vec, w_vec, power_norm_vec, mu_dc_vec, sys)) -
-            model_mob)**2,
-        zeros_like(mu_dc_vec),
-        method='nelder-mead',
-        options={
-            'xtol': 1e-14,
-        },
-    )
-
-    print('Minimized u values: %s' % u_minzed.x)
-
-    mob_minzed = mu_dc_vec * exp(u_minzed.x)
-
-    print('Minimized: μ: %s cm² / Vs' % mob_minzed)
-
-    mu_minzed = sum(
-        mob_integ_func(u_minzed.x, w_vec, power_norm_vec, mu_dc_vec, sys))
-
-    print(mu_minzed)
-    print('Minimized: Re(μ): %.2f cm² / Vs, Im(μ): %.2f cm² / Vs' %
-          (real(mu_minzed), imag(mu_minzed)))
-
     ax[0].set_xlabel(r'$\omega$ (10$^{12}$ s$^{-1}$)')
+    #ax[0].set_xlabel(r'$\omega$ (THz)')
     ax[0].set_ylabel(r'Mobility (cm$^2$ V$^{-1}$ s$^{-1}$)')
 
-    mob_vec = sum(
-        [diffusion_cx(w_2_vec, L_vec, d) / diff_factor for d in d_vec], axis=0)
-    mob_minzed_vec = diffusion_cx(w_2_vec, L_vec,
-                                  diff_factor * sum(mu_minzed)) / diff_factor
+    mob_vec = sum([diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec],
+                  axis=0)
 
-    w_factor = surf_area / sum(mu_dc_vec) / diff_factor
-    w_minzed_factor = surf_area / sum(mob_minzed) / diff_factor
-    x_vec = w_2_vec * 1e-12  # * w_factor
-    x_minzed_vec = w_2_vec * 1e-12  # * w_minzed_factor
+    mob_peak = sum([diffusion_cx(array([w_peak]), L_vec, d) / diff_factor for d in d_vec],
+                  axis=0)
+
+    w_factor = 1e-12  #surf_area / sum(mu_dc_vec) / diff_factor
+    x_vec = w_vec * w_factor
+
+    ax[0].axvline(
+        x=w_peak * w_factor,
+        color='b',
+        linestyle=':',
+        label='$\omega_{peak}$',
+    )
 
     getattr(ax[0], plot_type)(
         x_vec,
@@ -1478,20 +1235,112 @@ def mobility_2d_integ(plot_type='loglog'):
     )
 
     getattr(ax[0], plot_type)(
-        x_minzed_vec,
-        real(mob_minzed_vec),
-        'b--',
-        label=r'$\mu_{R}^{min}(\omega)$',
+        [w_peak * w_factor],
+        real(mob_peak),
+        'o',
+        markeredgecolor='g',
+        markerfacecolor='#FFFFFF'
     )
     getattr(ax[0], plot_type)(
-        x_minzed_vec,
-        imag(mob_minzed_vec),
-        'b-',
-        label=r'$\mu_{I}^{min}(\omega)$',
+        [w_peak * w_factor],
+        imag(mob_peak),
+        'go',
+    )
+
+    ax[0].axhline(
+        y=sum(mu_dc_vec),
+        color='k',
+        linestyle='--',
+    )
+
+    ax[0].set_xlim(x_vec[0], x_vec[-1])
+
+    ax[0].legend([('g', '--')], [r'$\mu_{ac}(\omega)$'],
+                 handler_map={tuple: AnyObjectHandler()},
+                 loc=0)
+
+    y_vec_right = [sum(mu_dc_vec)]
+    y_vec_right_labels = [r'$\mu_{dc}$']
+
+    ax_right = ax[0].twinx()
+    ax_right.set_ylim(ax[0].get_ylim())
+    ax_right.set_yticks(y_vec_right)
+    ax_right.set_yticklabels(y_vec_right_labels)
+
+    fig.tight_layout()
+
+    return 'mobility_2d_sample_%s' % plot_type
+
+
+def mobility_2d_integ(plot_type='loglog'):
+    file_id = '9xk12W--Tl6efYR-K76hoQ'
+
+    n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
+                                        globals())
+    n_vec, eb_vec = n_vec[2:], eb_vec[2:]
+    mu_e_lim, eb_lim = exc_list[:2]
+    mu_e_vec = array(exc_list[2:])
+
+    sys = system_data(m_e, m_h, eps_r, T)
+
+    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
+    n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
+    n_exc_vec = n_vec - n_id_vec
+
+    q_yield_vec = n_id_vec / n_vec
+
+    n_exp_vec, cond_real, cond_imag, Na_exp_vec, cond_err_real, cond_err_imag = load_data(
+        'bin/cdse_platelet_data')
+
+    cond_factor = 3 / 2
+    for i in [cond_real, cond_imag, cond_err_real, cond_err_imag]:
+        i *= cond_factor
+
+    mob_dc_minzed, mob_minzed, cond_vec = cond_fit_calc()
+
+    exp_power_data = loadtxt('extra/ef_power_spectrum.txt')
+
+    w_vec = 2 * pi * exp_power_data[1:, 0]
+    w_2_vec = linspace(w_vec[0], w_vec[-1], 2 * w_vec.size)
+    power_norm_vec = exp_power_data[1:, 1] / simps(exp_power_data[1:, 1],
+                                                   w_vec)
+
+    w_peak = w_vec[(power_norm_vec).argmax()]  # angular frequency, s^-1
+
+    print('%e' % w_peak)
+
+    mu_dc_vec = array([600, 20])  # cm^2 v^-1 s^-1
+    diff_factor = 1e14 / sys.beta
+    d_vec = mu_dc_vec * diff_factor  # nm^2 s^-1
+    mob_vec = (diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec)
+
+    ax[0].set_xlabel(r'$\omega$ (10$^{12}$ s$^{-1}$)')
+    #ax[0].set_xlabel(r'$\omega$ (THz)')
+    ax[0].set_ylabel(r'Mobility (cm$^2$ V$^{-1}$ s$^{-1}$)')
+
+    mob_vec = sum(
+        [diffusion_cx(w_2_vec, L_vec, d) / diff_factor for d in d_vec], axis=0)
+    mob_minzed_vec = diffusion_cx(w_2_vec, L_vec,
+                                  diff_factor * sum(mu_minzed)) / diff_factor
+
+    w_factor = 1e-12  #surf_area / sum(mu_dc_vec) / diff_factor
+    x_vec = w_2_vec * w_factor
+
+    getattr(ax[0], plot_type)(
+        x_vec,
+        real(mob_vec),
+        'g--',
+        label=r'$\mu_{R}(\omega)$',
+    )
+    getattr(ax[0], plot_type)(
+        x_vec,
+        imag(mob_vec),
+        'g-',
+        label=r'$\mu_{I}(\omega)$',
     )
 
     ax[0].axvline(
-        x=w_peak * 1e-12,  # * w_factor,
+        x=w_peak * w_factor,
         color='m',
         linestyle=':',
         label='$\omega_{peak}$',
@@ -1501,7 +1350,7 @@ def mobility_2d_integ(plot_type='loglog'):
                    max(x_vec[-1], x_minzed_vec[-1]))
 
     ax[0].legend([('g', '--'), ('b', '--')],
-                 [r'$\mu(\omega)$', r'$\mu^{*}(\omega)$'],
+                 [r'$\mu_{ac}(\omega)$', r'$\mu^{*}_{ac}(\omega)$'],
                  handler_map={tuple: AnyObjectHandler()},
                  loc='lower right')
 

@@ -23,8 +23,11 @@ plots_list=()
 #func_list+=("eb_photo_density")
 #plots_list+=("semilogx")
 
-func_list+=("cond_fit")
-plots_list+=("plot")
+#func_list+=("cond_fit")
+#plots_list+=("plot")
+
+func_list+=("mobility_2d_sample")
+plots_list+=("semilogx")
 
 #func_list+=("mobility_2d_integ")
 #plots_list+=("loglog")
