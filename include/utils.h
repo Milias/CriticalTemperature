@@ -174,4 +174,6 @@ struct system_data {
     double mu_ideal(double n) const;
     double mu_h_ideal(double n) const;
     double mu_exc_u(double n) const;
+
+    double ls_ideal(double n) const;
 };

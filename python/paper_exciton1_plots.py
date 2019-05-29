@@ -98,7 +98,7 @@ def scr_length_density(plot_type='semilogx'):
 
     sys = system_data(m_e, m_h, eps_r, 294)
 
-    n_vec = logspace(-1.3, 2.3, 100) / surf_area
+    n_vec = logspace(-0.7, 2.3, 100) / surf_area
     T_vec = linspace(130, 350, 5)
 
     colors = [
@@ -107,16 +107,14 @@ def scr_length_density(plot_type='semilogx'):
     ]
 
     ax[0].set_xlabel(r'$\langle N_q \rangle$')
-    ax[0].set_ylabel(r'$\lambda_{s}$ (nm)')
+    ax[0].set_ylabel(r'$\lambda_{s}(n_q)$ (nm)')
 
     x_vec = n_vec * surf_area
 
     for c, (i, T) in zip(colors, enumerate(T_vec)):
         sys = system_data(m_e, m_h, eps_r, T)
-        y_vec = sys.sys_ls * (
-            1 - sys.m_ph * exp(-sys.m_pe * pi * sys.c_hbarc**2 / sys.m_p *
-                               sys.beta * n_vec) - sys.m_pe *
-            exp(-sys.m_ph * pi * sys.c_hbarc**2 / sys.m_p * sys.beta * n_vec))
+        y_vec = array([sys.ls_ideal(n) for n in n_vec])
+
 
         getattr(ax[0], plot_type)(
             x_vec,
@@ -141,18 +139,21 @@ def scr_length_density(plot_type='semilogx'):
     ax[0].set_yticks([1, 10, Lx])
     ax[0].set_yticklabels(['$1$', '$10$', r'$L_x$'])
 
-    x_top_factor = 3
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[2:-2]
-    x_vec_vals = x_vec_top / surf_area * 10**x_top_factor
-    #x_vec_vals      = [r '$10^{%.0f}$' % log10(v) for v in x_vec_vals]
-    x_vec_vals = [r'%.1f' % v for v in x_vec_vals]
+    x_vec_top = logspace(-3, 0, 4) * surf_area
+    x_vec_vals = x_vec_top / surf_area
+    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * surf_area).tolist()
+                             for v in x_vec_vals]).ravel()
+    x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
     ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel('$n_q$ (10$^{-%.0f}$ nm$^{-2}$)' % x_top_factor)
+    ax_top.set_xticks(x_vec_minor_top, minor=True)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xticklabels([], minor=True)
+    ax_top.set_xlim(ax[0].get_xlim())
+    ax_top.set_xlabel('$n_q$ (nm$^{-2}$)', labelpad=8.)
 
     y_vec_right = [1 / sys.sys_ls]
     y_vec_right_labels = [r'$\lambda_{s,0}$']
@@ -170,7 +171,7 @@ def scr_length_density(plot_type='semilogx'):
     return 'scr_length_density_%s' % plot_type
 
 
-def real_space_lwl_potential(plot_type='plot'):
+def real_space_lwl_potential_density(plot_type='plot'):
     file_id = 'imDDS1DJRciMz_-rSvA1RQ'
     load_data('extra/mu_e_data_%s' % file_id, globals())
 
@@ -178,7 +179,16 @@ def real_space_lwl_potential(plot_type='plot'):
 
     print(1 / sys.sys_ls)
 
-    ls_vec = logspace(log10(0.01 * sys.sys_ls), log10(0.5 * sys.sys_ls), 5)
+    mu_e_vec = -logspace(log10(0.07), -2.4, 5)
+    #mu_e_vec = linspace(-1.5e-1, -1e-3, 5)
+    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
+    n_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
+
+    #n_vec = logspace(log10(0.1), log10(8), 5) / surf_area
+    ls_vec = array([sys.ls_ideal(n) for n in n_vec])
+
+
+    print(1 / ls_vec)
 
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -188,7 +198,7 @@ def real_space_lwl_potential(plot_type='plot'):
     x_vec = linspace(0.3, 12, 100) / sys.a0
 
     ax[0].set_xlabel(r'$r$ $a_0^{-1}$')
-    ax[0].set_ylabel(r'$V_{sc}(r;\lambda_s)$ (meV)')
+    ax[0].set_ylabel(r'$V_{sc}(r;n_q)$ (meV)')
 
     cou_vec = array(time_func(plasmon_rpot_lwl_v, x_vec * sys.a0, 1e-8,
                               sys)) * 1e3
@@ -197,23 +207,23 @@ def real_space_lwl_potential(plot_type='plot'):
         cou_vec,
         '--',
         color='r',
-        label=r'$\lambda_s \rightarrow \infty$',
+        label=r'$\langle N_q \rangle$: $0$',
     )
 
     for c, (i, ls) in zip(colors, enumerate(ls_vec)):
         y_vec = array(time_func(plasmon_rpot_lwl_v, x_vec * sys.a0, ls,
                                 sys)) * 1e3
-        y_dot_vec = array(time_func(plasmon_rpot_lwl_v, [1 / ls], ls,
-                                    sys)) * 1e3
 
         getattr(ax[0], plot_type)(
             x_vec,
             y_vec,
-            '-',
+            ':',
             color=c,
-            label='$\lambda_s$: $%.1f$ nm' % (1 / ls),
         )
 
+        """
+        y_dot_vec = array(time_func(plasmon_rpot_lwl_v, [1 / ls], ls,
+                                    sys)) * 1e3
         if 1 / ls / sys.a0 < x_vec[-1]:
             getattr(ax[0], plot_type)(
                 [1 / ls / sys.a0],
@@ -221,24 +231,39 @@ def real_space_lwl_potential(plot_type='plot'):
                 'o',
                 color=c,
             )
+        """
+
+        y_vec = array(
+            time_func(plasmon_rpot_ht_v, x_vec * sys.a0, mu_e_vec[i],
+                      mu_h_vec[i], sys)) * 1e3
+        getattr(ax[0], plot_type)(
+            x_vec,
+            y_vec,
+            '-',
+            color=c,
+            label=r'$\langle N_q \rangle$: $%.1f$' % (n_vec[i] * surf_area),
+        )
 
     sys_vec = array(
         time_func(plasmon_rpot_lwl_v, x_vec * sys.a0, sys.sys_ls, sys)) * 1e3
-    sys_dot_vec = array(
-        time_func(plasmon_rpot_lwl_v, [1 / sys.sys_ls], sys.sys_ls, sys)) * 1e3
     getattr(ax[0], plot_type)(
         x_vec,
         sys_vec,
         '--',
         color='k',
-        label='$\lambda_{s}$: $\lambda_{s,0}$',
+        label=r'$\langle N_q \rangle \rightarrow \infty$',
     )
+
+    """
+    sys_dot_vec = array(
+        time_func(plasmon_rpot_lwl_v, [1 / sys.sys_ls], sys.sys_ls, sys)) * 1e3
     getattr(ax[0], plot_type)(
         [1 / sys.sys_ls / sys.a0],
         sys_dot_vec,
         'o',
         color='k',
     )
+    """
 
     ax[0].set_ylim(-0.12e3, 0.005e3)
     ax[0].set_xlim(0, x_vec[-1])
@@ -248,21 +273,22 @@ def real_space_lwl_potential(plot_type='plot'):
     ax[0].set_yticklabels(
         ['$%.0f$' % v for v in ax[0].yaxis.get_majorticklocs()])
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[:-1]
+    x_vec_top = linspace(0, 12, 7) / sys.a0
     x_vec_vals = x_vec_top * sys.a0
-    x_vec_vals = ['%.1f' % v for v in x_vec_vals]
+    x_vec_vals = ['%.0f' % v for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xlabel('$r$ (nm)')
 
     ax[0].legend(loc=0)
 
     fig.tight_layout()
 
-    return 'real_space_lwl_potential_%s' % plot_type
+    return 'real_space_lwl_potential_density_%s' % plot_type
 
 
 def real_space_mb_potential_density(plot_type='plot'):
@@ -331,14 +357,15 @@ def real_space_mb_potential_density(plot_type='plot'):
     ax[0].set_yticklabels(
         ['$%.0f$' % v for v in ax[0].yaxis.get_majorticklocs()])
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[:-1]
+    x_vec_top = linspace(0, 12, 7) / sys.a0
     x_vec_vals = x_vec_top * sys.a0
-    x_vec_vals = ['%.1f' % v for v in x_vec_vals]
+    x_vec_vals = ['%.0f' % v for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xlabel('$r$ (nm)')
 
     ax[0].legend(loc=0)
@@ -350,7 +377,13 @@ def real_space_mb_potential_density(plot_type='plot'):
 
 def energy_level_mb_density(plot_type='semilogx'):
     file_id = 'ohmBtM4fTgiypsA8GPlMpQ'
+    #file_id = 'abcarNh1Tkqc4lByPz19jA'
     values_list = load_data('extra/eb_vals_temp_%s' % file_id, globals())
+
+    #lwl_file_id = 'VH3LXYGxTU6jWKTNuMUgjQ' #  N_k = 1<<9
+    #lwl_file_id = 'evTtnHzyRl6rHzF61GMzog' #  N_k = 1<<12
+    lwl_file_id = 'cJSieNcdRmGAsKD2LLN4OQ' # 1<<9, ls *= 0.5
+    lwl_values_list = load_data('extra/eb_lwl_temp_%s' % lwl_file_id, globals())
 
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -358,7 +391,7 @@ def energy_level_mb_density(plot_type='semilogx'):
     ]
 
     ax[0].set_xlabel(r'$\langle N_q \rangle$')
-    ax[0].set_ylabel(r'$E_B$ (meV)')
+    ax[0].set_ylabel(r'$E_B(n_q)$ (meV)')
 
     sys = system_data(m_e, m_h, eps_r, T_vec[0])
     ax[0].axhline(
@@ -366,6 +399,7 @@ def energy_level_mb_density(plot_type='semilogx'):
         color='r',
         linestyle='--',
         label=r'$\langle N_q\rangle$: %d' % 0,
+        linewidth=0.9,
     )
 
     for c, (i, T) in zip(colors, enumerate(T_vec)):
@@ -376,12 +410,27 @@ def energy_level_mb_density(plot_type='semilogx'):
         mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
         n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
 
+        lwl_mu_e_vec = lwl_values_list[2 * i]
+        lwl_y_vec = lwl_values_list[2 * i + 1]
+
+        lwl_mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in lwl_mu_e_vec])
+        lwl_n_id_vec = array([sys.density_ideal(mu_e) for mu_e in lwl_mu_e_vec])
+
         getattr(ax[0], plot_type)(
             n_id_vec * surf_area,
             y_vec * 1e3,
             '-',
             color=c,
             label='$T$: %.0f K' % sys.T,
+            zorder=10,
+        )
+
+        getattr(ax[0], plot_type)(
+            lwl_n_id_vec * surf_area,
+            lwl_y_vec * 1e3,
+            ':',
+            color=c,
+            zorder=9,
         )
 
         getattr(ax[0], plot_type)(
@@ -389,40 +438,46 @@ def energy_level_mb_density(plot_type='semilogx'):
             y_vec[-1] * 1e3,
             'o',
             color=c,
+            zorder=11,
         )
 
-    ax[0].set_xlim(1e-4 * surf_area, 2.1e-2 * surf_area)
-    ax[0].set_ylim(-195, -118)
-    """
-    z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys, -1e-3)
+    #z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys, -1e-2)
+    #z_sys_lwl = -0.05709309806861098
+    z_sys_lwl = lwl_y_vec[-1]
 
-    ax[0].axhline(
-        y=z_sys_lwl * 1e3,
-        color='k',
-        linestyle='--',
-        label=r'$\langle N_e\rangle\rightarrow\infty$',
-    )
-    """
+    print(z_sys_lwl)
 
-    y_vec_left = [-193] + (linspace(-0.18, -0.12, 5) * 1e3).tolist()
+    ax[0].set_xlim(1e-4 * surf_area, 4e-1 * surf_area)
+    ax[0].set_ylim(z_cou_lwl * 1e3 - 3, z_sys_lwl * 1e3 + 5)
+
+    y_vec_left = [z_cou_lwl * 1e3] + (linspace(-0.175, -0.075, 5) * 1e3).tolist() + [z_sys_lwl * 1e3]
     y_vec_left_vals = ['$%.0f$' % v for v in y_vec_left]
     ax[0].set_yticks(y_vec_left)
     ax[0].set_yticklabels(y_vec_left_vals)
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[2:-2]
-    x_vec_vals = (x_vec_top / surf_area) * 1e3
-    #x_vec_vals    = [('%%.%df' % (2 + min(0, -log10(v)))) % v for v in x_vec_vals]
-    x_vec_vals = ['%.2f' % v for v in x_vec_vals]
-
-    ax[0].set_xticklabels(
-        ['%.1f' % n for n in ax[0].xaxis.get_majorticklocs()])
+    x_vec_top = logspace(-4, 0, 5) * surf_area
+    x_vec_vals = x_vec_top / surf_area
+    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * surf_area).tolist()
+                             for v in x_vec_vals]).ravel()
+    x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
     ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_e$ ($10^{-3}$ nm$^{-2}$)')
+    ax_top.set_xticks(x_vec_minor_top, minor=True)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xticklabels([], minor=True)
+    ax_top.set_xlim(ax[0].get_xlim())
+    ax_top.set_xlabel('$n_q$ (nm$^{-2}$)', labelpad=8.)
+
+    y_vec_right = [z_sys_lwl * 1e3]
+    y_vec_right_labels = [r'$E_{B,0}$']
+
+    ax_right = ax[0].twinx()
+    ax_right.set_yticks(y_vec_right)
+    ax_right.set_yticklabels(y_vec_right_labels)
+    ax_right.set_ylim(ax[0].get_ylim())
 
     ax[0].legend(loc=0)
 
@@ -431,275 +486,11 @@ def energy_level_mb_density(plot_type='semilogx'):
     return 'energy_level_mb_density_%s' % plot_type
 
 
-def energy_level_mb_limit_density(plot_type='semilogx'):
-    file_id = 'ohmBtM4fTgiypsA8GPlMpQ'
-    values_list = load_data('extra/eb_vals_temp_%s' % file_id, globals())
-
-    colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, len(T_vec))
-    ]
-
-    ax[0].set_xlabel(r'$\langle N_e \rangle$')
-    ax[0].set_ylabel(r'$E_B$ (meV)')
-
-    sys = system_data(m_e, m_h, eps_r, T_vec[0])
-    ax[0].axhline(
-        y=z_cou_lwl * 1e3,
-        color='r',
-        linestyle='--',
-        label=r'$\langle N_e\rangle$: %d' % 0,
-    )
-
-    for c, (i, T) in zip(colors, enumerate(T_vec)):
-        sys = system_data(m_e, m_h, eps_r, T)
-        mu_e_vec = values_list[2 * i]
-        y_vec = values_list[2 * i + 1]
-
-        mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-        n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
-        """
-        mu_e_lim, eb_lim = plasmon_exc_mu_lim(N_k, sys)
-        n_id_lim = sys.density_ideal(mu_e_lim)
-
-        line_vec = (mu_e_vec + mu_h_vec) * 1e3
-
-        getattr(ax[0], plot_type)(
-            n_id_vec * surf_area,
-            line_vec,
-            ':',
-            color=c,
-        )
-
-        getattr(ax[0], plot_type)(
-            [n_id_lim * surf_area],
-            [eb_lim * 1e3],
-            's',
-            color=c,
-        )
-        """
-
-        getattr(ax[0], plot_type)(
-            n_id_vec * surf_area,
-            y_vec,
-            '-',
-            color=c,
-            label='$T$: %.0f K' % sys.T,
-        )
-
-    ax[0].set_xlim(0.5e-5 * surf_area, 0.3e-2 * surf_area)
-    ax[0].set_ylim(-0.195, -0.175)
-
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[1:-1]
-    x_vec_vals = (x_vec_top / surf_area) * 1e3
-    x_vec_vals = [('%%.%df' % (1 + abs(log10(v)))) % v for v in x_vec_vals]
-
-    ax[0].set_xticklabels([('%%.%df' % abs(log10(v))) % v
-                           for v in ax[0].xaxis.get_majorticklocs()])
-
-    ax_top = ax[0].twiny()
-    ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
-    ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_e$ ($10^{-3}$ nm$^{-2}$)')
-
-    ax[0].legend(loc=0)
-
-    fig.tight_layout()
-
-    return 'energy_level_mb_limit_density_%s' % plot_type
-
-
-def eb_lim_temperature(plot_type='linear'):
-    T_vec = logspace(log10(100), log10(3e3), 48)
-    sys_vec = [system_data(m_e, m_h, eps_r, T) for T in T_vec]
-
-    colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, T_vec.size)
-    ]
-
-    ax[0].set_xlabel(r'$T$ (K)')
-    ax[0].set_ylabel(r'$\epsilon(T)$ (eV)')
-    """
-    mu_e_lim, eb_lim = array(
-        [time_func(plasmon_exc_mu_lim, N_k, sys) for sys in sys_vec]).T
-
-    y_vec = array([
-        time_func(plasmon_det_zero_ht, N_k, 0.0, sys.get_mu_h(0.0), sys)
-        for sys in sys_vec
-    ])
-
-    export_data = zeros((T_vec.size, 4))
-    export_data[:, 0] = T_vec
-    export_data[:, 1] = mu_e_lim
-    export_data[:, 2] = eb_lim
-    export_data[:, 3] = y_vec
-
-    savetxt("extra/e_lim_data_higher_t_log.csv", export_data, delimiter=",")
-    """
-    T_vec, mu_e_lim, eb_lim, y_vec = loadtxt(
-        'extra/e_lim_data_higher_t_log.csv', delimiter=',').T
-    """
-    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_lim])
-    y_lim_vec = array([
-        time_func(plasmon_det_zero_ht, N_k, mu_e, mu_h, sys)
-        for (mu_e, mu_h, sys) in zip(mu_e_lim, mu_h_vec, sys_vec)
-    ])
-    """
-
-    ax[0].axhline(
-        y=sys.get_E_n(0.5),
-        color='r',
-        linestyle='--',
-        label=r'$\langle N_e\rangle$: %d' % 0,
-    )
-    getattr(ax[0], plot_func[plot_type][0])(
-        T_vec,
-        eb_lim,
-        '-',
-        color='b',
-        label='$\epsilon(\mu_{e,0})$',
-    )
-    getattr(ax[0], plot_func[plot_type][0])(
-        T_vec,
-        y_vec,
-        '-',
-        color='m',
-        label='$\epsilon(\mu_e = 0)$',
-    )
-
-    z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys)
-    ax[0].axhline(
-        y=z_sys_lwl,
-        color='k',
-        linestyle='--',
-        label=r'$\langle N_e\rangle\rightarrow\infty$',
-    )
-    ax[0].axvline(
-        x=1208,
-        color='m',
-        linestyle=':',
-        label='$T_{max}$',
-    )
-    ax[0].axvline(
-        x=293,
-        color='g',
-        linestyle=':',
-        label='$T_{exp}$',
-    )
-
-    #ax[0].set_xlim(0.5e-5 * surf_area, 0.3e-2 * surf_area)
-    #ax[0].set_ylim(-0.195, -0.175)
-    """
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[1:-1]
-    x_vec_vals = (x_vec_top / surf_area) * 1e3
-    x_vec_vals = [('%%.%df' % (1+abs(log10(v)))) % v for v in x_vec_vals]
-
-    ax[0].set_xticklabels([('%%.%df' % abs(log10(v))) % v for v in ax[0].xaxis.get_majorticklocs()])
-
-    ax_top = ax[0].twiny()
-    ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
-    ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_e$ ($10^{-3}$ nm$^{-2}$)')
-    """
-
-    ax[0].legend(loc=0)
-
-    fig.tight_layout()
-
-    return 'eb_lim_temperature'
-
-
-def mu_e_lim_temperature(plot_type='linear'):
-    T_vec = logspace(log10(100), log10(3e3), 48)
-    sys_vec = [system_data(m_e, m_h, eps_r, T) for T in T_vec]
-    beta_vec = array([sys.beta for sys in sys_vec])
-
-    colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, T_vec.size)
-    ]
-
-    ax[0].set_xlabel(r'$T$ (K)')
-    ax[0].set_ylabel(r'$\beta\mu_{e,0}(T)$')
-    """
-    mu_e_lim, eb_lim = array(
-        [time_func(plasmon_exc_mu_lim, N_k, sys) for sys in sys_vec]).T
-
-    y_vec = array([
-        time_func(plasmon_det_zero_ht, N_k, 0.0, sys.get_mu_h(0.0), sys)
-        for sys in sys_vec
-    ])
-
-    export_data = zeros((T_vec.size, 4))
-    export_data[:, 0] = T_vec
-    export_data[:, 1] = mu_e_lim
-    export_data[:, 2] = eb_lim
-    export_data[:, 3] = y_vec
-
-    savetxt("extra/e_lim_data_higher_t_log.csv", export_data, delimiter=",")
-    """
-    T_vec, mu_e_lim, eb_lim, y_vec = loadtxt(
-        'extra/e_lim_data_higher_t_log.csv', delimiter=',').T
-
-    getattr(ax[0], plot_func[plot_type][0])(
-        T_vec,
-        beta_vec * mu_e_lim,
-        '-',
-        color='b',
-        #label       = '$\mu_{e,0}(T)$',
-    )
-
-    ax[0].axhline(
-        y=0,
-        color='k',
-        linestyle='-',
-    )
-    ax[0].axvline(
-        x=1208,
-        color='m',
-        linestyle=':',
-        label='$T_{max}$',
-    )
-    ax[0].axvline(
-        x=293,
-        color='g',
-        linestyle=':',
-        label='$T_{exp}$',
-    )
-
-    #ax[0].set_xlim(0.5e-5 * surf_area, 0.3e-2 * surf_area)
-    ax[0].set_ylim(-5, 1)
-    """
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[1:-1]
-    x_vec_vals = (x_vec_top / surf_area) * 1e3
-    x_vec_vals = [('%%.%df' % (1+abs(log10(v)))) % v for v in x_vec_vals]
-
-    ax[0].set_xticklabels([('%%.%df' % abs(log10(v))) % v for v in ax[0].xaxis.get_majorticklocs()])
-
-    ax_top = ax[0].twiny()
-    ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
-    ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_e$ ($10^{-3}$ nm$^{-2}$)')
-    """
-
-    ax[0].legend(loc=0)
-
-    fig.tight_layout()
-
-    return 'mu_e_lim_temperature'
-
-
 def density_result(plot_type='loglog'):
     #file_id                    = 'aneuiPMlRLy4x8FlcAajaA'
     #file_id                    = '7hNKZBFHQbGL6xOf9r_w2Q' #lower massses
     file_id = '9xk12W--Tl6efYR-K76hoQ'  # higher masses
+    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
 
     n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
         'bin/cdse_platelet_data')
@@ -710,7 +501,7 @@ def density_result(plot_type='loglog'):
     mu_e_lim, eb_lim = exc_list[:2]
     mu_e_vec = array(exc_list[2:])
 
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
     mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
     n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
@@ -759,22 +550,27 @@ def density_result(plot_type='loglog'):
     ax[0].axvline(
         x=4 * sys.a0**2 / lambda_th**2,
         color='g',
-        label='Quantum limit',
+        label=r'$n_{exc} \lambda_{th}^2 \simeq g_s^2$',
     )
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[2:-2]
+    x_vec_top = logspace(-3, 0, 4) * sys.a0**2
     x_vec_vals = x_vec_top / sys.a0**2
+    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * sys.a0**2).tolist()
+                             for v in x_vec_vals]).ravel()
     x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
     ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
+    ax_top.set_xticks(x_vec_minor_top, minor=True)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xticklabels([], minor=True)
+    ax_top.set_xlim(ax[0].get_xlim())
+    ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)', labelpad=8.)
 
     y_vec_right = [n_q0 * sys.a0**2]
-    y_vec_right_labels = [r'$n_{q,0}$']
+    y_vec_right_labels = [r'$n_q^{\infty}$']
 
     ax_right = ax[0].twinx()
     ax_right.set_yscale('log')
@@ -792,6 +588,7 @@ def density_result(plot_type='loglog'):
 def eb_photo_density(plot_type='semilogx'):
     #file_id                      = '7hNKZBFHQbGL6xOf9r_w2Q'
     file_id = '9xk12W--Tl6efYR-K76hoQ'  # higher masses
+    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
 
     n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
         'bin/cdse_platelet_data')
@@ -802,7 +599,7 @@ def eb_photo_density(plot_type='semilogx'):
     mu_e_lim, eb_lim = exc_list[:2]
     mu_e_vec = array(exc_list[2:])
 
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
     print(sys.a0)
 
@@ -831,7 +628,7 @@ def eb_photo_density(plot_type='semilogx'):
         eb_vec * 1e3,
         '-',
         color=colors[0],
-        label=r'$T$: %.0f K' % T,
+        label=r'$T$: %.0f K' % T_vec[0],
     )
 
     ax[0].axvline(
@@ -849,8 +646,11 @@ def eb_photo_density(plot_type='semilogx'):
     ax[0].set_xlim(n_vec[0] * sys.a0**2, n_vec[-1] * sys.a0**2)
     ax[0].set_ylim(-193.5, None)
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[2:-2]
+    x_vec_top = logspace(-3, 0,
+                         4) * sys.a0**2  #ax[0].xaxis.get_majorticklocs()[2:-2]
     x_vec_vals = x_vec_top / sys.a0**2
+    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * sys.a0**2).tolist()
+                             for v in x_vec_vals]).ravel()
     x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
     y_vec_left = linspace(-193, eb_vec[-1] * 1e3, 5)
@@ -860,13 +660,16 @@ def eb_photo_density(plot_type='semilogx'):
 
     ax_top = ax[0].twiny()
     ax_top.set_xscale('log')
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
-    ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
+    ax_top.set_xticks(x_vec_minor_top, minor=True)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xticklabels([], minor=True)
+    ax_top.set_xlim(ax[0].get_xlim())
+    ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)', labelpad=8.0)
 
     y_vec_right = [eb_lim * 1e3]
-    y_vec_right_labels = [r'$E_{B,0}$']
+    y_vec_right_labels = [r'$E_B^{\infty}$']
 
     ax_right = ax[0].twinx()
     ax_right.set_ylim(ax[0].get_ylim())
@@ -911,7 +714,7 @@ def eb_photo_density(plot_type='semilogx'):
         th_pol_vec,
         '-',
         color=colors[0],
-        label=r'$T$: %.0f K' % T,
+        label=r'$T$: %.1f K' % T_vec[0],
     )
 
     ax[0].legend(loc='upper left')
@@ -923,6 +726,7 @@ def eb_photo_density(plot_type='semilogx'):
 
 def cond_fit_calc():
     fit_file_id = 'imDDS1DJRciMz_-rSvA1RQ'
+    #fit_file_id = 'STDQ5rQMQiaXwzY3aPgxEQ' # fixed pi?
     exp_power_data = loadtxt('extra/ef_power_spectrum.txt')
 
     w_vec = 2 * pi * exp_power_data[1:, 0]
@@ -951,7 +755,7 @@ def cond_fit_calc():
     n_fit_vec, exc_fit_list, eb_fit_vec = load_data('extra/mu_e_data_%s' %
                                                     fit_file_id)
 
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
     n_fit_vec, eb_fit_vec = n_fit_vec[2:], eb_fit_vec[2:]
     mu_e_lim_fit, eb_lim_fit = exc_fit_list[:2]
     mu_e_fit_vec = array(exc_fit_list[2:])
@@ -1005,6 +809,7 @@ def cond_fit_calc():
     print('Minimized: μ: %s cm² / Vs' % mob_minzed)
 
     file_id = '9xk12W--Tl6efYR-K76hoQ'
+    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
 
     n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
                                         globals())
@@ -1013,7 +818,7 @@ def cond_fit_calc():
     mu_e_vec = array(exc_list[2:])
 
     Na_vec = n_vec * Na_fit_vec[0] / (n_exp_vec[0] / surf_area)
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
     mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
     n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
@@ -1049,6 +854,7 @@ def cond_fit_calc():
 
 def cond_fit(plot_type='plot'):
     file_id = '9xk12W--Tl6efYR-K76hoQ'
+    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
 
     n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
                                         globals())
@@ -1056,7 +862,7 @@ def cond_fit(plot_type='plot'):
     mu_e_lim, eb_lim = exc_list[:2]
     mu_e_vec = array(exc_list[2:])
 
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
     mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
     n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
@@ -1096,13 +902,11 @@ def cond_fit(plot_type='plot'):
         linestyle=':',
     )
 
-    getattr(ax[0], plot_type)(
-        n_exp_vec / surf_area * sys.a0**2,
-        cond_real * 1e3,
-        'o',
-        markeredgecolor='k',
-        markerfacecolor='#FFFFFF'
-    )
+    getattr(ax[0], plot_type)(n_exp_vec / surf_area * sys.a0**2,
+                              cond_real * 1e3,
+                              'o',
+                              markeredgecolor='k',
+                              markerfacecolor='#FFFFFF')
 
     getattr(ax[0], plot_type)(
         n_exp_vec / surf_area * sys.a0**2,
@@ -1156,27 +960,28 @@ def cond_fit(plot_type='plot'):
     ax[0].set_xlim(1 / surf_area * sys.a0**2, 60 / surf_area * sys.a0**2)
     ax[0].set_ylim(-cond_factor * 12.5, cond_factor * 5)
 
-    x_vec_top = ax[0].xaxis.get_majorticklocs()[1:-1]
-    x_vec_vals = (x_vec_top / sys.a0**2)
+    x_vec_top = linspace(0.02, 0.18, 5) * sys.a0**2
+    x_vec_vals = x_vec_top / sys.a0**2
     x_vec_vals = ['%.2f' % v for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
-    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals)
+    ax_top.set_xticklabels(x_vec_vals,
+                           fontdict={'verticalalignment': 'baseline'})
+    ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
 
     ax[0].legend(
         [('r', '--')],
         [
-            """$\mu_{dc,e}$: $%.0f$ cm$^2$ (Vs)$^{-1}$
-$\mu_{dc,h}$: $%.0f$ cm$^2$ (Vs)$^{-1}$
-$\mu$: $%.0f+%.0fi$ cm$^2$ (Vs)$^{-1}$""" %
+            """$\mu_{dc,e}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$
+$\mu_{dc,h}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$
+$\mu$: $%.0f+%.0fi$ cm$^2$ V$^{-1}$ s$^{-1}$""" %
             (mob_dc_minzed[0], mob_dc_minzed[1] if len(mob_dc_minzed) > 1 else
              0, real(sum(mob_minzed)), imag(sum(mob_minzed)))
         ],
         handler_map={tuple: AnyObjectHandler()},
-        loc=(0.43, 0.43),
+        loc=(0.405, 0.44),
         #loc='center right',
         #loc='lower left',
     )
@@ -1187,9 +992,10 @@ $\mu$: $%.0f+%.0fi$ cm$^2$ (Vs)$^{-1}$""" %
 
 
 def mobility_2d_sample(plot_type='semilogx'):
-    file_id = '9xk12W--Tl6efYR-K76hoQ'
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'
+    file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
     load_data('extra/mu_e_data_%s' % file_id, globals())
-    sys = system_data(m_e, m_h, eps_r, T)
+    sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
     w_vec = logspace(11, 16, 100)
     w_peak = 5.659114e+12  #w_vec[(power_norm_vec).argmax()]  # angular frequency, s^-1
@@ -1203,13 +1009,14 @@ def mobility_2d_sample(plot_type='semilogx'):
 
     ax[0].set_xlabel(r'$\omega$ (10$^{12}$ s$^{-1}$)')
     #ax[0].set_xlabel(r'$\omega$ (THz)')
-    ax[0].set_ylabel(r'Mobility (cm$^2$ V$^{-1}$ s$^{-1}$)')
+    ax[0].set_ylabel(r'$\mu(\omega)$ (cm$^2$ V$^{-1}$ s$^{-1}$)')
 
     mob_vec = sum([diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec],
                   axis=0)
 
-    mob_peak = sum([diffusion_cx(array([w_peak]), L_vec, d) / diff_factor for d in d_vec],
-                  axis=0)
+    mob_peak = sum(
+        [diffusion_cx(array([w_peak]), L_vec, d) / diff_factor for d in d_vec],
+        axis=0)
 
     w_factor = 1e-12  #surf_area / sum(mu_dc_vec) / diff_factor
     x_vec = w_vec * w_factor
@@ -1234,13 +1041,11 @@ def mobility_2d_sample(plot_type='semilogx'):
         label=r'$\mu_{I}(\omega)$',
     )
 
-    getattr(ax[0], plot_type)(
-        [w_peak * w_factor],
-        real(mob_peak),
-        'o',
-        markeredgecolor='g',
-        markerfacecolor='#FFFFFF'
-    )
+    getattr(ax[0], plot_type)([w_peak * w_factor],
+                              real(mob_peak),
+                              'o',
+                              markeredgecolor='g',
+                              markerfacecolor='#FFFFFF')
     getattr(ax[0], plot_type)(
         [w_peak * w_factor],
         imag(mob_peak),
@@ -1251,6 +1056,7 @@ def mobility_2d_sample(plot_type='semilogx'):
         y=sum(mu_dc_vec),
         color='k',
         linestyle='--',
+        linewidth=0.9,
     )
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
@@ -1273,7 +1079,8 @@ def mobility_2d_sample(plot_type='semilogx'):
 
 
 def mobility_2d_integ(plot_type='loglog'):
-    file_id = '9xk12W--Tl6efYR-K76hoQ'
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'
+    file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
 
     n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
                                         globals())

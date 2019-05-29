@@ -145,11 +145,11 @@ T plasmon_green_ht(
 
     if constexpr (include_cou) {
         result = -sys.eps_r * k / (sys.c_hbarc * sys.c_aEM) -
-                 0.25 / sys.c_alpha *
+                 0.5 * sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                      (pi_screen_nofactor[0] / sys.m_pe +
                       pi_screen_nofactor[1] / sys.m_ph);
     } else {
-        result = -0.25 / sys.c_alpha *
+        result = -0.5 * sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                  (pi_screen_nofactor[0] / sys.m_pe +
                   pi_screen_nofactor[1] / sys.m_ph);
     }
@@ -803,7 +803,7 @@ double plasmon_det_zero_t(
     }
 
     constexpr double local_eps{1e-8};
-    double z{-1.1*s.sys.get_E_n(N + 0.5)};
+    double z{-1.1 * s.sys.get_E_n(N + 0.5)};
     double z_min{std::isnan(eb_min) ? z : -eb_min}, z_max{z};
 
     if (z + eb_min < local_eps) {
@@ -1037,6 +1037,32 @@ double plasmon_det_zero_lwl(
     return plasmon_det_zero_t<T, plasmon_green_lwl, false>(ls, 0, s, eb_min);
 }
 
+std::vector<double> plasmon_det_zero_lwl_v(
+    uint32_t N_k,
+    const std::vector<double>& ls_vec,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    using T = double;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_lwl, false, 0>> s(
+        N_k, 1, sys, delta);
+
+    uint64_t N{ls_vec.size()};
+    std::vector<double> result(N, 0.0);
+
+    for (uint32_t i = 0; i < N; i++) {
+        result[i] = plasmon_det_zero_t<T, plasmon_green_lwl, false>(
+            ls_vec[i], 0.0, s, eb_min);
+
+        if (result[i] == 0) {
+            break;
+        }
+    }
+
+    return result;
+}
+
 double plasmon_det_zero_cx(
     uint32_t N_k,
     uint32_t N_w,
@@ -1148,7 +1174,7 @@ double plasmon_rpot_t(
     integrands[0].params = &s;
 
     integrands[1].function =
-        &plasmon_rpot_f<T, green_func, false, include_tail>;
+        &plasmon_rpot_f<T, green_func, true, include_tail>;
     integrands[1].params = &s;
 
     gsl_integration_qawo_table* qawo_table[2] = {
