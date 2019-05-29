@@ -160,7 +160,8 @@ double system_data::density_exc(double mu_ex, double eb) const {
 
 double system_data::mu_ideal(double n) const {
     const double r{
-        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1) / sys.beta,
+        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1) /
+            beta,
     };
 
     if (std::isinf(r)) {
