@@ -145,11 +145,11 @@ T plasmon_green_ht(
 
     if constexpr (include_cou) {
         result = -sys.eps_r * k / (sys.c_hbarc * sys.c_aEM) -
-                 0.5 * sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
+                 sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                      (pi_screen_nofactor[0] / sys.m_pe +
                       pi_screen_nofactor[1] / sys.m_ph);
     } else {
-        result = -0.5 * sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
+        result = -sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                  (pi_screen_nofactor[0] / sys.m_pe +
                   pi_screen_nofactor[1] / sys.m_ph);
     }
@@ -161,7 +161,7 @@ T plasmon_green_ht(
     }
 }
 
-template <bool invert = true>
+template <bool invert = true, bool include_cou = true>
 double plasmon_green_lwl(
     double _w,
     double k,
@@ -169,10 +169,18 @@ double plasmon_green_lwl(
     double _,
     const system_data& sys,
     double delta = 1e-12) {
-    if constexpr (invert) {
-        return -sys.c_hbarc * sys.c_aEM / (sys.eps_r * (k + ls));
+    double result;
+
+    if constexpr (include_cou) {
+        result = -sys.eps_r * (k + ls) / (sys.c_hbarc * sys.c_aEM);
     } else {
-        return -sys.eps_r * (k + ls) / (sys.c_hbarc * sys.c_aEM);
+        result = -sys.eps_r * ls / (sys.c_hbarc * sys.c_aEM);
+    }
+
+    if constexpr (invert) {
+        return 1 / result;
+    } else {
+        return result;
     }
 }
 
@@ -829,12 +837,14 @@ double plasmon_det_zero_t(
         for (uint32_t ii = 1; ii <= max_pow; ii++) {
             f_val = funct.function(z_min, funct.params);
 
+            // printf("z_max: %f, z_min: %f\n", z_max, z_min);
+
             if (f_val < 0) {
                 return_nan = false;
                 break;
 
             } else if (f_val == 0) {
-                return z_max;
+                return z_min;
 
             } else {
                 z_max = z_min;
@@ -1034,7 +1044,7 @@ double plasmon_det_zero_lwl(
 
     plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_lwl, false, 0>> s(
         N_k, 1, sys, 0);
-    return plasmon_det_zero_t<T, plasmon_green_lwl, false>(ls, 0, s, eb_min);
+    return plasmon_det_zero_t<T, plasmon_green_lwl>(ls, 0, s, eb_min);
 }
 
 std::vector<double> plasmon_det_zero_lwl_v(
@@ -1052,7 +1062,7 @@ std::vector<double> plasmon_det_zero_lwl_v(
     std::vector<double> result(N, 0.0);
 
     for (uint32_t i = 0; i < N; i++) {
-        result[i] = plasmon_det_zero_t<T, plasmon_green_lwl, false>(
+        result[i] = plasmon_det_zero_t<T, plasmon_green_lwl>(
             ls_vec[i], 0.0, s, eb_min);
 
         if (result[i] == 0) {
@@ -1130,7 +1140,8 @@ double plasmon_rpot_f(double k, void* params) {
         if constexpr (include_tail) {
             return k * elem * gsl_sf_bessel_J0(k * s->x);
         } else {
-            return (k * elem - s->sys.c_aEM * s->sys.c_hbarc / s->sys.eps_r) *
+            return (k * elem -
+                    s->sys.c_aEM * s->sys.c_hbarc / s->sys.eps_r) *
                    gsl_sf_bessel_J0(k * s->x);
         }
     } else {
@@ -1254,10 +1265,13 @@ std::vector<double> plasmon_rpot_ht_v(
     uint64_t N_x{x_vec.size()};
     std::vector<double> output(N_x);
 
+    constexpr bool include_tail{false};
+
 #pragma omp parallel for
     for (uint64_t i = 0; i < N_x; i++) {
-        output[i] = plasmon_rpot_t<double, plasmon_green_ht>(
-            x_vec[i], mu_e, mu_h, sys);
+        output[i] = plasmon_rpot_t<
+            double, plasmon_green_ht<double, true, !include_tail>,
+            include_tail>(x_vec[i], mu_e, mu_h, sys);
     }
 
     return output;
@@ -1270,11 +1284,13 @@ std::vector<double> plasmon_rpot_lwl_v(
     double delta) {
     uint64_t N_x{x_vec.size()};
     std::vector<double> output(N_x);
+    constexpr bool include_tail{false};
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < N_x; i++) {
-        output[i] =
-            plasmon_rpot_t<double, plasmon_green_lwl>(x_vec[i], ls, 0, sys);
+        output[i] = plasmon_rpot_t<
+            double, plasmon_green_lwl<true, !include_tail>, include_tail>(
+            x_vec[i], ls, 0, sys);
     }
 
     return output;

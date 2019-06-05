@@ -1,7 +1,6 @@
 from common import *
-import pyperclip
 
-N_k = 1 << 10
+N_k = 1 << 9
 
 surf_area = 326.4  # nm^2
 eb_cou = 0.193
@@ -33,22 +32,21 @@ z_cou_lwl = plasmon_det_zero_lwl(N_k, 1e-8, sys, -1e-1)
 print(eps_r)
 print(z_cou_lwl)
 
-z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys)
-
-print('z_sys_lwl: %.3e' % z_sys_lwl)
-
 T_vec = linspace(130, 350, 5)
 
 values_list = []
 
 for i, T in enumerate(T_vec):
     sys = system_data(m_e, m_h, eps_r, T)
+    """
+    mu_e_vec = linspace(-6.0, 18.0, 16) / sys.beta
+    n_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
+    """
 
-    n_vec = logspace(-2, 2, 32) / surf_area
+    n_vec = logspace(-4, log10(0.4), 16)
     mu_e_vec = array([sys.mu_ideal(n) for n in n_vec])
-    ls_vec = array([sys.ls_ideal(n) for n in n_vec])
 
-    eb_vec = array(time_func(plasmon_det_zero_lwl_v, N_k, ls_vec, sys))
+    eb_vec = array(time_func(plasmon_det_zero_ht_v, N_k, mu_e_vec, sys, -1e-2))
 
     data_zeroes = zeros((mu_e_vec.size, ))
 
@@ -58,12 +56,9 @@ for i, T in enumerate(T_vec):
     data_zeroes[:] = eb_vec[:]
     values_list.append(array(data_zeroes.tolist()))
 
-uuid_b64 = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
-pyperclip.copy(uuid_b64)
-
 save_data(
     'extra/eb_lwl_temp_%s' %
-    uuid_b64,
+    base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2],
     values_list,
     {
         'm_e': m_e,

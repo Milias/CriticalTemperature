@@ -18,7 +18,7 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     beta(f_beta(T)),
     energy_th(f_energy_th(T)),
     // sys_ls(M_1_PI * c_aEM / eps_r * (m_e + m_h) / c_hbarc),
-    sys_ls(0.25 * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
+    sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
     zt_len(0.5 * c_hbarc / m_2p) {
     lambda_th = f_lambda_th(beta, m_p);
     m_pT      = m_p / energy_th;
@@ -165,10 +165,10 @@ double system_data::mu_ideal(double n) const {
     };
 
     if (std::isinf(r)) {
-        return M_PI * c_hbarc * c_hbarc / m_e * beta * n;
+        return M_PI * c_hbarc * c_hbarc / m_e * n;
     } else if (r < 1e-10) {
-        return std::log(M_PI * c_hbarc * c_hbarc / m_e * beta * n) +
-               0.5 * M_PI * c_hbarc * c_hbarc / m_e * beta * n;
+        return std::log(M_PI * c_hbarc * c_hbarc / m_e * beta * n) / beta +
+               0.5 * M_PI * c_hbarc * c_hbarc / m_e * n;
     }
 
     return r;
@@ -176,11 +176,11 @@ double system_data::mu_ideal(double n) const {
 
 double system_data::mu_h_ideal(double n) const {
     const double r{
-        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1),
+        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1) / beta,
     };
 
     if (std::isinf(r)) {
-        return M_PI * c_hbarc * c_hbarc / m_h * beta * n;
+        return M_PI * c_hbarc * c_hbarc / m_h * n;
     }
 
     return r;
@@ -206,7 +206,7 @@ double system_data::mu_exc_u(double n) const {
 }
 
 double system_data::ls_ideal(double n) const {
-    return 0.25 * c_aEM / (eps_r * c_hbarc) * m_p *
+    return M_1_PI * c_aEM / (eps_r * c_hbarc) * m_p *
            ((1 - std::exp(-M_PI * c_hbarc * c_hbarc / m_p * m_pe * beta * n)) /
                 m_pe +
             (1 - std::exp(-M_PI * c_hbarc * c_hbarc / m_p * m_ph * beta * n)) /

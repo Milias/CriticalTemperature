@@ -14,8 +14,8 @@ plots_list=()
 #func_list+=("real_space_lwl_potential_density")
 #plots_list+=("plot")
 
-func_list+=("energy_level_mb_density")
-plots_list+=("semilogx")
+#func_list+=("energy_level_mb_density")
+#plots_list+=("semilogx")
 
 #func_list+=("density_result")
 #plots_list+=("loglog")
@@ -23,14 +23,11 @@ plots_list+=("semilogx")
 #func_list+=("eb_photo_density")
 #plots_list+=("semilogx")
 
-#func_list+=("cond_fit")
-#plots_list+=("plot")
+func_list+=("cond_fit")
+plots_list+=("plot")
 
-#func_list+=("mobility_2d_sample")
-#plots_list+=("semilogx")
-
-#func_list+=("mobility_2d_integ")
-#plots_list+=("loglog")
+func_list+=("mobility_2d_sample")
+plots_list+=("semilogx")
 
 for ((i=0;i<${#func_list[@]};++i)); do
     printf "Plotting %s as %s\n" "${func_list[i]}" "${plots_list[i]}"
@@ -38,5 +35,5 @@ for ((i=0;i<${#func_list[@]};++i)); do
     printf "\n"
 done
 
-cp $plots_folder/* $final_folder
+#cp $plots_folder/* $final_folder
 

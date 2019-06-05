@@ -1,6 +1,7 @@
 from common import *
+import pyperclip
 
-N_k = 1 << 12
+N_k = 1 << 10
 
 surf_area = 326.4  # nm^2
 eb_cou = 0.193
@@ -13,9 +14,10 @@ Compute eps_r given the actual binding energy given by
 the long wavelength method with ls -> 0.
 """
 z_cou_sol = root(
-    lambda eps_r: plasmon_det_zero_lwl(
+    lambda eps_r: plasmon_det_zero_ht(
         N_k,
-        1e-8,
+        -3e1,
+        sys.get_mu_h(-3e1),
         system_data(m_e, m_h, eps_r[0], T),
         -1e-1,
     ) + eb_cou,
@@ -27,7 +29,13 @@ print(eps_r)
 
 eps_r = z_cou_sol.x[0]
 sys = system_data(m_e, m_h, eps_r, T)
-z_cou_lwl = plasmon_det_zero_lwl(N_k, 1e-8, sys, -1e-1)
+z_cou_lwl = plasmon_det_zero_ht(
+    N_k,
+    -3e1,
+    sys.get_mu_h(-3e1),
+    sys,
+    -1e-1,
+)
 
 print(eps_r)
 print(z_cou_lwl)
@@ -38,10 +46,14 @@ values_list = []
 
 for i, T in enumerate(T_vec):
     sys = system_data(m_e, m_h, eps_r, T)
-    mu_e_vec = linspace(-6.0, 0.0, 32) / sys.beta
+
+    n_max = sys.density_ideal(-1.0 / sys.beta)
+    n_vec = logspace(-2, log10(n_max * surf_area), 24) / surf_area
+    mu_e_vec = array([sys.mu_ideal(n) for n in n_vec])
+
     eb_vec = array(time_func(plasmon_det_zero_ht_v, N_k, mu_e_vec, sys))
 
-    data_zeroes = zeros((mu_e_vec.size,))
+    data_zeroes = zeros((mu_e_vec.size, ))
 
     data_zeroes[:] = mu_e_vec[:]
     values_list.append(array(data_zeroes.tolist()))
@@ -49,9 +61,12 @@ for i, T in enumerate(T_vec):
     data_zeroes[:] = eb_vec[:]
     values_list.append(array(data_zeroes.tolist()))
 
+uuid_b64 = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
+pyperclip.copy(uuid_b64)
+
 save_data(
-    'extra/eb_vals_temp_%s' %
-    base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2],
+    'extra/eb_mb_temp_%s' %
+    uuid_b64,
     values_list,
     {
         'm_e': m_e,

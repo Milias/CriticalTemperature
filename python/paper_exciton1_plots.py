@@ -1,5 +1,4 @@
 from common import *
-import statsmodels.api as sm
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -115,7 +114,6 @@ def scr_length_density(plot_type='semilogx'):
         sys = system_data(m_e, m_h, eps_r, T)
         y_vec = array([sys.ls_ideal(n) for n in n_vec])
 
-
         getattr(ax[0], plot_type)(
             x_vec,
             1 / y_vec,
@@ -126,18 +124,9 @@ def scr_length_density(plot_type='semilogx'):
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
     #ax[0].set_ylim(0, None)
-    """
-    ax[0].axhline(
-        y=1 / sys.sys_ls,
-        linestyle='--',
-        color='k',
-#label           = r '$\lambda_{s,0}$',
-    )
-    ax[0].set_yticks([1 / sys.sys_ls, 1, 10, Lx])
-    ax[0].set_yticklabels([r'$\lambda_{s,0}$', '$1$', '$10$', r'$L_x$'])
-    """
-    ax[0].set_yticks([1, 10, Lx])
-    ax[0].set_yticklabels(['$1$', '$10$', r'$L_x$'])
+
+    ax[0].set_yticks([1, 10])
+    ax[0].set_yticklabels(['$1$', '$10$'])
 
     x_vec_top = logspace(-3, 0, 4) * surf_area
     x_vec_vals = x_vec_top / surf_area
@@ -179,14 +168,13 @@ def real_space_lwl_potential_density(plot_type='plot'):
 
     print(1 / sys.sys_ls)
 
-    mu_e_vec = -logspace(log10(0.07), -2.4, 5)
-    #mu_e_vec = linspace(-1.5e-1, -1e-3, 5)
+    n_max = sys.density_ideal(-1.0 / sys.beta)
+    n_vec = logspace(log10(0.1), log10(n_max * surf_area), 5) / surf_area
+    mu_e_vec = array([sys.mu_ideal(n) for n in n_vec])
     mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-    n_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
 
     #n_vec = logspace(log10(0.1), log10(8), 5) / surf_area
     ls_vec = array([sys.ls_ideal(n) for n in n_vec])
-
 
     print(1 / ls_vec)
 
@@ -221,18 +209,6 @@ def real_space_lwl_potential_density(plot_type='plot'):
             color=c,
         )
 
-        """
-        y_dot_vec = array(time_func(plasmon_rpot_lwl_v, [1 / ls], ls,
-                                    sys)) * 1e3
-        if 1 / ls / sys.a0 < x_vec[-1]:
-            getattr(ax[0], plot_type)(
-                [1 / ls / sys.a0],
-                y_dot_vec,
-                'o',
-                color=c,
-            )
-        """
-
         y_vec = array(
             time_func(plasmon_rpot_ht_v, x_vec * sys.a0, mu_e_vec[i],
                       mu_h_vec[i], sys)) * 1e3
@@ -253,17 +229,6 @@ def real_space_lwl_potential_density(plot_type='plot'):
         color='k',
         label=r'$\langle N_q \rangle \rightarrow \infty$',
     )
-
-    """
-    sys_dot_vec = array(
-        time_func(plasmon_rpot_lwl_v, [1 / sys.sys_ls], sys.sys_ls, sys)) * 1e3
-    getattr(ax[0], plot_type)(
-        [1 / sys.sys_ls / sys.a0],
-        sys_dot_vec,
-        'o',
-        color='k',
-    )
-    """
 
     ax[0].set_ylim(-0.12e3, 0.005e3)
     ax[0].set_xlim(0, x_vec[-1])
@@ -291,99 +256,13 @@ def real_space_lwl_potential_density(plot_type='plot'):
     return 'real_space_lwl_potential_density_%s' % plot_type
 
 
-def real_space_mb_potential_density(plot_type='plot'):
-    file_id = 'imDDS1DJRciMz_-rSvA1RQ'
-    load_data('extra/mu_e_data_%s' % file_id, globals())
-
-    sys = system_data(m_e, m_h, eps_r, T_vec[0])
-
-    mu_e_vec = -logspace(log10(0.07), -2.4, 5)
-    mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in mu_e_vec])
-
-    n_id_vec = array([sys.density_ideal(mu_e) for mu_e in mu_e_vec])
-
-    colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, mu_e_vec.size)
-    ]
-
-    x_vec = linspace(0.3, 12, 100) / sys.a0
-
-    #ax[0].set_title('Real space potential\nClassical Limit')
-    ax[0].set_xlabel(r'$r$ $a_0^{-1}$')
-    ax[0].set_ylabel(r'$V_{sc}(r;n_q)$ (meV)')
-
-    cou_vec = array(time_func(plasmon_rpot_lwl_v, x_vec * sys.a0, 1e-8,
-                              sys)) * 1e3
-    getattr(ax[0], plot_type)(
-        x_vec,
-        cou_vec,
-        '--',
-        color='r',
-        label=r'$\langle N_q\rangle$: %d' % 0,
-    )
-
-    for c, (i, (mu_e, mu_h,
-                n_id)) in zip(colors,
-                              enumerate(zip(mu_e_vec, mu_h_vec, n_id_vec))):
-
-        num_e = n_id * surf_area
-        y_vec = array(
-            time_func(plasmon_rpot_ht_v, x_vec * sys.a0, mu_e, mu_h,
-                      sys)) * 1e3
-        getattr(ax[0], plot_type)(
-            x_vec,
-            y_vec,
-            '-',
-            color=c,
-            label=r'$\langle N_q\rangle$: %.1f' % num_e,
-        )
-
-    sys_vec = array(
-        time_func(plasmon_rpot_lwl_v, x_vec * sys.a0, sys.sys_ls, sys)) * 1e3
-    getattr(ax[0], plot_type)(
-        x_vec,
-        sys_vec,
-        '--',
-        color='k',
-        label=r'$\langle N_q\rangle\rightarrow\infty$',
-    )
-
-    ax[0].set_ylim(-0.12e3, 0.005e3)
-    ax[0].set_xlim(0, x_vec[-1])
-    ax[0].axhline(y=0, color='k')
-
-    ax[0].set_yticks(linspace(-0.1e3, 0.0, 5))
-    ax[0].set_yticklabels(
-        ['$%.0f$' % v for v in ax[0].yaxis.get_majorticklocs()])
-
-    x_vec_top = linspace(0, 12, 7) / sys.a0
-    x_vec_vals = x_vec_top * sys.a0
-    x_vec_vals = ['%.0f' % v for v in x_vec_vals]
-
-    ax_top = ax[0].twiny()
-    ax_top.set_xticks(x_vec_top)
-    ax_top.set_xticklabels(x_vec_vals,
-                           fontdict={'verticalalignment': 'baseline'})
-    ax_top.set_xlim(ax[0].get_xlim())
-    ax_top.set_xlabel('$r$ (nm)')
-
-    ax[0].legend(loc=0)
-
-    fig.tight_layout()
-
-    return 'real_space_mb_potential_density_%s' % plot_type
-
-
 def energy_level_mb_density(plot_type='semilogx'):
-    file_id = 'ohmBtM4fTgiypsA8GPlMpQ'
-    #file_id = 'abcarNh1Tkqc4lByPz19jA'
-    values_list = load_data('extra/eb_vals_temp_%s' % file_id, globals())
+    file_id = 'cJBn0Vb3SICHkdj4QL7NHA'
+    values_list = load_data('extra/eb_mb_temp_%s' % file_id, globals())
 
-    #lwl_file_id = 'VH3LXYGxTU6jWKTNuMUgjQ' #  N_k = 1<<9
-    #lwl_file_id = 'evTtnHzyRl6rHzF61GMzog' #  N_k = 1<<12
-    lwl_file_id = 'cJSieNcdRmGAsKD2LLN4OQ' # 1<<9, ls *= 0.5
-    lwl_values_list = load_data('extra/eb_lwl_temp_%s' % lwl_file_id, globals())
+    lwl_file_id = '4EU_uHkYR2C1v_esi5Hexg'
+    lwl_values_list = load_data('extra/eb_lwl_temp_%s' % lwl_file_id,
+                                globals())
 
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -414,7 +293,8 @@ def energy_level_mb_density(plot_type='semilogx'):
         lwl_y_vec = lwl_values_list[2 * i + 1]
 
         lwl_mu_h_vec = array([sys.get_mu_h(mu_e) for mu_e in lwl_mu_e_vec])
-        lwl_n_id_vec = array([sys.density_ideal(mu_e) for mu_e in lwl_mu_e_vec])
+        lwl_n_id_vec = array(
+            [sys.density_ideal(mu_e) for mu_e in lwl_mu_e_vec])
 
         getattr(ax[0], plot_type)(
             n_id_vec * surf_area,
@@ -447,10 +327,10 @@ def energy_level_mb_density(plot_type='semilogx'):
 
     print(z_sys_lwl)
 
-    ax[0].set_xlim(1e-4 * surf_area, 4e-1 * surf_area)
+    ax[0].set_xlim(1e-2, 1e2)
     ax[0].set_ylim(z_cou_lwl * 1e3 - 3, z_sys_lwl * 1e3 + 5)
 
-    y_vec_left = [z_cou_lwl * 1e3] + (linspace(-0.175, -0.075, 5) * 1e3).tolist() + [z_sys_lwl * 1e3]
+    y_vec_left = [z_cou_lwl * 1e3] + arange(-70, -185, -25).tolist() + [z_sys_lwl * 1e3]
     y_vec_left_vals = ['$%.0f$' % v for v in y_vec_left]
     ax[0].set_yticks(y_vec_left)
     ax[0].set_yticklabels(y_vec_left_vals)
@@ -487,10 +367,8 @@ def energy_level_mb_density(plot_type='semilogx'):
 
 
 def density_result(plot_type='loglog'):
-    #file_id                    = 'aneuiPMlRLy4x8FlcAajaA'
-    #file_id                    = '7hNKZBFHQbGL6xOf9r_w2Q' #lower massses
-    file_id = '9xk12W--Tl6efYR-K76hoQ'  # higher masses
-    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'  # higher masses
+    file_id = 'yzpPQfeOQHeIHTffgrNgng'
 
     n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
         'bin/cdse_platelet_data')
@@ -586,9 +464,8 @@ def density_result(plot_type='loglog'):
 
 
 def eb_photo_density(plot_type='semilogx'):
-    #file_id                      = '7hNKZBFHQbGL6xOf9r_w2Q'
-    file_id = '9xk12W--Tl6efYR-K76hoQ'  # higher masses
-    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'
+    file_id = 'yzpPQfeOQHeIHTffgrNgng'
 
     n_exp_vec, cond_real, cond_imag, N_a_exp_vec, cond_err_real, cond_err_imag = load_data(
         'bin/cdse_platelet_data')
@@ -615,7 +492,7 @@ def eb_photo_density(plot_type='semilogx'):
     ax[0].set_xlabel(r'$n_\gamma a_0^2$')
     ax[0].set_ylabel(r'$E_B$ (meV)')
 
-    z_cou_lwl = time_func(plasmon_det_zero_lwl, 1 << 10, 1e-8, sys, -1e-3)
+    z_cou_lwl = time_func(plasmon_det_zero_ht, 1 << 10, -30, sys.get_mu_h(-30), sys)
     ax[0].axhline(
         y=z_cou_lwl * 1e3,
         color='r',
@@ -653,7 +530,7 @@ def eb_photo_density(plot_type='semilogx'):
                              for v in x_vec_vals]).ravel()
     x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
-    y_vec_left = linspace(-193, eb_vec[-1] * 1e3, 5)
+    y_vec_left = [z_cou_lwl * 1e3] + arange(-182, -192, -4).tolist() + [eb_vec[-1] * 1e3]
     y_vec_vals = ['$%d$' % v for v in y_vec_left]
     ax[0].set_yticks(y_vec_left)
     ax[0].set_yticklabels(y_vec_vals)
@@ -725,8 +602,8 @@ def eb_photo_density(plot_type='semilogx'):
 
 
 def cond_fit_calc():
-    fit_file_id = 'imDDS1DJRciMz_-rSvA1RQ'
-    #fit_file_id = 'STDQ5rQMQiaXwzY3aPgxEQ' # fixed pi?
+    #fit_file_id = 'imDDS1DJRciMz_-rSvA1RQ'
+    fit_file_id = 'zYt4kfzmTSiJo4O05ZNEQQ'
     exp_power_data = loadtxt('extra/ef_power_spectrum.txt')
 
     w_vec = 2 * pi * exp_power_data[1:, 0]
@@ -808,8 +685,8 @@ def cond_fit_calc():
 
     print('Minimized: μ: %s cm² / Vs' % mob_minzed)
 
-    file_id = '9xk12W--Tl6efYR-K76hoQ'
-    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'
+    file_id = 'yzpPQfeOQHeIHTffgrNgng'
 
     n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
                                         globals())
@@ -853,8 +730,8 @@ def cond_fit_calc():
 
 
 def cond_fit(plot_type='plot'):
-    file_id = '9xk12W--Tl6efYR-K76hoQ'
-    #file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
+    #file_id = '9xk12W--Tl6efYR-K76hoQ'
+    file_id = 'yzpPQfeOQHeIHTffgrNgng'
 
     n_vec, exc_list, eb_vec = load_data('extra/mu_e_data_%s' % file_id,
                                         globals())
@@ -982,8 +859,6 @@ $\mu$: $%.0f+%.0fi$ cm$^2$ V$^{-1}$ s$^{-1}$""" %
         ],
         handler_map={tuple: AnyObjectHandler()},
         loc=(0.405, 0.44),
-        #loc='center right',
-        #loc='lower left',
     )
 
     fig.tight_layout()
@@ -992,8 +867,8 @@ $\mu$: $%.0f+%.0fi$ cm$^2$ V$^{-1}$ s$^{-1}$""" %
 
 
 def mobility_2d_sample(plot_type='semilogx'):
-    #file_id = '9xk12W--Tl6efYR-K76hoQ'
-    file_id = '94ndrNKPTE67MoCLoChR2Q'  # fixed prefactor of pi?
+    #file_id = '94ndrNKPTE67MoCLoChR2Q'
+    file_id = 'yzpPQfeOQHeIHTffgrNgng'
     load_data('extra/mu_e_data_%s' % file_id, globals())
     sys = system_data(m_e, m_h, eps_r, T_vec[0])
 
@@ -1002,7 +877,12 @@ def mobility_2d_sample(plot_type='semilogx'):
 
     print('%e' % (w_peak * 0.5 / pi))
 
-    mu_dc_vec = array([469.79873636, 51.58045606])  # cm^2 v^-1 s^-1
+    mob_dc_minzed, mob_minzed, cond_vec = cond_fit_calc()
+
+    #mu_dc_vec = array([469.79873636, 51.58045606])  # cm^2 v^-1 s^-1
+    #mu_dc_vec = array([362.8868221,   17.22320458])
+    mu_dc_vec = mob_dc_minzed
+
     diff_factor = 1e14 / sys.beta
     d_vec = mu_dc_vec * diff_factor  # nm^2 s^-1
     mob_vec = (diffusion_cx(w_vec, L_vec, d) / diff_factor for d in d_vec)
@@ -1032,13 +912,11 @@ def mobility_2d_sample(plot_type='semilogx'):
         x_vec,
         real(mob_vec),
         'g--',
-        label=r'$\mu_{R}(\omega)$',
     )
     getattr(ax[0], plot_type)(
         x_vec,
         imag(mob_vec),
         'g-',
-        label=r'$\mu_{I}(\omega)$',
     )
 
     getattr(ax[0], plot_type)([w_peak * w_factor],
@@ -1060,10 +938,16 @@ def mobility_2d_sample(plot_type='semilogx'):
     )
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
+    ax[0].set_ylim(0, None)
 
-    ax[0].legend([('g', '--')], [r'$\mu_{ac}(\omega)$'],
+    ax[0].legend([('g', '--')], [r'$\mu(\omega)$'],
                  handler_map={tuple: AnyObjectHandler()},
                  loc=0)
+
+    y_vec_left = arange(0, sum(mu_dc_vec) * 0.9, 100).tolist() + [sum(mu_dc_vec)]
+    y_vec_vals = ['$%d$' % v for v in y_vec_left]
+    ax[0].set_yticks(y_vec_left)
+    ax[0].set_yticklabels(y_vec_vals)
 
     y_vec_right = [sum(mu_dc_vec)]
     y_vec_right_labels = [r'$\mu_{dc}$']
@@ -1187,6 +1071,4 @@ for p, l in plots_list:
     print('Calling %s(%s)' % (p, l))
     filename = locals()[p](l)
 
-    #plt.savefig('plots/papers/exciton1/%s.png' % filename)
     plt.savefig('plots/papers/exciton1/%s.pdf' % filename)
-#plt.savefig('plots/papers/exciton1/%s.eps' % filename)
