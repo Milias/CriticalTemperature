@@ -35,5 +35,5 @@ for ((i=0;i<${#func_list[@]};++i)); do
     printf "\n"
 done
 
-#cp $plots_folder/* $final_folder
+cp $plots_folder/* $final_folder
 
