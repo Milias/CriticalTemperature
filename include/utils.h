@@ -62,7 +62,7 @@ struct system_data {
     const double m_sigma; // dimensionless
     const double m_eh;    // dimensionless
     const double c_alpha; // eV nm^2
-    const double a0;    // nm
+    const double a0;      // nm
 
     /*
      * Temperature-scaled quantities
@@ -170,6 +170,9 @@ struct system_data {
     double density_exc_exp(double u) const;
     double density_exc_exp_ht(double u) const;
     double density_exc(double mu_ex, double eb) const;
+
+    double density_exc2(double mu_ex, double eb_ex, double eb_ex2) const;
+    double density_exc2_u(double u) const;
 
     double mu_ideal(double n) const;
     double mu_h_ideal(double n) const;

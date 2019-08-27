@@ -6,7 +6,7 @@ N_k = 1 << 10
 surf_area = 326.4  # nm^2
 eb_cou = 0.193
 #m_e, m_h, eps_r, T = 0.12, 0.3, 4.90185, 294  # K
-m_e, m_h, eps_r, T = 0.22, 0.41, 6.0, 294  # K
+m_e, m_h, eps_r, T = 0.22, 0.41, 6.56, 294  # K
 sys = system_data(m_e, m_h, eps_r, T)
 eps_r = sys.c_aEM * sqrt(2 * sys.m_p / eb_cou)
 """

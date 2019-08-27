@@ -1488,7 +1488,7 @@ double plasmon_exc_mu_lim_t(
     double val    = 0.0,
     double mu_lim = std::numeric_limits<double>::quiet_NaN(),
     double eb_lim = std::numeric_limits<double>::quiet_NaN()) {
-    if (val == 0 && !std::isnan(mu_lim) && false /* TODO: change */) {
+    if (val == 0 && !std::isnan(mu_lim)) {
         /*
          * In this case we have a trivial solution, because we
          * have already computed it.

@@ -13,9 +13,10 @@ Compute eps_r given the actual binding energy given by
 the long wavelength method with ls -> 0.
 """
 z_cou_sol = root(
-    lambda eps_r: plasmon_det_zero_lwl(
+    lambda eps_r: plasmon_det_zero_ht(
         N_k,
-        1e-8,
+        -3e1,
+        sys.get_mu_h(-3e1),
         system_data(m_e, m_h, eps_r[0], T),
         -1e-1,
     ) + eb_cou,
@@ -23,13 +24,23 @@ z_cou_sol = root(
     method='hybr',
 )
 
-print(z_cou_sol.x)
 print(eps_r)
 
 eps_r = z_cou_sol.x[0]
 sys = system_data(m_e, m_h, eps_r, T)
+z_cou_lwl = plasmon_det_zero_ht(
+    N_k,
+    -3e1,
+    sys.get_mu_h(-3e1),
+    sys,
+    -1e-1,
+)
 
-print(plasmon_det_zero_lwl(N_k, 1e-10, sys, -1e-1))
+print(eps_r)
+print(z_cou_lwl)
+
+eps_r = z_cou_sol.x[0]
+sys = system_data(m_e, m_h, eps_r, T)
 
 T_vec = linspace(294, 310, 1)
 

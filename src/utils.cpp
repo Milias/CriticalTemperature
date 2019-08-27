@@ -158,6 +158,53 @@ double system_data::density_exc(double mu_ex, double eb) const {
     return r;
 }
 
+double system_data::density_exc2(
+    double mu_ex, double eb_ex, double eb_ex2) const {
+    double const r{
+        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
+            std::log(1 - std::exp(beta * (2 * mu_ex - 2 * eb_ex - eb_ex2))),
+    };
+
+    if (std::isnan(r)) {
+        mpfr_t y;
+        /* mpfr_init_set_d(y, beta * (2 * mu_ex - 2 * eb_ex - eb_ex2),
+         * MPFR_RNDN); */
+        mpfr_init_set_d(y, 2 * mu_ex, MPFR_RNDN);
+        mpfr_sub_d(y, y, 2 * eb_ex, MPFR_RNDN);
+        mpfr_sub_d(y, y, eb_ex2, MPFR_RNDN);
+        mpfr_mul_d(y, y, beta, MPFR_RNDN);
+        // mpfr_exp(y, y, MPFR_RNDN);
+        // mpfr_ui_sub(y, 1, y, MPFR_RNDN);
+        mpfr_neg(y, y, MPFR_RNDN);
+        mpfr_log(y, y, MPFR_RNDN);
+        double log_val = mpfr_get_d(y, MPFR_RNDN);
+
+        mpfr_clear(y);
+        return -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * log_val;
+    }
+
+    return r;
+}
+
+double system_data::density_exc2_u(double u) const {
+    /*
+     * beta * (2 * mu_ex - 2 * eb_ex - eb_ex2) = - log(1 + exp(u))
+     */
+
+    if (u > 20) {
+        return (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * std::exp(-u);
+    } else if (u < -20) {
+        return -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * u;
+    }
+    
+    double const r{
+        -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
+            std::log(1.0 - 1.0 / (1.0 + std::exp(u))),
+    };
+
+    return r;
+}
+
 double system_data::mu_ideal(double n) const {
     const double r{
         std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_e * beta * n) - 1) /
@@ -176,7 +223,8 @@ double system_data::mu_ideal(double n) const {
 
 double system_data::mu_h_ideal(double n) const {
     const double r{
-        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1) / beta,
+        std::log(std::exp(M_PI * c_hbarc * c_hbarc / m_h * beta * n) - 1) /
+            beta,
     };
 
     if (std::isinf(r)) {

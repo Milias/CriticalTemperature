@@ -28,7 +28,7 @@ from scipy import special
 import scipy.misc
 import scipy.linalg
 import scipy.stats as stats
-from scipy.optimize import minimize, root
+from scipy.optimize import minimize, root, root_scalar
 
 from semiconductor import *
 from job_api import JobAPI
