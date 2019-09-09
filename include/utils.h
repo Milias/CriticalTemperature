@@ -55,14 +55,15 @@ struct system_data {
      * Derived and dimensionless constants
      */
 
-    const double m_p;     // eV
-    const double m_2p;    // eV
-    const double m_pe;    // dimensionless
-    const double m_ph;    // dimensionless
-    const double m_sigma; // dimensionless
-    const double m_eh;    // dimensionless
-    const double c_alpha; // eV nm^2
-    const double a0;      // nm
+    const double m_p;          // eV
+    const double m_2p;         // eV
+    const double m_pe;         // dimensionless
+    const double m_ph;         // dimensionless
+    const double m_sigma;      // dimensionless
+    const double m_eh;         // dimensionless
+    const double c_alpha;      // eV nm^2
+    const double c_alpha_bexc; // eV nm^2 but for biexctions
+    const double a0;           // nm
 
     /*
      * Temperature-scaled quantities

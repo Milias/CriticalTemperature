@@ -13,6 +13,7 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     m_sigma((m_e + m_h) * (1.0 / m_e + 1.0 / m_h)),
     m_eh(m_e / m_h),
     c_alpha(0.5 * c_hbarc * c_hbarc / m_p),
+    c_alpha_bexc(c_hbarc * c_hbarc / (m_e + m_h) / c_m_e),
     a0(eps_r / c_aEM * c_hbarc / m_p),
     T(T),
     beta(f_beta(T)),
@@ -192,11 +193,12 @@ double system_data::density_exc2_u(double u) const {
      */
 
     if (u > 20) {
-        return (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * std::exp(-u);
+        return (m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
+               std::exp(-u);
     } else if (u < -20) {
         return -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) * u;
     }
-    
+
     double const r{
         -(m_e + m_h) * M_1_PI / (std::pow(c_hbarc, 2) * beta) *
             std::log(1.0 - 1.0 / (1.0 + std::exp(u))),

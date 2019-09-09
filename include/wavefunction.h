@@ -81,8 +81,7 @@ public:
 
         if (x > global_eps) {
             if constexpr (dim == 2) {
-                dy[1] = ((pot(x) - E) / sys.c_alpha - 1.0 / (x * x)) * y[0] +
-                        y[1] / x;
+                dy[1] = ((pot(x) - E) / sys.c_alpha - 0.25 / (x * x)) * y[0];
 
             } else if constexpr (dim == 3) {
                 dy[1] = (pot(x) - E) * y[0] / sys.c_alpha;
