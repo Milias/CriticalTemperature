@@ -11,6 +11,7 @@ import json
 import uuid
 import base64
 import sys as pysys
+from ctypes import *
 
 from numpy import *
 import cmath
@@ -51,7 +52,7 @@ def save_data(filename, vars_list, extra_data=None):
             json.dump(extra_data, fp)
 
 
-def load_data(filename, extra_dict = {}):
+def load_data(filename, extra_dict={}):
     exported_data = loadtxt('%s.csv' % filename, delimiter=',').T
 
     try:
@@ -83,6 +84,33 @@ def register_pickle_custom(struct, *params):
 register_pickle_func(Uint32Vector, tuple)
 register_pickle_func(DoubleVector, tuple)
 register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T')
+
+
+## Define how to convert a result_s type to a python object
+class result_s:
+    _ATTR_LIST = ['value', 'error', 'neval']
+    _ATTR_TYPES = [c_double, c_double, c_int32]
+    _ATTR_PYTHON_TYPE = [list, list, list]
+
+    def __init__(self, c_result):
+        self.c_result = c_result
+        self.n_int = c_result.n_int
+
+        for key, key_type, key_python_type in zip(self._ATTR_LIST,
+                                                  self._ATTR_TYPES,
+                                                  self._ATTR_PYTHON_TYPE):
+            setattr(
+                self, key,
+                key_python_type((key_type * self.n_int).from_address(
+                    int(getattr(self.c_result, key)))))
+
+
+    def total_value(self):
+        return sum(self.value)
+
+    def total_abs_error(self):
+        return sum((v * err for v, err in zip(self.value, self.error)))
+
 
 # Generate an iterator that behaves like
 # linspace when func == None.

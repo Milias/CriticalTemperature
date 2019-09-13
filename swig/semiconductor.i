@@ -5,6 +5,7 @@
 %include "stdint.i"
 %include "std_complex.i"
 %include "std_vector.i"
+%include "std_array.i"
 
 %template(DoubleVector) std::vector<double>;
 %template(Uint32Vector) std::vector<uint32_t>;
@@ -26,6 +27,7 @@
 #include "Faddeeva.hh"
 %}
 
+
 %include "common.h"
 %include "utils.h"
 %include "wavefunction.h"
@@ -38,3 +40,5 @@
 %include "biexcitons.h"
 %include "Faddeeva.hh"
 
+%template(Result1) result_s<1>;
+%template(Result2) result_s<2>;

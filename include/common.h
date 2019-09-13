@@ -21,6 +21,7 @@
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_dawson.h>
+#include <gsl/gsl_sf_ellint.h>
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_zeta.h>
@@ -98,7 +99,26 @@ std::complex<double> erfi_cx(const std::complex<double>& z);
  */
 double y_eq_s(double v);
 
+/*
+ * Return type for integrals.
+ */
+template <size_t N_INT>
+struct result_s {
+    double value[N_INT] = {0}, error[N_INT] = {0};
+    size_t neval[N_INT] = {0};
+
+    uint32_t n_int{N_INT};
+};
+
 #ifndef SWIG
+
+
+template <typename T, double (*F)(double, T*)>
+double templated_f(double int_var, void* params) {
+    T* s{static_cast<T*>(params)};
+
+    return F(int_var, s);
+}
 
 // real(erf(x + i * y))
 template <uint32_t n = 32>
