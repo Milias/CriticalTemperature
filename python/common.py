@@ -106,7 +106,7 @@ class result_s:
 
 
     def total_value(self):
-        return sum(self.value)
+        return self.c_result.total_value()
 
     def total_abs_error(self):
         return sum((v * err for v, err in zip(self.value, self.error)))

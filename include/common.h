@@ -41,6 +41,8 @@
 //#include <optim/optim.hpp>
 #include <armadillo>
 
+#include <coz.h>
+
 #include "Faddeeva.hh"
 
 #include "utils.h"
@@ -108,10 +110,26 @@ struct result_s {
     size_t neval[N_INT] = {0};
 
     uint32_t n_int{N_INT};
+
+    template <size_t N_NEXT>
+    double add_next(const double* a_ptr) const {
+        if constexpr (N_NEXT > 1) {
+            return a_ptr[N_NEXT - 1] + add_next<N_NEXT - 1>(a_ptr);
+        } else {
+            return a_ptr[N_NEXT - 1];
+        }
+    }
+
+    double total_value() const {
+        return add_next<N_INT>(value);
+    }
+
+    double total_error() const {
+        return add_next<N_INT>(error);
+    }
 };
 
 #ifndef SWIG
-
 
 template <typename T, double (*F)(double, T*)>
 double templated_f(double int_var, void* params) {

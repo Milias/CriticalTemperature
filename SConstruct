@@ -22,6 +22,7 @@ output_bin = 'bin'
 output_lib = output_bin + '/semiconductor.so'
 output_swig_so = 'src/semiconductor_wrapper.os'
 output_py = 'bin/main.py'
+output_main = output_bin + '/main'
 
 lib_sources = [e for e in find_files(src_path, '.cpp') if not 'wrapper' in e
                ] + find_files(src_path, '.cc')
@@ -73,6 +74,9 @@ swig_so = env.SharedObject(
     target=output_swig_so,
     source=swig_cpp,
 )
+main = env.Program(target=output_main,
+                   source=lib_sources,
+                   LIBPATH=['/usr/lib', '/usr/local/lib'])
 lib = env.SharedLibrary(target=output_lib,
                         source=[output_swig_so] + lib_sources,
                         SHLIBPREFIX='_',
@@ -81,6 +85,7 @@ lib = env.SharedLibrary(target=output_lib,
 Clean(py, ['bin/__pycache__'])
 Clean(swig_gen, swig_py)
 
+Requires(lib, main)
 Requires(lib, py)
 
 Default(lib)

@@ -42,5 +42,17 @@ result_s<1> biexciton_Kp_th2(
     double param_alpha, double param_th1, double param_x1, double param_x2);
 result_s<1> biexciton_Kp_th1(
     double param_alpha, double param_x1, double param_x2);
-result_s<1> biexciton_Kp_r2(double param_alpha, double param_x2);
-result_s<1> biexciton_Kp_r(double param_alpha);
+
+result_s<2> biexciton_Kp_r1(double param_alpha, double param_x2);
+result_s<1> biexciton_Kp_r(double r_BA, const system_data& sys);
+
+std::vector<result_s<1>> biexciton_Delta_r_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
+std::vector<result_s<2>> biexciton_J_r_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
+std::vector<result_s<1>> biexciton_Jp_r_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
+std::vector<result_s<1>> biexciton_K_r_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
+std::vector<result_s<1>> biexciton_Kp_r_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
