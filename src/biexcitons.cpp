@@ -430,6 +430,53 @@ result_s<1> biexciton_Kp_r(double r_BA, const system_data& sys) {
     return result;
 }
 
+template <size_t return_type = 0>
+auto biexciton_eff_pot(double r_BA, const system_data& sys) {
+    /*
+     * return_type:
+     *      0 => returns a result_s<7>
+     *      1 => returns a double, potential +.
+     *      2 => returns a double, potential -.
+     */
+    result_s<1> r_D{biexciton_Delta_r(r_BA, sys)};
+    result_s<2> r_J{biexciton_J_r(r_BA, sys)};
+    result_s<1> r_Jp{biexciton_Jp_r(r_BA, sys)};
+    result_s<1> r_K{biexciton_K_r(r_BA, sys)};
+    result_s<1> r_Kp{biexciton_Kp_r(r_BA, sys)};
+
+    double D{r_D.total_value()}, J{r_J.total_value()}, Jp{r_Jp.total_value()},
+        K{r_K.total_value()}, Kp{r_Kp.total_value()};
+
+    if constexpr (return_type == 0) {
+        result_s<7> pot;
+
+        pot.value[0] = D;
+        pot.error[0] = r_D.total_error();
+        pot.value[1] = J;
+        pot.error[1] = r_J.total_error();
+        pot.value[2] = Jp;
+        pot.error[2] = r_Jp.total_error();
+        pot.value[3] = K;
+        pot.error[3] = r_K.total_error();
+        pot.value[4] = Kp;
+        pot.error[4] = r_Kp.total_error();
+
+        pot.value[5] = sys.c_aEM * sys.c_hbarc / r_BA / sys.eps_r +
+                       (2 * J + Jp + 2 * D * K + Kp) / (1 + D * D);
+        pot.value[6] = sys.c_aEM * sys.c_hbarc / r_BA / sys.eps_r +
+                       (2 * J + Jp - 2 * D * K - Kp) / (1 - D * D);
+
+        return pot;
+
+    } else if (return_type == 1) {
+        return sys.c_aEM * sys.c_hbarc / r_BA / sys.eps_r +
+               (2 * J + Jp + 2 * D * K + Kp) / (1 + D * D);
+    } else if (return_type == 2) {
+        return sys.c_aEM * sys.c_hbarc / r_BA / sys.eps_r +
+               (2 * J + Jp - 2 * D * K - Kp) / (1 - D * D);
+    }
+}
+
 template <
     size_t N,
     result_s<N> (*F)(double, const system_data&),
@@ -480,3 +527,29 @@ std::vector<result_s<1>> biexciton_Kp_r_vec(
     const std::vector<double>& r_BA_vec, const system_data& sys) {
     return biexciton_omp_f<1, biexciton_Kp_r, true>(r_BA_vec, sys);
 }
+
+std::vector<result_s<7>> biexciton_eff_pot_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys) {
+    return biexciton_omp_f<7, biexciton_eff_pot<0>, true>(r_BA_vec, sys);
+}
+
+std::vector<double> biexciton_wf(
+    double E, double rmin, double rmax, const system_data& sys) {
+    auto [f_vec, t_vec] = wf_gen_s_r_t<biexciton_eff_pot<1>>(
+        E, rmin, rmax, sys.c_alpha_bexc, sys);
+    std::vector<double> r(3 * f_vec.size());
+
+    for (uint32_t i = 0; i < f_vec.size(); i++) {
+        r[3 * i]     = f_vec[i][0];
+        r[3 * i + 1] = f_vec[i][1];
+        r[3 * i + 2] = t_vec[i];
+    }
+
+    return r;
+}
+
+double biexciton_be(double E_min, double rmin, const system_data& sys) {
+    return wf_gen_E_t<biexciton_eff_pot<1>, 0>(
+        E_min, rmin, sys.c_alpha_bexc, sys);
+}
+

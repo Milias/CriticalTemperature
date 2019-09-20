@@ -42,5 +42,7 @@
 
 %template(Result1) result_s<1>;
 %template(Result2) result_s<2>;
+%template(Result7) result_s<7>;
 %template(VectorResult1) std::vector<result_s<1>>;
 %template(VectorResult2) std::vector<result_s<2>>;
+%template(VectorResult7) std::vector<result_s<7>>;

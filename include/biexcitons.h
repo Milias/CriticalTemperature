@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "templates.h"
+#include "wavefunction_bexc.h"
 
 #include "biexcitons_utils.h"
 
@@ -56,3 +57,10 @@ std::vector<result_s<1>> biexciton_K_r_vec(
     const std::vector<double>& r_BA_vec, const system_data& sys);
 std::vector<result_s<1>> biexciton_Kp_r_vec(
     const std::vector<double>& r_BA_vec, const system_data& sys);
+
+std::vector<result_s<7>> biexciton_eff_pot_vec(
+    const std::vector<double>& r_BA_vec, const system_data& sys);
+
+std::vector<double> biexciton_wf(
+    double E, double rmin, double rmax, const system_data& sys);
+double biexciton_be(double E_min, double rmin, const system_data& sys);

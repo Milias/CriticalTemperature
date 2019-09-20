@@ -9,52 +9,8 @@
 
 #ifndef SWIG
 
-/*
- * This class is used in an ODE to compute the
- * scattering length assuming a Yukawa potential
- * for the interaction between electrons and holes.
- */
-
-template <typename state, uint32_t pot_index = 0>
-class wf_bexc_c {
-private:
-    double pot_lj(double x) const {
-        return lj_param_a / std::pow(x, 12) - lj_param_b / std::pow(x, 6);
-    }
-
-    constexpr static double (wf_bexc_c<state, pot_index>::*pot_func[])(
-        double) const {{&wf_bexc_c<state, pot_index>::pot_lj}};
-
-    constexpr double pot(double x) const {
-        return (this->*pot_func[pot_index])(x);
-    }
-
-public:
-    double lj_param_a{1.0};
-    double lj_param_b{1.0};
-    const system_data& sys;
-
-    /*
-     * Energy for computing eigenvalues.
-     * For scattering calculations E = 0.
-     */
-    double E{0};
-
-    void operator()(const state& y, state& dy, double x) {
-        dy[0]                = y[1];
-        const double pot_val = pot(x);
-
-        if (x > global_eps) {
-            dy[1] = ((pot_val - E) / sys.c_alpha_bexc - 0.25 / (x * x)) * y[0];
-        } else {
-            dy[1] = 0;
-        }
-    }
-};
-
-template <bool save = false, uint32_t pot_index>
-auto wf_bexc_s_t(
-    double E, double lj_param_a, double lj_param_b, const system_data& sys) {
+template <bool save = false, double (*pot)(double, const system_data&)>
+auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
     /*
      * Computes the wavefunction for a given E, and returns
      * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
@@ -66,13 +22,11 @@ auto wf_bexc_s_t(
     constexpr uint32_t x1_exp{2};
 
     state y{{0.0, 1.0}};
-    const double r_m{std::pow(lj_param_a * 2 / lj_param_b, 1.0 / 6)};
-    double x0{std::pow((1.0 + M_SQRT2), -1.0 / 6) * r_m},
-        x1{r_m * (1 << x1_exp)};
+    double x0{rmin}, x1{1 << x1_exp};
 
     controlled_stepper_type controlled_stepper;
 
-    wf_bexc_c<state, pot_index> wf{lj_param_a, lj_param_b, sys, E};
+    wf_dy_s<state, pot> wf{alpha, E, sys};
 
     if constexpr (save) {
         std::vector<state> f_vec;
@@ -88,7 +42,7 @@ auto wf_bexc_s_t(
 
             } else {
                 x0 = x1;
-                x1 = r_m * (1 << (i + 1 + x1_exp));
+                x1 = 1 << (i + 1 + x1_exp);
             }
         }
 
@@ -114,13 +68,9 @@ auto wf_bexc_s_t(
     }
 }
 
-template <uint32_t pot_index>
-auto wf_bexc_s_r_t(
-    double rmax,
-    double E,
-    double lj_param_a,
-    double lj_param_b,
-    const system_data& sys) {
+template <double (*pot)(double, const system_data&)>
+auto wf_gen_s_r_t(
+    double E, double rmin, double alpha, double rmax, const system_data& sys) {
     /*
      * Computes the wavefunction for a given E, and returns
      * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
@@ -131,13 +81,11 @@ auto wf_bexc_s_r_t(
 
     constexpr uint32_t n_steps{256};
     state y{{0.0, 1.0}};
-    double x0{
-        std::pow(lj_param_b * 0.5 / lj_param_a * (1.0 + M_SQRT2), -1.0 / 6)},
-        x1{rmax};
+    double x0{rmin}, x1{rmax};
 
     controlled_stepper_type controlled_stepper;
 
-    wf_bexc_c<state, pot_index> wf{lj_param_a, lj_param_b, sys, E};
+    wf_dy_s<state, pot> wf{alpha, E, sys};
 
     std::vector<state> f_vec;
     std::vector<double> t_vec;
@@ -153,11 +101,10 @@ auto wf_bexc_s_r_t(
  * Count wavefunction nodes.
  */
 
-template <uint32_t pot_index = 0>
-uint32_t wf_bexc_n_t(
-    double E, double lj_param_a, double lj_param_b, const system_data& sys) {
-    auto [f_vec, t_vec] =
-        wf_bexc_s_t<true, pot_index>(E, lj_param_a, lj_param_b, sys);
+template <double (*pot)(double, const system_data&)>
+uint32_t wf_gen_n_t(
+    double E, double rmin, double alpha, const system_data& sys) {
+    auto [f_vec, t_vec] = wf_gen_s_t<true, pot>(E, rmin, alpha, sys);
     return wf_n(f_vec);
 }
 
@@ -165,22 +112,14 @@ uint32_t wf_bexc_n_t(
  * Computes the groundstate energy.
  */
 
-template <uint32_t pot_index = 0>
-double wf_bexc_E_f(double E, void* params) {
-    wf_bexc_E_s* s{static_cast<wf_bexc_E_s*>(params)};
-
-    double r =
-        wf_bexc_s_t<false, pot_index>(E, s->lj_param_a, s->lj_param_b, s->sys);
-
-    return r;
+template <double (*pot)(double, const system_data&)>
+double wf_gen_E_f(double E, wf_gen_E_s* s) {
+    return wf_gen_s_t<false, pot>(E, s->rmin, s->alpha, s->sys);
 }
 
-template <uint32_t pot_index = 0, uint32_t N = 0>
-double wf_bexc_E_t(
-    double E_min,
-    double lj_param_a,
-    double lj_param_b,
-    const system_data& sys) {
+template <double (*pot)(double, const system_data&), uint32_t N = 0>
+double wf_gen_E_t(
+    double E_min, double rmin, double alpha, const system_data& sys) {
     /*
      * Computes the energy of the groundstate, starting
      * from the energy level of a purely Coulomb potential.
@@ -190,7 +129,7 @@ double wf_bexc_E_t(
     constexpr uint32_t local_max_iter{1 << 7};
 
     // defined in analytic_utils.h
-    wf_bexc_E_s params{sys, lj_param_a, lj_param_b};
+    wf_gen_E_s params{rmin, alpha, sys};
     double z_min, z_max, z;
 
     z_min = E_min;
@@ -211,7 +150,7 @@ double wf_bexc_E_t(
 
     for (uint32_t i = 1, n0 = 0, n = 0; i <= local_max_iter; i++) {
         z_max = z_min * std::pow(1 - f, i);
-        n     = wf_bexc_n_t<pot_index>(z_max, lj_param_a, lj_param_b, sys);
+        n     = wf_gen_n_t<pot>(z_max, params.rmin, params.alpha, params.sys);
 
         printf(
             "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min, z_max);
@@ -238,7 +177,7 @@ double wf_bexc_E_t(
     //*/
 
     gsl_function funct;
-    funct.function = &wf_bexc_E_f<pot_index>;
+    funct.function = &templated_f<wf_gen_E_s, wf_gen_E_f<pot>>;
     funct.params   = &params;
 
     const gsl_root_fsolver_type* T = gsl_root_fsolver_brent;
@@ -264,19 +203,3 @@ double wf_bexc_E_t(
 }
 
 #endif
-
-std::vector<double> wf_bexc_s(
-    double E, double lj_param_a, double lj_param_b, const system_data& sys);
-std::vector<double> wf_bexc_s_r(
-    double rmax,
-    double E,
-    double lj_param_a,
-    double lj_param_b,
-    const system_data& sys);
-uint32_t wf_bexc_n(
-    double E, double lj_param_a, double lj_param_b, const system_data& sys);
-double wf_bexc_E(
-    double E_min,
-    double lj_param_a,
-    double lj_param_b,
-    const system_data& sys);
