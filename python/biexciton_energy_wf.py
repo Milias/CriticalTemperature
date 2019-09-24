@@ -8,20 +8,6 @@ plt.rcParams.update({
     'text.usetex': True,
 })
 
-from matplotlib.legend_handler import HandlerBase
-
-
-class AnyObjectHandler(HandlerBase):
-    def create_artists(self, legend, orig_handle, x0, y0, width, height,
-                       fontsize, trans):
-        l1 = plt.Line2D([x0, y0 + width], [0.7 * height, 0.7 * height],
-                        linestyle=orig_handle[1],
-                        color=orig_handle[0])
-        l2 = plt.Line2D([x0, y0 + width], [0.3 * height, 0.3 * height],
-                        color=orig_handle[0])
-        return [l1, l2]
-
-
 N_k = 1 << 10
 
 fig_size = tuple(array([6.8, 5.3]) * 2)

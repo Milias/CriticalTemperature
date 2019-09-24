@@ -9,8 +9,9 @@
 
 #ifndef SWIG
 
-template <bool save = false, double (*pot)(double, const system_data&)>
-auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
+template <bool save = false, class pot_s>
+auto wf_gen_s_t(
+    double E, double rmin, double alpha, pot_s& pot, double rmax = 0.0) {
     /*
      * Computes the wavefunction for a given E, and returns
      * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
@@ -22,11 +23,11 @@ auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
     constexpr uint32_t x1_exp{2};
 
     state y{{0.0, 1.0}};
-    double x0{rmin}, x1{1 << x1_exp};
+    double x0{rmin}, x1{rmax == 0.0 ? 1 << x1_exp : rmax};
 
     controlled_stepper_type controlled_stepper;
 
-    wf_dy_s<state, pot> wf{alpha, E, sys};
+    wf_dy_s<state, pot_s> wf{alpha, E, pot};
 
     if constexpr (save) {
         std::vector<state> f_vec;
@@ -36,6 +37,10 @@ auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
             integrate_adaptive(
                 controlled_stepper, wf, y, x0, x1, global_eps,
                 ode_observer<state>{f_vec, t_vec});
+
+            if (rmax > 0.0) {
+                break;
+            }
 
             if (y[1] > 1 || y[1] < -1) {
                 break;
@@ -51,6 +56,10 @@ auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
     } else {
         for (uint32_t i = 0; i < max_iter; i++) {
             integrate_adaptive(controlled_stepper, wf, y, x0, x1, global_eps);
+
+            if (rmax > 0.0) {
+                break;
+            }
 
             if (y[1] > 1 || y[1] < -1) {
                 break;
@@ -68,9 +77,14 @@ auto wf_gen_s_t(double E, double rmin, double alpha, const system_data& sys) {
     }
 }
 
-template <double (*pot)(double, const system_data&)>
+template <class pot_s>
 auto wf_gen_s_r_t(
-    double E, double rmin, double alpha, double rmax, const system_data& sys) {
+    double E,
+    double rmin,
+    double alpha,
+    double rmax,
+    uint32_t n_steps,
+    pot_s& pot) {
     /*
      * Computes the wavefunction for a given E, and returns
      * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
@@ -79,13 +93,12 @@ auto wf_gen_s_r_t(
      * The iterator stops when |u'(x1)| > u'(x0) == 1.
      */
 
-    constexpr uint32_t n_steps{256};
     state y{{0.0, 1.0}};
     double x0{rmin}, x1{rmax};
 
     controlled_stepper_type controlled_stepper;
 
-    wf_dy_s<state, pot> wf{alpha, E, sys};
+    wf_dy_s<state, pot_s> wf{alpha, E, pot};
 
     std::vector<state> f_vec;
     std::vector<double> t_vec;
@@ -101,10 +114,10 @@ auto wf_gen_s_r_t(
  * Count wavefunction nodes.
  */
 
-template <double (*pot)(double, const system_data&)>
+template <class pot_s>
 uint32_t wf_gen_n_t(
-    double E, double rmin, double alpha, const system_data& sys) {
-    auto [f_vec, t_vec] = wf_gen_s_t<true, pot>(E, rmin, alpha, sys);
+    double E, double rmin, double alpha, pot_s& pot, double rmax = 0.0) {
+    auto [f_vec, t_vec] = wf_gen_s_t<true, pot_s>(E, rmin, alpha, pot, rmax);
     return wf_n(f_vec);
 }
 
@@ -112,14 +125,14 @@ uint32_t wf_gen_n_t(
  * Computes the groundstate energy.
  */
 
-template <double (*pot)(double, const system_data&)>
-double wf_gen_E_f(double E, wf_gen_E_s* s) {
-    return wf_gen_s_t<false, pot>(E, s->rmin, s->alpha, s->sys);
+template <class pot_s>
+double wf_gen_E_f(double E, wf_gen_E_s<pot_s>* s) {
+    return wf_gen_s_t<false, pot_s>(E, s->rmin, s->alpha, s->pot, s->rmax);
 }
 
-template <double (*pot)(double, const system_data&), uint32_t N = 0>
+template <class pot_s, uint32_t N = 0>
 double wf_gen_E_t(
-    double E_min, double rmin, double alpha, const system_data& sys) {
+    double E_min, double rmin, double alpha, pot_s& pot, double rmax = 0.0) {
     /*
      * Computes the energy of the groundstate, starting
      * from the energy level of a purely Coulomb potential.
@@ -129,7 +142,7 @@ double wf_gen_E_t(
     constexpr uint32_t local_max_iter{1 << 7};
 
     // defined in analytic_utils.h
-    wf_gen_E_s params{rmin, alpha, sys};
+    wf_gen_E_s<pot_s> params{rmin, alpha, pot, rmax};
     double z_min, z_max, z;
 
     z_min = E_min;
@@ -150,7 +163,8 @@ double wf_gen_E_t(
 
     for (uint32_t i = 1, n0 = 0, n = 0; i <= local_max_iter; i++) {
         z_max = z_min * std::pow(1 - f, i);
-        n     = wf_gen_n_t<pot>(z_max, params.rmin, params.alpha, params.sys);
+        n     = wf_gen_n_t<pot_s>(
+            z_max, params.rmin, params.alpha, params.pot, params.rmax);
 
         printf(
             "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min, z_max);
@@ -177,7 +191,7 @@ double wf_gen_E_t(
     //*/
 
     gsl_function funct;
-    funct.function = &templated_f<wf_gen_E_s, wf_gen_E_f<pot>>;
+    funct.function = &templated_f<wf_gen_E_s<pot_s>, wf_gen_E_f<pot_s>>;
     funct.params   = &params;
 
     const gsl_root_fsolver_type* T = gsl_root_fsolver_brent;

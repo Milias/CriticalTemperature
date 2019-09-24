@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <complex>
+#include <unordered_map>
 
 #include <cmath>
 
@@ -27,6 +28,8 @@
 #include <gsl/gsl_sf_zeta.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_interp.h>
+#include <gsl/gsl_spline.h>
 
 #include <mpfr.h>
 #include <boost/numeric/odeint.hpp>
@@ -120,13 +123,9 @@ struct result_s {
         }
     }
 
-    double total_value() const {
-        return add_next<N_INT>(value);
-    }
+    double total_value() const { return add_next<N_INT>(value); }
 
-    double total_error() const {
-        return add_next<N_INT>(error);
-    }
+    double total_error() const { return add_next<N_INT>(error); }
 };
 
 #ifndef SWIG

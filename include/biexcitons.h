@@ -60,7 +60,20 @@ std::vector<result_s<1>> biexciton_Kp_r_vec(
 
 std::vector<result_s<7>> biexciton_eff_pot_vec(
     const std::vector<double>& r_BA_vec, const system_data& sys);
+std::vector<result_s<1>> biexciton_eff_pot_interp_vec(
+    const std::vector<double>& x_vec,
+    const std::vector<double>& pot_vec,
+    const std::vector<double>& x_interp_vec,
+    const system_data& sys);
 
 std::vector<double> biexciton_wf(
-    double E, double rmin, double rmax, const system_data& sys);
-double biexciton_be(double E_min, double rmin, const system_data& sys);
+    double E,
+    const std::vector<double>& x_vec,
+    const std::vector<double>& pot_vec,
+    uint32_t n_steps,
+    const system_data& sys);
+double biexciton_be(
+    double E_min,
+    const std::vector<double>& x_vec,
+    const std::vector<double>& pot_vec,
+    const system_data& sys);

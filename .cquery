@@ -1,6 +1,6 @@
 %clang
 %cpp -std=c++17
--O3
+-g
 -Wall
 -pedantic
 -march=native
