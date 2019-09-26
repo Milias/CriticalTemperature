@@ -43,7 +43,7 @@ def save_data(filename, vars_list, extra_data=None):
     for (i, var) in enumerate(vars_list):
         export_data[:, i] = var
 
-    savetxt('%s.csv' % filename, export_data, delimiter=',')
+    savetxt('%s.csv.gz' % filename, export_data, delimiter=',')
 
     print('Saved to %s' % filename)
 
@@ -53,7 +53,7 @@ def save_data(filename, vars_list, extra_data=None):
 
 
 def load_data(filename, extra_dict={}):
-    exported_data = loadtxt('%s.csv' % filename, delimiter=',').T
+    exported_data = loadtxt('%s.csv.gz' % filename, delimiter=',').T
 
     try:
         with open('%s.json' % filename, 'r') as fp:

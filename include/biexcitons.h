@@ -25,8 +25,7 @@ result_s<2> biexciton_J_r(double r_BA, const system_data& sys);
  * biexciton_Jp_r2 is the first radial part.
  * biexciton_Jp_r is the final radial part.
  */
-result_s<1> biexciton_Jp_th(double param_alpha, double param_x1);
-result_s<2> biexciton_Jp_r2(double param_alpha, double param_x1);
+result_s<2> biexciton_Jp_r2(double param_alpha, double param_x2);
 result_s<1> biexciton_Jp_r(double r_BA, const system_data& sys);
 
 /*

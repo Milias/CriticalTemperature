@@ -6,9 +6,7 @@ sys = system_data(m_e, m_h, eps_r, T)
 
 eb_cou = 193e-3  # eV
 
-file_id = '939Tcd2ySviOVirRWCJZ5w'  # 128  [1e-2, 16]  linear
-file_id = 'Zk8eW8jhTueqjfxVFq865Q'  # 1024 [1e-3, 128] log
-#file_id = 'K39Ivo-jQBK7mc2CeGYDow'  # 1024 [1e-3, 128] linear
+file_id = 'tXV6CHV0SySMglAEgovJow'  # 256 [1e-2, 32] log
 
 data = load_data('extra/biexcitons/eff_pot_vec_%s' % file_id, globals())
 param_vec = data[:, 0]
@@ -22,7 +20,7 @@ pot_vec[:, 6] = pot_vec[:, 6] * (1.0 - exp(-param_vec / sys.a0)) - exp(
     -param_vec / sys.a0) * param_c6 / param_vec**6
 """
 
-eb_biexc_cou = 33e-3
+eb_biexc_cou = 45e-3
 
 eb_biexc_comp = biexciton_be(amin(pot_vec[:, 6]), param_vec, pot_vec[:, 6],
                              sys)
