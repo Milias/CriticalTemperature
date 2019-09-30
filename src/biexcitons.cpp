@@ -105,11 +105,10 @@ result_s<2> biexciton_J_r(double r_BA, const system_data& sys) {
         integrands, int_pts[2], 0.0, local_eps, local_ws_size, ws,
         result.value + 1, result.error + 1);
 
-    result.value[0] *= -8 * M_1_PI * std::pow(sys.c_aEM / sys.eps_r, 2) *
-                       sys.m_p * r_BA / sys.a0;
-
-    result.value[1] *= -8 * M_1_PI * std::pow(sys.c_aEM / sys.eps_r, 2) *
-                       sys.m_p * r_BA / sys.a0;
+    result.value[0] *= -8 * M_1_PI * sys.c_aEM / sys.eps_r * sys.c_hbarc *
+                       r_BA / (sys.a0 * sys.a0);
+    result.value[1] *= -8 * M_1_PI * sys.c_aEM / sys.eps_r * sys.c_hbarc *
+                       r_BA / (sys.a0 * sys.a0);
 
     gsl_integration_workspace_free(ws);
     return result;
@@ -467,7 +466,7 @@ std::vector<result_s<7>> biexciton_eff_pot_vec(
     return biexciton_omp_f<7, biexciton_eff_pot<0>, true>(r_BA_vec, sys);
 }
 
-struct biexciton_eff_pot_s {
+struct biexciton_eff_pot_interp_s {
     const system_data& sys;
     gsl_interp_accel* acc = nullptr;
     gsl_spline* spline    = nullptr;
@@ -485,12 +484,12 @@ struct biexciton_eff_pot_s {
             spline, &x_vec.front(), &pot_vec.front(), x_vec.size());
     }
 
-    ~biexciton_eff_pot_s() {
+    ~biexciton_eff_pot_interp_s() {
         gsl_spline_free(spline);
         gsl_interp_accel_free(acc);
     }
 
-    double operator()(double x) {
+    double operator()(double x) const {
         double r{0};
 
         if (x >= xmin && x <= xmax) {
@@ -503,36 +502,64 @@ struct biexciton_eff_pot_s {
     };
 };
 
-std::vector<result_s<1>> biexciton_eff_pot_interp_vec(
+std::vector<double> biexciton_eff_pot_interp_vec(
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
     const std::vector<double>& x_interp_vec,
     const system_data& sys) {
-    biexciton_eff_pot_s pot{sys};
+    biexciton_eff_pot_interp_s pot{sys};
 
     pot.interp_pot(x_vec, pot_vec);
 
-    std::vector<result_s<1>> r(x_interp_vec.size());
+    std::vector<double> r(x_interp_vec.size());
 
 #pragma omp parallel for
     for (uint32_t i = 0; i < x_interp_vec.size(); i++) {
-        r[i].value[0] = pot(x_interp_vec[i]);
+        r[i] = pot(x_interp_vec[i]);
     }
 
     return r;
 }
 
-std::vector<double> biexciton_wf(
+struct biexciton_pot_r6_s {
+    const system_data& sys;
+    double param_c6;
+
+    double operator()(double x) const { return -param_c6 / std::pow(x, 6); };
+};
+
+std::vector<double> biexciton_pot_r6_vec(
+    double eb_cou, const std::vector<double>& x_vec, const system_data& sys) {
+    constexpr double pol_a2{21.0 / 256.0};
+
+    double param_c6{
+        24 / std::pow(eb_cou * eb_cou * sys.m_p, 3) *
+        std::pow(pol_a2 * sys.eps_r * std::pow(sys.c_hbarc, 3), 2)};
+
+    biexciton_pot_r6_s pot{sys, param_c6};
+
+    std::vector<double> r(x_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < x_vec.size(); i++) {
+        r[i] = pot(x_vec[i]);
+    }
+
+    return r;
+}
+
+std::vector<double> biexciton_wf_hl(
     double E,
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
     uint32_t n_steps,
     const system_data& sys) {
-    biexciton_eff_pot_s pot{sys};
+    biexciton_eff_pot_interp_s pot{sys};
     pot.interp_pot(x_vec, pot_vec);
 
-    auto [f_vec, t_vec] = wf_gen_s_r_t<biexciton_eff_pot_s>(
+    auto [f_vec, t_vec] = wf_gen_s_r_t<biexciton_eff_pot_interp_s>(
         E, x_vec.front(), sys.c_alpha_bexc, x_vec.back(), n_steps, pot);
+
     std::vector<double> r(3 * f_vec.size());
 
     for (uint32_t i = 0; i < f_vec.size(); i++) {
@@ -544,15 +571,127 @@ std::vector<double> biexciton_wf(
     return r;
 }
 
-double biexciton_be(
+std::vector<double> biexciton_wf_r6(
+    double eb_biexc,
+    double eb_cou,
+    double r_min,
+    double r_max,
+    uint32_t n_steps,
+    const system_data& sys) {
+    constexpr double pol_a2{21.0 / 256.0};
+
+    double param_c6{
+        24 / std::pow(eb_cou * eb_cou * sys.m_p, 3) *
+        std::pow(pol_a2 * sys.eps_r * std::pow(sys.c_hbarc, 3), 2)};
+
+    biexciton_pot_r6_s pot{sys, param_c6};
+
+    auto [f_vec, t_vec] = wf_gen_s_r_t<biexciton_pot_r6_s>(
+        eb_biexc, r_min, sys.c_alpha_bexc, r_max, n_steps, pot);
+
+    std::vector<double> r(3 * f_vec.size());
+
+    for (uint32_t i = 0; i < f_vec.size(); i++) {
+        r[3 * i]     = f_vec[i][0];
+        r[3 * i + 1] = f_vec[i][1];
+        r[3 * i + 2] = t_vec[i];
+    }
+
+    return r;
+}
+
+double biexciton_be_hl(
     double E_min,
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
     const system_data& sys) {
-    biexciton_eff_pot_s pot{sys};
+    biexciton_eff_pot_interp_s pot{sys};
     pot.interp_pot(x_vec, pot_vec);
 
-    return wf_gen_E_t<biexciton_eff_pot_s, 0>(
+    return wf_gen_E_t<biexciton_eff_pot_interp_s>(
         E_min, x_vec.front(), sys.c_alpha_bexc, pot, x_vec.back());
 }
 
+double biexciton_be_r6(
+    double E_min, double eb_cou, double r_min, const system_data& sys) {
+    constexpr double pol_a2{21.0 / 256.0};
+
+    double param_c6{
+        24 / std::pow(eb_cou * eb_cou * sys.m_p, 3) *
+        std::pow(pol_a2 * sys.eps_r * std::pow(sys.c_hbarc, 3), 2)};
+
+    biexciton_pot_r6_s pot{sys, param_c6};
+
+    return wf_gen_E_t<biexciton_pot_r6_s>(E_min, r_min, sys.c_alpha_bexc, pot);
+}
+
+template <class pot_s>
+double biexciton_rmin_f(double r_min, biexciton_rmin_s<pot_s>* s) {
+    double r{wf_gen_E_t<pot_s>(s->E_min, r_min, s->sys.c_alpha_bexc, s->pot)};
+
+    if (std::isnan(r)) {
+        return s->E_min;
+    }
+
+    return r - s->eb_biexc;
+}
+
+double biexciton_rmin_r6(
+    double E_min, double eb_cou, double eb_biexc, const system_data& sys) {
+    using pot_s = biexciton_pot_r6_s;
+    constexpr double pol_a2{21.0 / 256.0};
+
+    double param_c6{
+        24 / std::pow(eb_cou * eb_cou * sys.m_p, 3) *
+        std::pow(pol_a2 * sys.eps_r * std::pow(sys.c_hbarc, 3), 2)};
+
+    pot_s pot{sys, param_c6};
+
+    constexpr uint32_t local_max_iter{1 << 7};
+
+    biexciton_rmin_s<pot_s> params{E_min, eb_biexc, pot, sys};
+    double z_min{1.0}, z_max{10.0}, z;
+
+    gsl_function funct;
+    funct.function =
+        &templated_f<biexciton_rmin_s<pot_s>, biexciton_rmin_f<pot_s>>;
+    funct.params = &params;
+
+    const gsl_root_fsolver_type* T = gsl_root_fsolver_brent;
+    gsl_root_fsolver* s            = gsl_root_fsolver_alloc(T);
+
+    gsl_root_fsolver_set(s, &funct, z_min, z_max);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < local_max_iter; iter++) {
+        status = gsl_root_fsolver_iterate(s);
+        z      = gsl_root_fsolver_root(s);
+        z_min  = gsl_root_fsolver_x_lower(s);
+        z_max  = gsl_root_fsolver_x_upper(s);
+
+        // status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+        status =
+            gsl_root_test_residual(funct.function(z, &params), global_eps);
+        printf(
+            "[%d] iterating -- %.16f (%f, %f), %f\n", iter, z, z_min, z_max,
+            funct.function(z, &params));
+    }
+
+    gsl_root_fsolver_free(s);
+    return z;
+}
+
+std::vector<double> biexciton_be_r6_vec(
+    double E_min,
+    double eb_cou,
+    const std::vector<double>& r_min_vec,
+    const system_data& sys) {
+    std::vector<double> r(r_min_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < r_min_vec.size(); i++) {
+        r[i] = biexciton_be_r6(E_min, eb_cou, r_min_vec[i], sys);
+    }
+
+    return r;
+}

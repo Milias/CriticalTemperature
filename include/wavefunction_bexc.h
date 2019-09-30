@@ -20,10 +20,10 @@ auto wf_gen_s_t(
      * The iterator stops when |u'(x1)| > u'(x0) == 1.
      */
 
-    constexpr uint32_t x1_exp{2};
+    constexpr uint32_t x1_exp{1};
 
     state y{{0.0, 1.0}};
-    double x0{rmin}, x1{rmax == 0.0 ? 1 << x1_exp : rmax};
+    double x0{rmin}, x1{rmax == 0.0 ? rmin * (1 << x1_exp) : rmax};
 
     controlled_stepper_type controlled_stepper;
 
@@ -47,7 +47,7 @@ auto wf_gen_s_t(
 
             } else {
                 x0 = x1;
-                x1 = 1 << (i + 1 + x1_exp);
+                x1 = rmin * (1 << (i + 1 + x1_exp));
             }
         }
 
@@ -69,7 +69,7 @@ auto wf_gen_s_t(
 
             } else {
                 x0 = x1;
-                x1 = 1 << (i + 1 + x1_exp);
+                x1 = rmin * (1 << (i + 1 + x1_exp));
             }
         }
 
@@ -85,14 +85,6 @@ auto wf_gen_s_r_t(
     double rmax,
     uint32_t n_steps,
     pot_s& pot) {
-    /*
-     * Computes the wavefunction for a given E, and returns
-     * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
-     * is true.
-     *
-     * The iterator stops when |u'(x1)| > u'(x0) == 1.
-     */
-
     state y{{0.0, 1.0}};
     double x0{rmin}, x1{rmax};
 
@@ -166,10 +158,15 @@ double wf_gen_E_t(
         n     = wf_gen_n_t<pot_s>(
             z_max, params.rmin, params.alpha, params.pot, params.rmax);
 
+        /*
         printf(
             "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min, z_max);
+        */
 
-        if (n == n0 + 1) {
+        if (i == 1 && n > 0) {
+            return std::numeric_limits<double>::quiet_NaN();
+
+        } else if (n == n0 + 1) {
             break;
 
         } else if (n > n0 + 1) {
@@ -179,9 +176,6 @@ double wf_gen_E_t(
 
         } else if (z_max > -1e-14) {
             return 0.0;
-
-        } else if (i == 1 && n > 0) {
-            return std::numeric_limits<double>::quiet_NaN();
 
         } else {
             z_min = z_max;
@@ -206,10 +200,13 @@ double wf_gen_E_t(
         z_min  = gsl_root_fsolver_x_lower(s);
         z_max  = gsl_root_fsolver_x_upper(s);
 
-        status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+        //status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+        status = gsl_root_test_residual(funct.function(z, &params), global_eps);
+        /*
         printf(
-            "[%d] iterating -- %.14f (%f, %f), %f\n", iter, z, z_min, z_max,
+            "[%d] iterating -- %.16f (%f, %f), %f\n", iter, z, z_min, z_max,
             funct.function(z, &params));
+        */
     }
 
     gsl_root_fsolver_free(s);

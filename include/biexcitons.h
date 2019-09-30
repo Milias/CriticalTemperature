@@ -59,20 +59,45 @@ std::vector<result_s<1>> biexciton_Kp_r_vec(
 
 std::vector<result_s<7>> biexciton_eff_pot_vec(
     const std::vector<double>& r_BA_vec, const system_data& sys);
-std::vector<result_s<1>> biexciton_eff_pot_interp_vec(
+std::vector<double> biexciton_eff_pot_interp_vec(
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
     const std::vector<double>& x_interp_vec,
     const system_data& sys);
 
-std::vector<double> biexciton_wf(
+std::vector<double> biexciton_pot_r6_vec(
+    double eb_cou,
+    const std::vector<double>& r_BA_vec,
+    const system_data& sys);
+
+std::vector<double> biexciton_wf_hl(
     double E,
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
     uint32_t n_steps,
     const system_data& sys);
-double biexciton_be(
+
+std::vector<double> biexciton_wf_r6(
+    double E,
+    double eb_cou,
+    double r_min,
+    double r_max,
+    uint32_t n_steps,
+    const system_data& sys);
+
+double biexciton_be_hl(
     double E_min,
     const std::vector<double>& x_vec,
     const std::vector<double>& pot_vec,
+    const system_data& sys);
+
+double biexciton_be_r6(
+    double E_min, double eb_cou, double r_min, const system_data& sys);
+double biexciton_rmin_r6(
+    double E_min, double eb_cou, double eb_biexc, const system_data& sys);
+
+std::vector<double> biexciton_be_r6_vec(
+    double E_min,
+    double eb_cou,
+    const std::vector<double>& r_min_vec,
     const system_data& sys);

@@ -34,7 +34,8 @@ swig_py = 'bin/semiconductor.py'
 swig_cpp = 'src/semiconductor_wrapper.cpp'
 
 cc_flags = [
-    '-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native', '-fopenmp'
+    '-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native', '-fopenmp',
+    '-Wno-unused-variable'
 ]
 incl_libs = [
     'gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',
