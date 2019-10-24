@@ -3,7 +3,7 @@
 scons -j 32
 
 plots_folder='plots/papers/exciton1'
-final_folder='/storage/Reference/Work/University/PhD/OwnPapers/excitons1/figures'
+final_folder='/storage/Reference/Work/University/PhD/OwnPapers/excitons1/figures_v2'
 
 func_list=()
 plots_list=()
@@ -14,11 +14,11 @@ plots_list=()
 #func_list+=("real_space_lwl_potential_density")
 #plots_list+=("plot")
 
-#func_list+=("energy_level_mb_density")
-#plots_list+=("semilogx")
+func_list+=("energy_level_mb_density")
+plots_list+=("semilogx")
 
-func_list+=("density_result")
-plots_list+=("loglog")
+#func_list+=("density_result")
+#plots_list+=("loglog")
 
 #func_list+=("eb_photo_density")
 #plots_list+=("semilogx")
@@ -31,7 +31,7 @@ plots_list+=("loglog")
 
 for ((i=0;i<${#func_list[@]};++i)); do
     printf "Plotting %s as %s\n" "${func_list[i]}" "${plots_list[i]}"
-    python bin/paper_exciton1_plots.py "${func_list[i]}" "${plots_list[i]}"
+    python bin/paper_exciton1_plots_v2.py "${func_list[i]}" "${plots_list[i]}"
     printf "\n"
 done
 

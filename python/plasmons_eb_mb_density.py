@@ -1,7 +1,7 @@
 from common import *
 import pyperclip
 
-N_k = 1 << 10
+N_k = 1 << 12
 
 surf_area = 326.4  # nm^2
 eb_cou = 0.193

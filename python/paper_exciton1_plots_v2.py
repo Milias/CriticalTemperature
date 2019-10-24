@@ -107,7 +107,7 @@ def scr_length_density(plot_type='semilogx'):
     T_vec = linspace(130, 350, 5)
 
     colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
+        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.9, 0.7]))
         for h in linspace(0, 0.7, len(T_vec))
     ]
 
@@ -116,16 +116,25 @@ def scr_length_density(plot_type='semilogx'):
 
     x_vec = n_vec * surf_area
 
+    i_keep_list = [
+            3,
+    ]
     for c, (i, T) in zip(colors, enumerate(T_vec)):
+        if not i in i_keep_list and len(i_keep_list) > 0: continue
         sys = system_data(m_e, m_h, eps_r, T)
         y_vec = array([sys.ls_ideal(n) for n in n_vec])
+
+        label_map = {}
+        if len(i_keep_list) == 0:
+            label_map['label'] = r'$T$: %.0f K' % T
 
         getattr(ax[0], plot_type)(
             x_vec,
             1 / y_vec,
             '-',
             color=c,
-            label=r'$T$: %.0f K' % T,
+            linewidth=2.0,
+            **label_map,
         )
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
@@ -159,7 +168,8 @@ def scr_length_density(plot_type='semilogx'):
     ax_right.set_yticks(y_vec_right)
     ax_right.set_yticklabels(y_vec_right_labels)
 
-    ax[0].legend(loc=0)
+    if len(i_keep_list) == 0:
+        ax[0].legend(loc=0)
 
     fig.tight_layout()
 
@@ -282,7 +292,7 @@ def energy_level_mb_density(plot_type='semilogx'):
                                 globals())
 
     colors = [
-        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
+        matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.9, 0.7]))
         for h in linspace(0, 0.7, len(T_vec))
     ]
 
@@ -290,15 +300,21 @@ def energy_level_mb_density(plot_type='semilogx'):
     ax[0].set_ylabel(r'$E_B(n_q)$ (meV)')
 
     sys = system_data(m_e, m_h, eps_r, T_vec[0])
+
+    z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys)
     ax[0].axhline(
-        y=z_cou_lwl * 1e3,
-        color='r',
+        y=z_sys_lwl * 1e3,
+        color='k',
         linestyle='--',
-        label=r'$\langle N_q\rangle$: %d' % 0,
+        label=r'$\langle N_q\rangle\rightarrow\infty$',
         linewidth=0.9,
     )
 
+    i_keep_list = [
+            3,
+    ]
     for c, (i, T) in zip(colors, enumerate(T_vec)):
+        if not i in i_keep_list and len(i_keep_list) > 0: continue
         sys = system_data(m_e, m_h, eps_r, T)
         mu_e_vec = values_list[2 * i]
         y_vec = values_list[2 * i + 1]
@@ -313,43 +329,24 @@ def energy_level_mb_density(plot_type='semilogx'):
         lwl_n_id_vec = array(
             [sys.density_ideal(mu_e) for mu_e in lwl_mu_e_vec])
 
-        getattr(ax[0], plot_type)(
-            n_id_vec * surf_area,
-            y_vec * 1e3,
-            '-',
-            color=c,
-            label='$T$: %.0f K' % sys.T,
-            zorder=10,
-        )
+        label_map = {}
+        if len(i_keep_list) == 0:
+            label_map['label'] = r'$T$: %.0f K' % T
 
         getattr(ax[0], plot_type)(
             lwl_n_id_vec * surf_area,
             lwl_y_vec * 1e3,
-            '--',
+            '-',
             color=c,
-            zorder=9,
-            dashes=(0.2, 3.),
-            dash_capstyle='round',
-            linewidth=2,
+            linewidth=2.0,
+            **label_map,
         )
-
-        getattr(ax[0], plot_type)(
-            n_id_vec[-1] * surf_area,
-            y_vec[-1] * 1e3,
-            'o',
-            color=c,
-            zorder=11,
-        )
-
-    z_sys_lwl = time_func(plasmon_det_zero_lwl, N_k, sys.sys_ls, sys)
-    #z_sys_lwl    = -0.05709309806861098
-    #z_sys_lwl    = lwl_y_vec[-1]
 
     ax[0].axhline(
-        y=z_sys_lwl * 1e3,
-        color='k',
+        y=z_cou_lwl * 1e3,
+        color='r',
         linestyle='--',
-        label=r'$\langle N_q\rangle\rightarrow\infty$',
+        label=r'$\langle N_q\rangle$: %d' % 0,
         linewidth=0.9,
     )
 
@@ -433,58 +430,29 @@ def density_result(plot_type='loglog'):
         for h in linspace(0, 0.7, 1)
     ]
 
-    ax[0].set_xlabel(r'$n_\gamma a_0^2$')
+    ax[0].set_xlabel(r'$\langle N_\gamma \rangle$')
     ax[0].set_ylabel('Number of Particles in a Bohr Area')
 
     getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
+        n_vec * surf_area,
         n_id_vec * sys.a0**2,
         '--',
         color=colors[0],
         label=r'$n_q a_0^2$',
     )
     getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
+        n_vec * surf_area,
         n_exc_vec * sys.a0**2,
         '-',
         color=colors[0],
         label=r'$n_{\mathrm{exc}} a_0^2$',
     )
 
-    ax[0].axvline(
-        x=n_exp_vec[0] / surf_area * sys.a0**2,
-        color='m',
-        linestyle='--',
-        dashes=(0.2, 3.),
-        dash_capstyle='round',
-        linewidth=2,
-        zorder=1,
-    )
-
-    ax[0].axvline(
-        x=n_exp_vec[-1] / surf_area * sys.a0**2,
-        color='m',
-        linestyle='--',
-        dashes=(0.2, 3.),
-        dash_capstyle='round',
-        linewidth=2,
-        zorder=1,
-    )
-
-    ax[0].set_xlim(n_vec[0] * sys.a0**2, n_vec[-1] * sys.a0**2)
-
     lambda_th = sys.c_hbarc * sqrt(2 * pi * sys.beta / sys.m_p)
-    ax[0].axvline(
-        x=4 * sys.a0**2 / lambda_th**2,
-        color='g',
-        label=r'$n_{\mathrm{exc}} \lambda_\mathrm{th}^2 \simeq g_s^2$',
-        linewidth=0.9,
-        zorder=1,
-    )
 
-    x_vec_top = logspace(-3, 0, 4) * sys.a0**2
-    x_vec_vals = x_vec_top / sys.a0**2
-    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * sys.a0**2).tolist()
+    x_vec_top = logspace(-3, 0, 4) * surf_area
+    x_vec_vals = x_vec_top / surf_area
+    x_vec_minor_top = array([(v * linspace(0.1, 1., 9) * surf_area).tolist()
                              for v in x_vec_vals]).ravel()
     x_vec_vals = ['$10^{%.0f}$' % log10(v) for v in x_vec_vals]
 
@@ -506,6 +474,8 @@ def density_result(plot_type='loglog'):
     ax_right.set_ylim(ax[0].get_ylim())
     ax_right.set_yticks(y_vec_right)
     ax_right.set_yticklabels(y_vec_right_labels)
+
+    ax[0].set_xlim(n_vec[0] * surf_area, n_vec[-1] * surf_area)
 
     ax[0].legend(loc=0)
 
@@ -850,7 +820,7 @@ def cond_fit(plot_type='plot'):
     print('mu_dc: %s\nmu: %s' % (mob_dc_minzed, mob_minzed))
     print('Sum:\nmu_dc: %s\nmu: %s' % (sum(mob_dc_minzed), sum(mob_minzed)))
 
-    ax[0].set_xlabel(r'$n_\gamma a_0^2$')
+    ax[0].set_xlabel(r'$\langle N_\gamma \rangle$')
     ax[0].set_ylabel(r'$\sigma_\parallel$ ($10^{-3}$ S m$^{-1}$)')
 
     colors = [
@@ -858,26 +828,8 @@ def cond_fit(plot_type='plot'):
         for h in linspace(0, 0.7, 1)
     ]
 
-    ax[0].axvline(
-        x=n_exp_vec[0] / surf_area * sys.a0**2,
-        color='m',
-        linestyle='--',
-        dashes=(0.2, 3.),
-        dash_capstyle='round',
-        linewidth=2,
-    )
-
-    ax[0].axvline(
-        x=n_exp_vec[-1] / surf_area * sys.a0**2,
-        color='m',
-        linestyle='--',
-        dashes=(0.2, 3.),
-        dash_capstyle='round',
-        linewidth=2,
-    )
-
     getattr(ax[0], plot_type)(
-        n_exp_vec / surf_area * sys.a0**2,
+        n_exp_vec,
         cond_real * 1e3,
         'o',
         markeredgecolor='k',
@@ -886,7 +838,7 @@ def cond_fit(plot_type='plot'):
     )
 
     getattr(ax[0], plot_type)(
-        n_exp_vec / surf_area * sys.a0**2,
+        n_exp_vec,
         -cond_imag * 1e3,
         'o',
         color='k',
@@ -894,7 +846,7 @@ def cond_fit(plot_type='plot'):
     )
 
     ax[0].errorbar(
-        n_exp_vec / surf_area * sys.a0**2,
+        n_exp_vec,
         cond_real * 1e3,
         yerr=cond_err_real * 1e3,
         fmt='none',
@@ -904,7 +856,7 @@ def cond_fit(plot_type='plot'):
     )
 
     ax[0].errorbar(
-        n_exp_vec / surf_area * sys.a0**2,
+        n_exp_vec,
         -cond_imag * 1e3,
         yerr=cond_err_imag * 1e3,
         fmt='none',
@@ -914,13 +866,13 @@ def cond_fit(plot_type='plot'):
     )
 
     getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
+        n_vec * surf_area,
         real(cond_vec) * 1e3,
         '--',
         color=colors[0],
     )
     getattr(ax[0], plot_type)(
-        n_vec * sys.a0**2,
+        n_vec * surf_area,
         -imag(cond_vec) * 1e3,
         '-',
         color=colors[0],
@@ -934,18 +886,11 @@ def cond_fit(plot_type='plot'):
         zorder=10,
     )
 
-    ax[0].axvline(
-        x=4 * sys.a0**2 / sys.lambda_th**2,
-        color='g',
-        linewidth=0.9,
-        zorder=1,
-    )
-
-    ax[0].set_xlim(1 / surf_area * sys.a0**2, 60 / surf_area * sys.a0**2)
+    ax[0].set_xlim(1, 60)
     ax[0].set_ylim(-cond_factor * 12.5, cond_factor * 5)
 
-    x_vec_top = linspace(0.02, 0.18, 5) * sys.a0**2
-    x_vec_vals = x_vec_top / sys.a0**2
+    x_vec_top = linspace(0.02, 0.18, 5) * surf_area
+    x_vec_vals = x_vec_top / surf_area
     x_vec_vals = ['%.2f' % v for v in x_vec_vals]
 
     ax_top = ax[0].twiny()
@@ -954,28 +899,6 @@ def cond_fit(plot_type='plot'):
                            fontdict={'verticalalignment': 'baseline'})
     ax_top.set_xlim(ax[0].get_xlim())
     ax_top.set_xlabel(r'$n_\gamma$ (nm$^{-2}$)')
-    """
-    ax[0].legend(
-        [('r', '--')],
-        [
-            '$\mu_{\mathrm{DC},e}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$\n$\mu_{\mathrm{DC},h}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$'
-            % (mob_dc_minzed[0],
-               mob_dc_minzed[1] if len(mob_dc_minzed) > 1 else 0)
-        ],
-        handler_map={tuple: AnyObjectHandler()},
-        #loc = (0.405, 0.44),
-        loc=(0.445, 0.5),
-    )
-    """
-
-    ax[0].text(
-        0.57,
-        0.55,
-        '$\mu_{\mathrm{DC},e}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$\n$\mu_{\mathrm{DC},h}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$'
-        % (mob_dc_minzed[0], mob_dc_minzed[1]),
-        transform=ax[0].transAxes,
-        bbox=dict(boxstyle='round', fc='#FFFFFF99', ec='#AAAAAA'),
-    )
 
     fig.tight_layout()
 
@@ -1059,7 +982,6 @@ def mobility_2d_sample(plot_type='semilogx'):
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
     ax[0].set_ylim(0, None)
-
     """
     ax[0].legend([('g', '--')], [r'$\mu(\omega)$'],
                  handler_map={tuple: AnyObjectHandler()},

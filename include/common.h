@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <complex>
-#include <unordered_map>
+#include <ratio>
 
 #include <cmath>
 
@@ -18,6 +18,7 @@
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_interp.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_sf_bessel.h>
@@ -26,10 +27,9 @@
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_zeta.h>
+#include <gsl/gsl_spline.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
 
 #include <mpfr.h>
 #include <boost/numeric/odeint.hpp>
@@ -114,6 +114,17 @@ struct result_s {
 
     uint32_t n_int{N_INT};
 
+    result_s<N_INT>() {}
+    result_s<N_INT>(double val) { value[0] = val; }
+
+    static result_s<N_INT> nan() {
+        result_s<N_INT> r;
+        for (size_t i = 0; i < N_INT; i++) {
+            r.value[i] = std::numeric_limits<double>::quiet_NaN();
+        }
+        return r;
+    }
+
     template <size_t N_NEXT>
     double add_next(const double* a_ptr) const {
         if constexpr (N_NEXT > 1) {
@@ -135,6 +146,38 @@ double templated_f(double int_var, void* params) {
     T* s{static_cast<T*>(params)};
 
     return F(int_var, s);
+}
+
+template <typename T, double (*F)(double, T*), uint32_t M_1_H = 1000000>
+double templated_df(double int_var, void* params) {
+    // M_1_H = 1 / h
+    constexpr double h{1.0 / M_1_H};
+
+    T* s{static_cast<T*>(params)};
+
+    return 0.5 * M_1_H * (F(int_var + h, s) - F(int_var - h, s));
+}
+
+template <typename T, void (*F)(double, T*, double*, double*)>
+void templated_fdf(double int_var, void* params, double* f, double* df) {
+    T* s{static_cast<T*>(params)};
+    F(int_var, s, f, df);
+}
+
+template <typename T, double (*F)(double, T*), uint32_t M_1_H = 1000000>
+void templated_fdf(double int_var, void* params, double* f, double* df) {
+    T* s{static_cast<T*>(params)};
+
+    *f  = F(int_var, s);
+    *df = templated_df<T, F, M_1_H>(int_var, params);
+}
+
+template <typename T, double (*F)(double, T*), double (*dF)(double, T*)>
+void templated_fdf(double int_var, void* params, double* f, double* df) {
+    T* s{static_cast<T*>(params)};
+
+    *f  = F(int_var, s);
+    *df = dF(int_var, s);
 }
 
 // real(erf(x + i * y))

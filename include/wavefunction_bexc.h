@@ -5,9 +5,17 @@
 
 #pragma once
 
-#include "wavefunction.h"
+#include "common.h"
+#include "templates.h"
+#include "wavefunction_utils.h"
 
 #ifndef SWIG
+
+typedef std::array<double, 2> state;
+typedef boost::numeric::odeint::runge_kutta_fehlberg78<state>
+    error_stepper_type_gen;
+typedef boost::numeric::odeint::controlled_runge_kutta<error_stepper_type_gen>
+    controlled_stepper_type_gen;
 
 template <bool save = false, class pot_s>
 auto wf_gen_s_t(
@@ -20,12 +28,12 @@ auto wf_gen_s_t(
      * The iterator stops when |u'(x1)| > u'(x0) == 1.
      */
 
-    constexpr uint32_t x1_exp{1};
-
     state y{{0.0, 1.0}};
-    double x0{rmin}, x1{rmax == 0.0 ? rmin * (1 << x1_exp) : rmax};
+    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax > 0 ? rmax : 64};
 
-    controlled_stepper_type controlled_stepper;
+    constexpr uint32_t n_steps{1 << 14};
+
+    controlled_stepper_type_gen controlled_stepper;
 
     wf_dy_s<state, pot_s> wf{alpha, E, pot};
 
@@ -33,45 +41,28 @@ auto wf_gen_s_t(
         std::vector<state> f_vec;
         std::vector<double> t_vec;
 
-        for (uint32_t i = 0; i < max_iter; i++) {
-            integrate_adaptive(
-                controlled_stepper, wf, y, x0, x1, global_eps,
-                ode_observer<state>{f_vec, t_vec});
+        ///*
+        boost::numeric::odeint::integrate_n_steps(
+            controlled_stepper, wf, y, x0, (x1 - x0) / n_steps, n_steps,
+            ode_observer<state>{f_vec, t_vec});
+        //*/
 
-            if (rmax > 0.0) {
-                break;
-            }
-
-            if (y[1] > 1 || y[1] < -1) {
-                break;
-
-            } else {
-                x0 = x1;
-                x1 = rmin * (1 << (i + 1 + x1_exp));
-            }
-        }
+        /*
+        integrate_adaptive(
+            controlled_stepper, wf, y, x0, x1, 1e-16,
+            ode_observer<state>{f_vec, t_vec});
+        */
 
         return std::make_tuple(f_vec, t_vec);
-
     } else {
-        for (uint32_t i = 0; i < max_iter; i++) {
-            integrate_adaptive(controlled_stepper, wf, y, x0, x1, global_eps);
+        ///*
+        boost::numeric::odeint::integrate_n_steps(
+            controlled_stepper, wf, y, x0, (x1 - x0) / n_steps, n_steps);
+        //*/
 
-            if (rmax > 0.0) {
-                break;
-            }
-
-            if (y[1] > 1 || y[1] < -1) {
-                break;
-
-            } else if (std::isnan(y[0])) {
-                break;
-
-            } else {
-                x0 = x1;
-                x1 = rmin * (1 << (i + 1 + x1_exp));
-            }
-        }
+        /*
+        integrate_adaptive(controlled_stepper, wf, y, x0, x1, 1e-16);
+        */
 
         return y[0];
     }
@@ -86,18 +77,26 @@ auto wf_gen_s_r_t(
     uint32_t n_steps,
     pot_s& pot) {
     state y{{0.0, 1.0}};
-    double x0{rmin}, x1{rmax};
+    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax};
 
-    controlled_stepper_type controlled_stepper;
+    controlled_stepper_type_gen controlled_stepper;
 
     wf_dy_s<state, pot_s> wf{alpha, E, pot};
 
     std::vector<state> f_vec;
     std::vector<double> t_vec;
 
+    ///*
     boost::numeric::odeint::integrate_n_steps(
         controlled_stepper, wf, y, x0, (x1 - x0) / n_steps, n_steps,
         ode_observer<state>{f_vec, t_vec});
+    //*/
+
+    /*
+    integrate_adaptive(
+        controlled_stepper, wf, y, x0, x1, 1e-12,
+        ode_observer<state>{f_vec, t_vec});
+    */
 
     return std::make_tuple(f_vec, t_vec);
 }
@@ -106,11 +105,13 @@ auto wf_gen_s_r_t(
  * Count wavefunction nodes.
  */
 
+uint32_t wf_gen_n(const std::vector<state>& f_vec);
+
 template <class pot_s>
 uint32_t wf_gen_n_t(
     double E, double rmin, double alpha, pot_s& pot, double rmax = 0.0) {
     auto [f_vec, t_vec] = wf_gen_s_t<true, pot_s>(E, rmin, alpha, pot, rmax);
-    return wf_n(f_vec);
+    return wf_gen_n(f_vec);
 }
 
 /*
@@ -160,7 +161,8 @@ double wf_gen_E_t(
 
         /*
         printf(
-            "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min, z_max);
+            "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min,
+        z_max);
         */
 
         if (i == 1 && n > 0) {
@@ -200,12 +202,16 @@ double wf_gen_E_t(
         z_min  = gsl_root_fsolver_x_lower(s);
         z_max  = gsl_root_fsolver_x_upper(s);
 
-        //status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
-        status = gsl_root_test_residual(funct.function(z, &params), global_eps);
+        /*
+        status = gsl_root_test_interval(z_min, z_max, 0, 1e-15);
+        */
+        ///*
+        status = gsl_root_test_residual(funct.function(z, &params), 1e-3);
+        //*/
         /*
         printf(
-            "[%d] iterating -- %.16f (%f, %f), %f\n", iter, z, z_min, z_max,
-            funct.function(z, &params));
+            "[%d] iterating -- %.16f (%f, %f), %.3e\n", iter, z, z_min,
+        z_max, funct.function(z, &params));
         */
     }
 

@@ -29,7 +29,7 @@ from scipy import special
 import scipy.misc
 import scipy.linalg
 import scipy.stats as stats
-from scipy.optimize import minimize, root, root_scalar
+from scipy.optimize import minimize, root, root_scalar, curve_fit
 
 from semiconductor import *
 from job_api import JobAPI
@@ -53,7 +53,10 @@ def save_data(filename, vars_list, extra_data=None):
 
 
 def load_data(filename, extra_dict={}):
-    exported_data = loadtxt('%s.csv.gz' % filename, delimiter=',').T
+    try:
+        exported_data = loadtxt('%s.csv.gz' % filename, delimiter=',').T
+    except:
+        exported_data = loadtxt('%s.csv' % filename, delimiter=',').T
 
     try:
         with open('%s.json' % filename, 'r') as fp:
@@ -107,6 +110,9 @@ class result_s:
 
     def total_value(self):
         return self.c_result.total_value()
+
+    def total_error(self):
+        return self.c_result.total_error()
 
     def total_abs_error(self):
         return sum((v * err for v, err in zip(self.value, self.error)))

@@ -24,6 +24,7 @@
 #include "fluctuations_2d.h"
 #include "plasmons.h"
 #include "biexcitons.h"
+#include "excitons.h"
 #include "Faddeeva.hh"
 %}
 
@@ -38,6 +39,7 @@
 %include "fluctuations_2d.h"
 %include "plasmons.h"
 %include "biexcitons.h"
+%include "excitons.h"
 %include "Faddeeva.hh"
 
 %template(Result1) result_s<1>;

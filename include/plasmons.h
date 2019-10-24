@@ -4,7 +4,14 @@
 #include "wavefunction.h"
 
 std::vector<std::complex<double>> plasmon_green_v(
-    const std::vector<std::vector<double>> wk_vec,
+    const std::vector<double>& wk_vec,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12);
+
+std::vector<double> plasmon_green_ke_v(
+    const std::vector<double>& k_vec,
     double mu_e,
     double mu_h,
     const system_data& sys,
@@ -18,7 +25,7 @@ std::vector<std::complex<double>> plasmon_green_inv_v(
     double delta = 1e-12);
 
 std::vector<std::complex<double>> plasmon_green_ht_v(
-    const std::vector<std::vector<double>> wk_vec,
+    const std::vector<double>& wk_vec,
     double mu_e,
     double mu_h,
     const system_data& sys,
@@ -70,6 +77,14 @@ double plasmon_det_zero(
     double delta  = 1e-12);
 
 double plasmon_det_zero_ht(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+double plasmon_det_zero_ke(
     uint32_t N_k,
     double mu_e,
     double mu_h,

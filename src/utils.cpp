@@ -1,5 +1,38 @@
 #include "utils.h"
 
+struct exc_mu_s {
+    const system_data& sys;
+
+    double val{0.0};
+};
+
+double exc_mu_zero_f(double x, exc_mu_s* s) {
+    return x - std::pow(1 + x, 1 - s->sys.m_eh);
+}
+
+double exc_mu_val_f(double x, exc_mu_s* s) {
+    return x + s->sys.get_mu_h(x) - s->val;
+}
+
+double exc_mu_val_df(double x, exc_mu_s* s) {
+    double result;
+
+    if (s->sys.beta * x < -20) {
+        result = 2;
+    } else if (s->sys.beta * x > 20) {
+        result = 1 + s->sys.m_eh;
+    } else {
+        result =
+            1 +
+            (s->sys.m_eh * std::exp(s->sys.beta * x) *
+             std::pow(1 + std::exp(s->sys.beta * x), s->sys.m_eh - 1)) /
+                (s->sys.beta *
+                 (std::pow(1 + std::exp(s->sys.beta * x), s->sys.m_eh) - 1));
+    }
+
+    return result;
+}
+
 system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     m_e(m_e * c_m_e),
     m_h(m_h * c_m_e),
@@ -21,10 +54,11 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     // sys_ls(M_1_PI * c_aEM / eps_r * (m_e + m_h) / c_hbarc),
     sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
     zt_len(0.5 * c_hbarc / m_2p) {
-    lambda_th = f_lambda_th(beta, m_p);
-    m_pT      = m_p / energy_th;
-    E_1       = -0.5 * m_p * std::pow(c_aEM / eps_r, 2);
-    delta_E   = std::pow(2, 1.75) * c_aEM / eps_r *
+    lambda_th       = f_lambda_th(beta, m_p);
+    lambda_th_biexc = 2 * c_hbarc * std::sqrt(M_PI * beta / (m_e + m_h) / c_m_e);
+    m_pT            = m_p / energy_th;
+    E_1             = -0.5 * m_p * std::pow(c_aEM / eps_r, 2);
+    delta_E         = std::pow(2, 1.75) * c_aEM / eps_r *
               std::sqrt(m_pT * M_PI * c_aEM / eps_r * std::sqrt(m_pT));
 }
 
@@ -261,4 +295,110 @@ double system_data::ls_ideal(double n) const {
                 m_pe +
             (1 - std::exp(-M_PI * c_hbarc * c_hbarc / m_p * m_ph * beta * n)) /
                 m_ph);
+}
+
+double system_data::exc_mu_zero() const {
+    exc_mu_s params{*this};
+
+    gsl_function funct;
+    funct.function = &templated_f<exc_mu_s, exc_mu_zero_f>;
+    funct.params   = &params;
+
+    double z{0};
+    double z_min{1}, z_max{2};
+
+    /*
+     * Expontential sweep
+     */
+
+    const uint32_t max_pow{20};
+    double f_val{0}, f_val_prev{0};
+    bool return_nan{true};
+
+    f_val_prev = funct.function(z_min, funct.params);
+    if (f_val_prev == 0) {
+        return 0.0;
+    }
+
+    for (uint32_t ii = 0; ii < max_pow; ii++) {
+        f_val = funct.function(z_max, funct.params);
+
+        if (f_val * f_val_prev < 0) {
+            return_nan = false;
+            break;
+
+        } else if (f_val == 0) {
+            return std::log(z_max) / beta;
+
+        } else {
+            f_val_prev = f_val;
+            z_min      = z_max;
+            z_max      = 1 << (ii + 2);
+        }
+    }
+
+    if (return_nan) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    const gsl_root_fsolver_type* solver_type = gsl_root_fsolver_brent;
+    gsl_root_fsolver* solver = gsl_root_fsolver_alloc(solver_type);
+
+    gsl_root_fsolver_set(solver, &funct, z_min, z_max);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < max_iter; iter++) {
+        status = gsl_root_fsolver_iterate(solver);
+        z      = gsl_root_fsolver_root(solver);
+        z_min  = gsl_root_fsolver_x_lower(solver);
+        z_max  = gsl_root_fsolver_x_upper(solver);
+
+        status = gsl_root_test_interval(z_min, z_max, 0, global_eps);
+    }
+
+    gsl_root_fsolver_free(solver);
+
+    return std::log(z) / beta;
+}
+
+double system_data::exc_mu_val(double val) const {
+    if (val == 0) {
+        return exc_mu_zero();
+    }
+
+    constexpr uint32_t local_max_iter{1 << 7};
+
+    exc_mu_s s{*this, val};
+
+    gsl_function_fdf funct;
+    funct.f      = &templated_f<exc_mu_s, exc_mu_val_f>;
+    funct.df     = &templated_f<exc_mu_s, exc_mu_val_df>;
+    funct.fdf    = &templated_fdf<exc_mu_s, exc_mu_val_f, exc_mu_val_df>;
+    funct.params = &s;
+
+    double z{
+        std::max(0.5 * (val - std::log(m_eh) / beta), val / (1 + m_eh)),
+    };
+    double z0{0};
+
+    if (std::abs(funct.f(z, &s)) < 1e-8) {
+        return z;
+    }
+
+    const gsl_root_fdfsolver_type* solver_type = gsl_root_fdfsolver_steffenson;
+    gsl_root_fdfsolver* solver = gsl_root_fdfsolver_alloc(solver_type);
+
+    gsl_root_fdfsolver_set(solver, &funct, z);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < local_max_iter; iter++) {
+        z0     = z;
+        status = gsl_root_fdfsolver_iterate(solver);
+        z      = gsl_root_fdfsolver_root(solver);
+        status = gsl_root_test_residual(funct.f(z, &s), 1e-8);
+    }
+
+    gsl_root_fdfsolver_free(solver);
+
+    return z;
 }

@@ -1,4 +1,5 @@
 #include "plasmons.h"
+
 #include "plasmons_utils.h"
 
 template <
@@ -161,6 +162,88 @@ T plasmon_green_ht(
     }
 }
 
+template <bool invert = true>
+double plasmon_green_ke(
+    double _w,
+    double k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12) {
+    const double k2{k * k};
+
+    const double E[2] = {
+        sys.m_pe * sys.c_alpha * k2,
+        sys.m_ph * sys.c_alpha * k2,
+    };
+
+    const double eta_sol{
+        0.5 * std::log((sys.eps_mat + sys.eps_r) / (sys.eps_mat - sys.eps_r)),
+    };
+
+    const double pi_screen_nofactor[2] = {
+        2.0 * std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[0])),
+        2.0 * std::exp(sys.beta * mu_h) / (std::sqrt(sys.beta * E[1]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[1])),
+    };
+
+    const double result{
+        -k * sys.eps_r / (sys.c_hbarc * sys.c_aEM) * 4 *
+                std::tanh(0.5 * k * sys.size_d + eta_sol) -
+            sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
+                (pi_screen_nofactor[0] / sys.m_pe +
+                 pi_screen_nofactor[1] / sys.m_ph),
+    };
+
+    if constexpr (invert) {
+        return 1 / result;
+    } else {
+        return result;
+    }
+}
+
+template <bool invert = true>
+double plasmon_green_ke_lwl(
+    double _w,
+    double k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12) {
+    const double k2{k * k};
+
+    const double E[2] = {
+        sys.m_pe * sys.c_alpha * k2,
+        sys.m_ph * sys.c_alpha * k2,
+    };
+
+    const double eta_sol{
+        0.5 * std::log((sys.eps_mat + sys.eps_r) / (sys.eps_mat - sys.eps_r)),
+    };
+
+    const double pi_screen_nofactor[2] = {
+        2.0 * std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[0])),
+        2.0 * std::exp(sys.beta * mu_h) / (std::sqrt(sys.beta * E[1]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[1])),
+    };
+
+    const double result{
+        -k * sys.eps_r / (sys.c_hbarc * sys.c_aEM) * 4 *
+                std::tanh(0.5 * k * sys.size_d + eta_sol) -
+            sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
+                (pi_screen_nofactor[0] / sys.m_pe +
+                 pi_screen_nofactor[1] / sys.m_ph),
+    };
+
+    if constexpr (invert) {
+        return 1 / result;
+    } else {
+        return result;
+    }
+}
+
 template <bool invert = true, bool include_cou = true>
 double plasmon_green_lwl(
     double _w,
@@ -185,20 +268,37 @@ double plasmon_green_lwl(
 }
 
 std::vector<std::complex<double>> plasmon_green_v(
-    const std::vector<std::vector<double>> wk_vec,
+    const std::vector<double>& wk_vec,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    uint64_t N_total{wk_vec.size()};
+    uint64_t N_total{wk_vec.size() / 2};
     using T = std::complex<double>;
 
     std::vector<T> result(N_total);
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < N_total; i++) {
-        std::vector<double> t_v{wk_vec[i]};
-        result[i] = plasmon_green<T>(t_v[0], t_v[1], mu_e, mu_h, sys, delta);
+        result[i] = plasmon_green<T>(
+            wk_vec[2 * i], wk_vec[2 * i + 1], mu_e, mu_h, sys, delta);
+    }
+
+    return result;
+}
+
+std::vector<double> plasmon_green_ke_v(
+    const std::vector<double>& k_vec,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta) {
+    uint64_t N_total{k_vec.size()};
+    std::vector<double> result(N_total);
+
+#pragma omp parallel for
+    for (uint64_t i = 0; i < N_total; i++) {
+        result[i] = plasmon_green_ke(0, k_vec[i], mu_e, mu_h, sys, delta);
     }
 
     return result;
@@ -226,21 +326,20 @@ std::vector<std::complex<double>> plasmon_green_inv_v(
 }
 
 std::vector<std::complex<double>> plasmon_green_ht_v(
-    const std::vector<std::vector<double>> wk_vec,
+    const std::vector<double>& wk_vec,
     double mu_e,
     double mu_h,
     const system_data& sys,
     double delta) {
-    uint64_t N_total{wk_vec.size()};
+    uint64_t N_total{wk_vec.size() / 2};
     using T = std::complex<double>;
 
     std::vector<T> result(N_total);
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < N_total; i++) {
-        std::vector<double> t_v{wk_vec[i]};
-        result[i] =
-            plasmon_green_ht<T>(t_v[0], t_v[1], mu_e, mu_h, sys, delta);
+        result[i] = plasmon_green_ht<T>(
+            wk_vec[2 * i], wk_vec[2 * i + 1], mu_e, mu_h, sys, delta);
     }
 
     return result;
@@ -829,6 +928,12 @@ double plasmon_det_zero_t(
     }
     funct.params = &s;
 
+    /*
+    printf(
+        "f: (%e, %e), z: (%f, %f)\n", funct.function(z_min, funct.params),
+        funct.function(z_max, funct.params), z_min, z_max);
+    */
+
     if constexpr (sweep) {
         const uint32_t max_pow{20};
         double f_val{0};
@@ -836,8 +941,6 @@ double plasmon_det_zero_t(
 
         for (uint32_t ii = 1; ii <= max_pow; ii++) {
             f_val = funct.function(z_min, funct.params);
-
-            // printf("z_max: %f, z_min: %f\n", z_max, z_min);
 
             if (f_val < 0) {
                 return_nan = false;
@@ -875,8 +978,9 @@ double plasmon_det_zero_t(
 
         /*
         printf(
-            "[%s,%d] z: %f, eb_min: %f, max: %.16f, min: %.16f\n", __func__,
-            iter, z, eb_min, z_max, z_min);
+            "[%s,%d] f: (%e, %e), z: (%f, %f, %f)\n", __func__, iter,
+            funct.function(z_min, funct.params),
+            funct.function(z_max, funct.params), z, z_min, z_max);
         */
 
         status = gsl_root_test_interval(z_min, z_max, 0, local_eps);
@@ -899,6 +1003,27 @@ double plasmon_det_zero(
     constexpr auto det_zero_f = plasmon_det_zero_t<T, green_func, false>;
 
     plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> s(
+        N_k, 1, sys, delta);
+
+    if (std::isnan(eb_min)) {
+        return det_zero(mu_e, mu_h, s, eb_min);
+    } else {
+        return det_zero_f(mu_e, mu_h, s, eb_min);
+    }
+}
+
+double plasmon_det_zero_ke(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    using T                   = double;
+    constexpr auto det_zero   = plasmon_det_zero_t<T, plasmon_green_ke>;
+    constexpr auto det_zero_f = plasmon_det_zero_t<T, plasmon_green_ke, false>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_ke, false, 0>> s(
         N_k, 1, sys, delta);
 
     if (std::isnan(eb_min)) {
@@ -1140,8 +1265,7 @@ double plasmon_rpot_f(double k, void* params) {
         if constexpr (include_tail) {
             return k * elem * gsl_sf_bessel_J0(k * s->x);
         } else {
-            return (k * elem -
-                    s->sys.c_aEM * s->sys.c_hbarc / s->sys.eps_r) *
+            return (k * elem - s->sys.c_aEM * s->sys.c_hbarc / s->sys.eps_r) *
                    gsl_sf_bessel_J0(k * s->x);
         }
     } else {

@@ -4,11 +4,34 @@
 #include "wavefunction_bexc.h"
 
 #include "biexcitons_utils.h"
+/*
+ * Solving the equation of state for the free charges +
+ * excitons + biexcitons system.
+ *
+ * biexciton_eqst_c solves it for a constant value of the
+ * biexciton binding energy.
+ */
+result_s<1> biexciton_eqst_u(
+    double u,
+    double be_exc,
+    double be_biexc,
+    double mu_e_lim,
+    const system_data& sys);
+result_s<2> biexciton_eqst_c(
+    double n_gamma,
+    double be_exc,
+    double be_biexc,
+    double u_init,
+    const system_data& sys);
+std::vector<double> biexciton_eqst_c_vec(
+    const std::vector<double>& n_gamma_T_vec,
+    double be_exc,
+    double be_biexc,
+    double u_init,
+    const system_data& sys);
 
 /*
  * param_alpha = |r'| / (Z * a0)
- * From page 123 of PhD 3.
- *
  * Computes the value of Delta: Eq. (14).
  */
 result_s<1> biexciton_Delta_th(double param_alpha, double param_x);
@@ -66,7 +89,7 @@ std::vector<double> biexciton_eff_pot_interp_vec(
     const system_data& sys);
 
 std::vector<double> biexciton_pot_r6_vec(
-    double eb_cou,
+    double be_cou,
     const std::vector<double>& r_BA_vec,
     const system_data& sys);
 
@@ -79,7 +102,7 @@ std::vector<double> biexciton_wf_hl(
 
 std::vector<double> biexciton_wf_r6(
     double E,
-    double eb_cou,
+    double be_cou,
     double r_min,
     double r_max,
     uint32_t n_steps,
@@ -92,12 +115,34 @@ double biexciton_be_hl(
     const system_data& sys);
 
 double biexciton_be_r6(
-    double E_min, double eb_cou, double r_min, const system_data& sys);
+    double E_min, double be_cou, double r_min, const system_data& sys);
 double biexciton_rmin_r6(
-    double E_min, double eb_cou, double eb_biexc, const system_data& sys);
+    double E_min, double be_cou, double be_biexc, const system_data& sys);
 
 std::vector<double> biexciton_be_r6_vec(
     double E_min,
-    double eb_cou,
+    double be_cou,
     const std::vector<double>& r_min_vec,
     const system_data& sys);
+
+double biexciton_lj_c6(double be_cou, const system_data& sys);
+
+std::vector<double> biexciton_pot_lj_vec(
+    double param_c12,
+    double be_cou,
+    double r_max,
+    uint32_t n_steps,
+    const system_data& sys);
+std::vector<double> biexciton_wf_lj(
+    double be_biexc,
+    double be_cou,
+    double param_c12,
+    double r_max,
+    uint32_t n_steps,
+    const system_data& sys);
+double biexciton_be_lj(
+    double param_c12, double be_cou, const system_data& sys);
+std::vector<double> biexciton_be_lj_vec(
+    const std::vector<double>& c12_vec, double be_cou, const system_data& sys);
+double biexciton_c12_lj(
+    double be_cou, double be_biexc, const system_data& sys);

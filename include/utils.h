@@ -75,14 +75,15 @@ struct system_data {
      * Coulomb interaction.
      */
 
-    double T;         // K
-    double beta;      // eV^-1
-    double lambda_th; // nm
-    double energy_th; // eV
-    double m_pT;      // dimensionless
-    double E_1;       // dimensionless
-    double delta_E;   // dimensionless
-    double sys_ls;    // nm^-1
+    double T;               // K
+    double beta;            // eV^-1
+    double lambda_th;       // nm
+    double lambda_th_biexc; // nm
+    double energy_th;       // eV
+    double m_pT;            // dimensionless
+    double E_1;             // dimensionless
+    double delta_E;         // dimensionless
+    double sys_ls;          // nm^-1
 
     /*
      * Temperature-less units
@@ -95,6 +96,9 @@ struct system_data {
 
     double E0{0}; // eV
     double l0{0}; // nm
+
+    double eps_mat{1.0}; // dimensionless
+    double size_d{0.0};  // nm
 
     /*
      * Constructor methods
@@ -180,4 +184,7 @@ struct system_data {
     double mu_exc_u(double n) const;
 
     double ls_ideal(double n) const;
+
+    double exc_mu_zero() const;
+    double exc_mu_val(double be) const;
 };

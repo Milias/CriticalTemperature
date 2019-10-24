@@ -44,4 +44,6 @@ plt.axhline(y=0, color='k', linewidth=0.3)
 plt.ylim(-0.5, 3)
 plt.xlim(0, 28)
 
+plt.tight_layout()
+
 plt.show()

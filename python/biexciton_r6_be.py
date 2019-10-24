@@ -46,4 +46,6 @@ plt.xlim(0.7 * rmin_exp, r_max)
 
 plt.legend(loc=0)
 
+plt.tight_layout()
+
 plt.show()
