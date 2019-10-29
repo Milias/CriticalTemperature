@@ -44,7 +44,7 @@ double exciton_be_cou(const system_data& sys) {
     exciton_pot_cou_s pot{sys};
 
     return wf_gen_E_t<exciton_pot_cou_s>(
-        2 * sys.get_E_n(0.5), 0.0, sys.c_alpha, pot);
+        1.1 * sys.get_E_n(0.5), 0.0, sys.c_alpha, pot);
 }
 
 struct exciton_pot_ke_s {

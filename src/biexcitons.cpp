@@ -989,7 +989,7 @@ double biexciton_c12_lj(
     using pot_s = biexciton_pot_lj_s;
     constexpr uint32_t local_max_iter{1 << 7};
 
-    double z_min{1.0}, z_max{1e3}, z;
+    double z_min{1e-3}, z_max{1e3}, z;
 
     pot_s pot{
         z_min,
@@ -1022,8 +1022,8 @@ double biexciton_c12_lj(
 
         /*
         printf(
-            "[%d] iterating -- %.16f (%f, %f), %.2e\n", iter, z, z_min, z_max,
-            funct.function(z, &params));
+            "[%d] iterating -- (%f, %f), (%.2e, %.2e)\n", iter, z_min, z_max,
+            funct.function(z_min, &params), funct.function(z_max, &params));
         */
     }
 

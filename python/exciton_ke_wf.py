@@ -12,16 +12,16 @@ plt.rcParams.update({
     'text.usetex': True,
 })
 
-fig_size = tuple(array([6.8, 5.3]) * 2)
+fig_size = tuple(array([6.8, 5.3]))
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
-N_x = 1 << 15
+N_x = 1 << 12
 
-N_fit_cou = 6000
-N_fit_ke = 18000
+N_fit_cou = 1000
+N_fit_ke = 1000
 
 r_max = 28
 x_vec = linspace(0.0, r_max, N_x)
@@ -29,7 +29,6 @@ x_vec = linspace(0.0, r_max, N_x)
 be_exc = -193e-3  # eV
 m_e, m_h, eps_r, T = 0.22, 0.41, 6.36, 294  # K
 sys = system_data(m_e, m_h, eps_r, T)
-
 """
 wf_cou_vec = array(exciton_wf_cou(be_exc, r_max, N_x, sys)).reshape(-1, 3)
 print(wf_cou_vec)
@@ -134,7 +133,7 @@ print('[Keldysh] b: %f' % popt[2])
 print('[Keldysh] th_pol: %f nm^3' % th_pol_ke)
 
 ax[0].set_title(
-    r'$\epsilon_{med}$: $%.3f$ $\epsilon_{sol}$: $%.3f$, $a^{(Cou)}$: $%.2f$ nm$^3$, $a^{(Kel)}$: $%.2f$ nm$^3$, Diff: %d\%%'
+    '$\epsilon_{med}$: $%.3f$ $\epsilon_{sol}$: $%.3f$\n, $a^{(Cou)}$: $%.2f$ nm$^3$, $a^{(Kel)}$: $%.2f$ nm$^3$, Diff: %d\%%'
     % (
         eps,
         sys.eps_r,

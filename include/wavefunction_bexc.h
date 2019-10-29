@@ -29,42 +29,60 @@ auto wf_gen_s_t(
      */
 
     state y{{0.0, 1.0}};
-    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax > 0 ? rmax : 64};
+    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax > 0 ? rmax : 2};
 
-    constexpr uint32_t n_steps{1 << 14};
+    constexpr uint32_t local_max_iter{1 << 6};
+    constexpr double local_eps{1e-16};
 
     controlled_stepper_type_gen controlled_stepper;
 
     wf_dy_s<state, pot_s> wf{alpha, E, pot};
 
+    bool continue_integ{true};
+
     if constexpr (save) {
         std::vector<state> f_vec;
         std::vector<double> t_vec;
+        std::vector<state> full_f_vec;
+        std::vector<double> full_t_vec;
 
-        ///*
-        boost::numeric::odeint::integrate_n_steps(
-            controlled_stepper, wf, y, x0, (x1 - x0) / n_steps, n_steps,
-            ode_observer<state>{f_vec, t_vec});
-        //*/
+        for (uint32_t i = 0; i < local_max_iter; i++) {
+            integrate_adaptive(
+                controlled_stepper, wf, y, x0, x1, local_eps,
+                ode_observer<state>{f_vec, t_vec});
 
-        /*
-        integrate_adaptive(
-            controlled_stepper, wf, y, x0, x1, 1e-16,
-            ode_observer<state>{f_vec, t_vec});
-        */
+            if (std::isfinite(y[0])) {
+                full_f_vec.insert(
+                    full_f_vec.end(), f_vec.begin(), f_vec.end());
+                full_t_vec.insert(
+                    full_t_vec.end(), t_vec.begin(), t_vec.end());
 
-        return std::make_tuple(f_vec, t_vec);
+                f_vec.clear();
+                t_vec.clear();
+
+                x1 *= 2;
+            } else {
+                break;
+            }
+        }
+
+        return std::make_tuple(full_f_vec, full_t_vec);
     } else {
-        ///*
-        boost::numeric::odeint::integrate_n_steps(
-            controlled_stepper, wf, y, x0, (x1 - x0) / n_steps, n_steps);
-        //*/
+        state new_y{{y[0], y[1]}};
+        for (uint32_t i = 0; i < local_max_iter; i++) {
+            integrate_adaptive(
+                controlled_stepper, wf, y, x0, x1, local_eps);
 
-        /*
-        integrate_adaptive(controlled_stepper, wf, y, x0, x1, 1e-16);
-        */
+            if (std::isfinite(y[0])) {
+                new_y = y;
 
-        return y[0];
+                x1 *= 2;
+            } else {
+                break;
+            }
+        }
+
+        return new_y[0];
     }
 }
 
@@ -132,7 +150,7 @@ double wf_gen_E_t(
      *
      * Using Brent's algorithm.
      */
-    constexpr uint32_t local_max_iter{1 << 7};
+    constexpr uint32_t local_max_iter{1 << 6};
 
     // defined in analytic_utils.h
     wf_gen_E_s<pot_s> params{rmin, alpha, pot, rmax};
@@ -151,12 +169,12 @@ double wf_gen_E_t(
      * too large, so reduce it and go back to the previous
      * step.
      */
-    ///*
     double f{1e-1};
 
     for (uint32_t i = 1, n0 = 0, n = 0; i <= local_max_iter; i++) {
         z_max = z_min * std::pow(1 - f, i);
-        n     = wf_gen_n_t<pot_s>(
+
+        n = wf_gen_n_t<pot_s>(
             z_max, params.rmin, params.alpha, params.pot, params.rmax);
 
         /*
@@ -184,8 +202,6 @@ double wf_gen_E_t(
         }
     }
 
-    //*/
-
     gsl_function funct;
     funct.function = &templated_f<wf_gen_E_s<pot_s>, wf_gen_E_f<pot_s>>;
     funct.params   = &params;
@@ -202,17 +218,13 @@ double wf_gen_E_t(
         z_min  = gsl_root_fsolver_x_lower(s);
         z_max  = gsl_root_fsolver_x_upper(s);
 
-        /*
-        status = gsl_root_test_interval(z_min, z_max, 0, 1e-15);
-        */
+        status = gsl_root_test_interval(z_min, z_max, 0, 1e-14);
+
         ///*
-        status = gsl_root_test_residual(funct.function(z, &params), 1e-3);
-        //*/
-        /*
         printf(
-            "[%d] iterating -- %.16f (%f, %f), %.3e\n", iter, z, z_min,
-        z_max, funct.function(z, &params));
-        */
+            "[%d] iterating -- (%f, %f), (%.2e, %.2e)\n", iter, z_min, z_max,
+            funct.function(z_min, &params), funct.function(z_max, &params));
+        //*/
     }
 
     gsl_root_fsolver_free(s);
