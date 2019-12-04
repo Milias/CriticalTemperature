@@ -11,16 +11,19 @@ import json
 import uuid
 import base64
 import sys as pysys
+import os
 from ctypes import *
+import multiprocessing
 
 from numpy import *
 import cmath
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from matplotlib.collections import LineCollection
+from matplotlib.collections import LineCollection, PatchCollection
 from matplotlib.colors import LogNorm, SymLogNorm
 import matplotlib.colors
+from matplotlib.patches import Rectangle
 
 import scipy.integrate
 from scipy.integrate import (quad, simps)

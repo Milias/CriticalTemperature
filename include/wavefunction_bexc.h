@@ -24,21 +24,17 @@ auto wf_gen_s_t(
      * Computes the wavefunction for a given E, and returns
      * (u(x), u'(x), x) for x \in (0, x1], or u(x1) if "save"
      * is true.
-     *
-     * The iterator stops when |u'(x1)| > u'(x0) == 1.
      */
 
     state y{{0.0, 1.0}};
-    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax > 0 ? rmax : 2};
+    double x0{rmin > 0 ? rmin : wf_dy_s<state, pot_s>::rmin}, x1{rmax > 0 ? rmax : 2};
 
     constexpr uint32_t local_max_iter{1 << 6};
-    constexpr double local_eps{1e-16};
+    constexpr double local_eps{1e-18};
 
     controlled_stepper_type_gen controlled_stepper;
 
     wf_dy_s<state, pot_s> wf{alpha, E, pot};
-
-    bool continue_integ{true};
 
     if constexpr (save) {
         std::vector<state> f_vec;
@@ -60,6 +56,7 @@ auto wf_gen_s_t(
                 f_vec.clear();
                 t_vec.clear();
 
+                x0 = x1;
                 x1 *= 2;
             } else {
                 break;
@@ -70,12 +67,12 @@ auto wf_gen_s_t(
     } else {
         state new_y{{y[0], y[1]}};
         for (uint32_t i = 0; i < local_max_iter; i++) {
-            integrate_adaptive(
-                controlled_stepper, wf, y, x0, x1, local_eps);
+            integrate_adaptive(controlled_stepper, wf, y, x0, x1, local_eps);
 
             if (std::isfinite(y[0])) {
                 new_y = y;
 
+                x0 = x1;
                 x1 *= 2;
             } else {
                 break;
@@ -95,7 +92,7 @@ auto wf_gen_s_r_t(
     uint32_t n_steps,
     pot_s& pot) {
     state y{{0.0, 1.0}};
-    double x0{rmin > 0 ? rmin : 1e-20}, x1{rmax};
+    double x0{rmin > 0 ? rmin : wf_dy_s<state, pot_s>::rmin}, x1{rmax};
 
     controlled_stepper_type_gen controlled_stepper;
 
@@ -179,8 +176,7 @@ double wf_gen_E_t(
 
         /*
         printf(
-            "[%d] searching -- n: %d, z: %.14e, %.14e\n", i, n, z_min,
-        z_max);
+            "[%d] searching -- n: %d, z: (%.4e, %.4e)\n", i, n, z_min, z_max);
         */
 
         if (i == 1 && n > 0) {
@@ -190,11 +186,12 @@ double wf_gen_E_t(
             break;
 
         } else if (n > n0 + 1) {
-            i = 1;
+            i = 0;
             f *= 0.5;
             z_max = z_min;
 
         } else if (z_max > -1e-14) {
+            printf("[%s] no sign change found (z: %.2e)\n", __func__, z_max);
             return 0.0;
 
         } else {
@@ -205,6 +202,16 @@ double wf_gen_E_t(
     gsl_function funct;
     funct.function = &templated_f<wf_gen_E_s<pot_s>, wf_gen_E_f<pot_s>>;
     funct.params   = &params;
+
+    if (funct.function(z_min, funct.params) *
+            funct.function(z_max, funct.params) >
+        0) {
+        printf(
+            "[nan] z: (%.3f, %.3f), f: (%.3e, %.3e)\n", z_min, z_max,
+            funct.function(z_min, funct.params),
+            funct.function(z_max, funct.params));
+        return std::numeric_limits<double>::quiet_NaN();
+    }
 
     const gsl_root_fsolver_type* T = gsl_root_fsolver_brent;
     gsl_root_fsolver* s            = gsl_root_fsolver_alloc(T);
@@ -218,13 +225,13 @@ double wf_gen_E_t(
         z_min  = gsl_root_fsolver_x_lower(s);
         z_max  = gsl_root_fsolver_x_upper(s);
 
-        status = gsl_root_test_interval(z_min, z_max, 0, 1e-14);
+        status = gsl_root_test_interval(z_min, z_max, 0, 1e-15);
 
-        ///*
+        /*
         printf(
             "[%d] iterating -- (%f, %f), (%.2e, %.2e)\n", iter, z_min, z_max,
             funct.function(z_min, &params), funct.function(z_max, &params));
-        //*/
+        */
     }
 
     gsl_root_fsolver_free(s);

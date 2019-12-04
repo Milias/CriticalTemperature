@@ -4,6 +4,7 @@
 
 template <typename state, class pot_s>
 struct wf_dy_s {
+    static constexpr double rmin{1e-22};
     double alpha;
     double E;
     pot_s& pot;

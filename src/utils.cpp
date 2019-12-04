@@ -33,7 +33,13 @@ double exc_mu_val_df(double x, exc_mu_s* s) {
     return result;
 }
 
-system_data::system_data(double m_e, double m_h, double eps_r, double T) :
+system_data::system_data(
+    double m_e,
+    double m_h,
+    double eps_r,
+    double T,
+    double size_d,
+    double eps_mat) :
     m_e(m_e * c_m_e),
     m_h(m_h * c_m_e),
     eps_r(eps_r),
@@ -53,12 +59,15 @@ system_data::system_data(double m_e, double m_h, double eps_r, double T) :
     energy_th(f_energy_th(T)),
     // sys_ls(M_1_PI * c_aEM / eps_r * (m_e + m_h) / c_hbarc),
     sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
-    zt_len(0.5 * c_hbarc / m_2p) {
-    lambda_th       = f_lambda_th(beta, m_p);
-    lambda_th_biexc = 2 * c_hbarc * std::sqrt(M_PI * beta / (m_e + m_h) / c_m_e);
-    m_pT            = m_p / energy_th;
-    E_1             = -0.5 * m_p * std::pow(c_aEM / eps_r, 2);
-    delta_E         = std::pow(2, 1.75) * c_aEM / eps_r *
+    zt_len(0.5 * c_hbarc / m_2p),
+    eps_mat(eps_mat),
+    size_d(size_d) {
+    lambda_th = f_lambda_th(beta, m_p);
+    lambda_th_biexc =
+        2 * c_hbarc * std::sqrt(M_PI * beta / (m_e + m_h) / c_m_e);
+    m_pT    = m_p / energy_th;
+    E_1     = -0.5 * m_p * std::pow(c_aEM / eps_r, 2);
+    delta_E = std::pow(2, 1.75) * c_aEM / eps_r *
               std::sqrt(m_pT * M_PI * c_aEM / eps_r * std::sqrt(m_pT));
 }
 
@@ -401,4 +410,12 @@ double system_data::exc_mu_val(double val) const {
     gsl_root_fdfsolver_free(solver);
 
     return z;
+}
+
+double system_data::exc_bohr_radius() const {
+    return eps_r * c_hbarc / c_aEM / m_p;
+}
+
+double system_data::exc_bohr_radius_mat() const {
+    return eps_mat * c_hbarc / c_aEM / m_p;
 }

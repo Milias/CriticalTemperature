@@ -44,8 +44,6 @@
 //#include <optim/optim.hpp>
 #include <armadillo>
 
-#include <coz.h>
-
 #include "Faddeeva.hh"
 
 #include "utils.h"

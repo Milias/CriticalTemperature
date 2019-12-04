@@ -106,7 +106,13 @@ struct system_data {
      * m_e and m_h here are dimensionless!
      * They will be multiplied by c_m_e.
      */
-    system_data(double m_e, double m_h, double eps_r, double T);
+    system_data(
+        double m_e,
+        double m_h,
+        double eps_r,
+        double T,
+        double size_d  = 1.0,
+        double eps_mat = 1.0);
     system_data(const system_data& sys) = default;
 
     ~system_data() {}
@@ -187,4 +193,7 @@ struct system_data {
 
     double exc_mu_zero() const;
     double exc_mu_val(double be) const;
+
+    double exc_bohr_radius() const;
+    double exc_bohr_radius_mat() const;
 };

@@ -76,6 +76,14 @@ double plasmon_det_zero(
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta  = 1e-12);
 
+double plasmon_det_zero_ke(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
 double plasmon_det_zero_ht(
     uint32_t N_k,
     double mu_e,
@@ -84,7 +92,47 @@ double plasmon_det_zero_ht(
     double eb_min = std::numeric_limits<double>::quiet_NaN(),
     double delta  = 1e-12);
 
-double plasmon_det_zero_ke(
+double plasmon_det_zero_hn(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+double plasmon_det_zero_qccou(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+double plasmon_det_zero_qcke(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+std::vector<double> plasmon_det_zero_ke_ns(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+std::vector<double> plasmon_det_zero_hn_ns(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min = std::numeric_limits<double>::quiet_NaN(),
+    double delta  = 1e-12);
+
+std::vector<double> plasmon_det_zero_qcke_ns(
     uint32_t N_k,
     double mu_e,
     double mu_h,

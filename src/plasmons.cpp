@@ -162,8 +162,8 @@ T plasmon_green_ht(
     }
 }
 
-template <bool invert = true>
-double plasmon_green_ke(
+template <typename T, bool invert = true>
+T plasmon_green_ke(
     double _w,
     double k,
     double mu_e,
@@ -189,8 +189,10 @@ double plasmon_green_ke(
     };
 
     const double result{
-        -k * sys.eps_r / (sys.c_hbarc * sys.c_aEM) * 4 *
-                std::tanh(0.5 * k * sys.size_d + eta_sol) -
+        -sys.eps_mat / (sys.c_hbarc * sys.c_aEM) * k *
+                (sys.eps_mat != sys.eps_r
+                     ? std::tanh(0.5 * k * sys.size_d + eta_sol)
+                     : 1) -
             sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                 (pi_screen_nofactor[0] / sys.m_pe +
                  pi_screen_nofactor[1] / sys.m_ph),
@@ -203,8 +205,8 @@ double plasmon_green_ke(
     }
 }
 
-template <bool invert = true>
-double plasmon_green_ke_lwl(
+template <typename T, bool invert = true>
+T plasmon_green_hn(
     double _w,
     double k,
     double mu_e,
@@ -218,10 +220,6 @@ double plasmon_green_ke_lwl(
         sys.m_ph * sys.c_alpha * k2,
     };
 
-    const double eta_sol{
-        0.5 * std::log((sys.eps_mat + sys.eps_r) / (sys.eps_mat - sys.eps_r)),
-    };
-
     const double pi_screen_nofactor[2] = {
         2.0 * std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
             Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[0])),
@@ -230,8 +228,8 @@ double plasmon_green_ke_lwl(
     };
 
     const double result{
-        -k * sys.eps_r / (sys.c_hbarc * sys.c_aEM) * 4 *
-                std::tanh(0.5 * k * sys.size_d + eta_sol) -
+        -sys.eps_mat / (sys.c_hbarc * sys.c_aEM) * 0.5 * k *
+                (k * sys.size_d + 2 * sys.eps_r / sys.eps_mat) -
             sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
                 (pi_screen_nofactor[0] / sys.m_pe +
                  pi_screen_nofactor[1] / sys.m_ph),
@@ -241,6 +239,105 @@ double plasmon_green_ke_lwl(
         return 1 / result;
     } else {
         return result;
+    }
+}
+
+template <typename T, bool invert = true>
+T plasmon_green_qccou(
+    double _w,
+    double k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12) {
+    const double k2{k * k};
+    const double u{k * sys.size_d};
+
+    const double E[2] = {
+        sys.m_pe * sys.c_alpha * k2,
+        sys.m_ph * sys.c_alpha * k2,
+    };
+
+    /*
+    const double pi_screen_nofactor[2] = {
+        2.0 * std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[0])),
+        2.0 * std::exp(sys.beta * mu_h) / (std::sqrt(sys.beta * E[1]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[1])),
+    };
+
+    const double result{
+        -sys.eps_mat / (sys.c_hbarc * sys.c_aEM) * k *
+                std::pow(u * u + 4 * M_PI * M_PI, 2) *
+                (u * u /
+                     (32 * M_PI * M_PI * M_PI * M_PI *
+                      (u - 1.0 + std::exp(-u))) +
+                 1.0 / (3 * u * u * u + 20 * M_PI * M_PI * u)) -
+            sys.m_p / (sys.c_hbarc * sys.c_hbarc) *
+                (pi_screen_nofactor[0] / sys.m_pe +
+                 pi_screen_nofactor[1] / sys.m_ph),
+    };
+    */
+
+    if constexpr (invert) {
+        return -(sys.c_hbarc * sys.c_aEM) / sys.eps_mat / k *
+               (u * (3 * u * u + 20 * M_PI * M_PI) /
+                    std::pow(u * u + 4 * M_PI * M_PI, 2) +
+                (32 * M_PI * M_PI * M_PI * M_PI * (u - 1.0 + std::exp(-u))) /
+                    std::pow(u * (u * u + 4 * M_PI * M_PI), 2));
+    } else {
+        return 0;
+    }
+}
+
+template <typename T, bool invert = true>
+T plasmon_green_qcke(
+    double _w,
+    double k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double delta = 1e-12) {
+    const double k2{k * k};
+    const double u{k * sys.size_d};
+
+    const double E[2] = {
+        sys.m_pe * sys.c_alpha * k2,
+        sys.m_ph * sys.c_alpha * k2,
+    };
+
+    /*
+    const double pi_screen_nofactor[2] = {
+        2.0 * std::exp(sys.beta * mu_e) / (std::sqrt(sys.beta * E[0]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[0])),
+        2.0 * std::exp(sys.beta * mu_h) / (std::sqrt(sys.beta * E[1]) * M_PI) *
+            Faddeeva::Dawson(std::sqrt(0.25 * sys.beta * E[1])),
+    };
+    */
+
+    if constexpr (invert) {
+        if (sys.eps_mat != sys.eps_r) {
+            const double eta{
+                0.5 *
+                    std::log(
+                        (sys.eps_mat + sys.eps_r) / (sys.eps_mat - sys.eps_r)),
+            };
+
+            return -(sys.c_hbarc * sys.c_aEM) / sys.eps_mat / k *
+                   (u * (3 * u * u + 20 * M_PI * M_PI) /
+                        std::pow(u * u + 4 * M_PI * M_PI, 2) +
+                    (32 * M_PI * M_PI * M_PI * M_PI *
+                     (u - (u + 2 * eta < 700
+                               ? 2 * (std::sinh(u + eta) - std::sinh(eta)) *
+                                     std::sinh(eta) / std::sinh(u + 2 * eta)
+                               : 2 * std::sinh(eta)))) /
+                        std::pow(u * (u * u + 4 * M_PI * M_PI), 2));
+        } else {
+            return plasmon_green_qccou<T, true>(_w, k, mu_e, mu_h, sys, delta);
+        }
+
+    } else {
+        return 0;
     }
 }
 
@@ -298,7 +395,8 @@ std::vector<double> plasmon_green_ke_v(
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < N_total; i++) {
-        result[i] = plasmon_green_ke(0, k_vec[i], mu_e, mu_h, sys, delta);
+        result[i] =
+            plasmon_green_ke<double>(0, k_vec[i], mu_e, mu_h, sys, delta);
     }
 
     return result;
@@ -899,7 +997,8 @@ template <
         double, double, double, double, const system_data& sys, double),
     bool sweep    = true,
     uint32_t N    = 0,
-    bool const_eb = false>
+    bool const_eb = false,
+    bool sweep_up = false>
 double plasmon_det_zero_t(
     double mu_e,
     double mu_h,
@@ -911,11 +1010,17 @@ double plasmon_det_zero_t(
 
     constexpr double local_eps{1e-8};
     double z{-1.1 * s.sys.get_E_n(N + 0.5)};
-    double z_min{std::isnan(eb_min) ? z : -eb_min}, z_max{z};
 
-    if (z + eb_min < local_eps) {
-        return -z;
+    while (z + eb_min < local_eps) {
+        printf(
+            "[%s] expected value of z under eb_min (%.2e)\n", __func__,
+            z + eb_min);
+
+        z = -eb_min;
+        eb_min *= 0.5;
     }
+
+    double z_min{std::isnan(eb_min) ? z : -eb_min}, z_max{z};
 
     s.fill_mat_potcoef(mu_e, mu_h);
     s.fill_mat_elem();
@@ -935,23 +1040,32 @@ double plasmon_det_zero_t(
     */
 
     if constexpr (sweep) {
-        const uint32_t max_pow{20};
+        const uint32_t max_pow{1 << 6};
         double f_val{0};
         bool return_nan{true};
+        double z_temp{z_max};
 
         for (uint32_t ii = 1; ii <= max_pow; ii++) {
-            f_val = funct.function(z_min, funct.params);
+            f_val = funct.function(z_temp, funct.params);
 
             if (f_val < 0) {
                 return_nan = false;
+                z_min      = z_temp;
+                break;
+
+            } else if (std::isnan(f_val)) {
+                printf("[%s] f_val is NaN\n", __func__);
                 break;
 
             } else if (f_val == 0) {
-                return z_min;
+                return z_temp;
 
             } else {
-                z_max = z_min;
-                z_min *= 0.5;
+                z_temp *= 0.7;
+
+                if (z_temp == 0) {
+                    break;
+                }
             }
         }
 
@@ -960,7 +1074,32 @@ double plasmon_det_zero_t(
                 return 0.0;
             }
 
+            printf(
+                "[%s] sweep returns NaN (%e, %f)\n", __func__, z_temp, f_val);
+
             return std::numeric_limits<double>::quiet_NaN();
+        }
+    }
+
+    if constexpr (sweep_up) {
+        double f_val{0};
+        double z_temp{z_min};
+        constexpr uint32_t local_max_iter{16};
+
+        for (uint32_t ii = 1; ii <= local_max_iter; ii++) {
+            f_val = funct.function(z_temp, funct.params);
+
+            if (f_val < 0) {
+                z_min = z_temp;
+                break;
+
+            } else if (f_val == 0) {
+                return z_temp;
+
+            } else {
+                z_temp = z_min * (1.0 - ii / (double)local_max_iter) +
+                         z_max * ii / (double)local_max_iter;
+            }
         }
     }
 
@@ -1019,18 +1158,13 @@ double plasmon_det_zero_ke(
     const system_data& sys,
     double eb_min,
     double delta) {
-    using T                   = double;
-    constexpr auto det_zero   = plasmon_det_zero_t<T, plasmon_green_ke>;
-    constexpr auto det_zero_f = plasmon_det_zero_t<T, plasmon_green_ke, false>;
+    using T                 = double;
+    constexpr auto det_zero = plasmon_det_zero_t<T, plasmon_green_ke>;
 
     plasmon_mat_s<T, plasmon_potcoef<T, plasmon_green_ke, false, 0>> s(
         N_k, 1, sys, delta);
 
-    if (std::isnan(eb_min)) {
-        return det_zero(mu_e, mu_h, s, eb_min);
-    } else {
-        return det_zero_f(mu_e, mu_h, s, eb_min);
-    }
+    return det_zero(mu_e, mu_h, s, eb_min);
 }
 
 double plasmon_det_zero_ht(
@@ -1053,6 +1187,143 @@ double plasmon_det_zero_ht(
     } else {
         return det_zero_f(mu_e, mu_h, s, eb_min);
     }
+}
+
+double plasmon_det_zero_hn(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    using T                   = double;
+    constexpr auto green_func = plasmon_green_hn<T, true>;
+    constexpr auto det_zero =
+        plasmon_det_zero_t<T, green_func, true, 0, false, false>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> s(
+        N_k, 1, sys, delta);
+
+    return det_zero(mu_e, mu_h, s, eb_min);
+}
+
+double plasmon_det_zero_qccou(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    using T                   = double;
+    constexpr auto green_func = plasmon_green_qccou<T, true>;
+    constexpr auto det_zero =
+        plasmon_det_zero_t<T, green_func, true, 0, false, false>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> s(
+        N_k, 1, sys, delta);
+
+    return det_zero(mu_e, mu_h, s, eb_min);
+}
+
+double plasmon_det_zero_qcke(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    using T                   = double;
+    constexpr auto green_func = plasmon_green_qcke<T, true>;
+    constexpr auto det_zero =
+        plasmon_det_zero_t<T, green_func, true, 0, false, false>;
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, 0>> s(
+        N_k, 1, sys, delta);
+
+    return det_zero(mu_e, mu_h, s, eb_min);
+}
+
+template <
+    uint32_t Nmax,
+    typename T,
+    T (*green_func)(
+        double, double, double, double, const system_data& sys, double)>
+void plasmon_det_zero_ns_t(
+    std::vector<double>& result,
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    constexpr auto det_zero = plasmon_det_zero_t<T, green_func, true, Nmax>;
+
+    if constexpr (Nmax > 0) {
+        plasmon_det_zero_ns_t<Nmax - 1, T, green_func>(
+            result, N_k, mu_e, mu_h, sys, eb_min, delta);
+    }
+
+    plasmon_mat_s<T, plasmon_potcoef<T, green_func, false, Nmax>> s(
+        N_k, 1, sys, delta);
+
+    result.push_back(det_zero(mu_e, mu_h, s, eb_min));
+}
+
+std::vector<double> plasmon_det_zero_ke_ns(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    constexpr uint32_t Nmax   = 4;
+    using T                   = std::complex<double>;
+    constexpr auto green_func = plasmon_green_ke<T>;
+
+    std::vector<double> result;
+
+    plasmon_det_zero_ns_t<Nmax, T, green_func>(
+        result, N_k, mu_e, mu_h, sys, eb_min, delta);
+
+    return result;
+}
+
+std::vector<double> plasmon_det_zero_hn_ns(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    constexpr uint32_t Nmax   = 4;
+    using T                   = std::complex<double>;
+    constexpr auto green_func = plasmon_green_hn<T>;
+
+    std::vector<double> result;
+
+    plasmon_det_zero_ns_t<Nmax, T, green_func>(
+        result, N_k, mu_e, mu_h, sys, eb_min, delta);
+
+    return result;
+}
+
+std::vector<double> plasmon_det_zero_qcke_ns(
+    uint32_t N_k,
+    double mu_e,
+    double mu_h,
+    const system_data& sys,
+    double eb_min,
+    double delta) {
+    constexpr uint32_t Nmax   = 4;
+    using T                   = std::complex<double>;
+    constexpr auto green_func = plasmon_green_qcke<T>;
+
+    std::vector<double> result;
+
+    plasmon_det_zero_ns_t<Nmax, T, green_func>(
+        result, N_k, mu_e, mu_h, sys, eb_min, delta);
+
+    return result;
 }
 
 std::vector<double> plasmon_det_zero_v(

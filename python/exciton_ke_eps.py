@@ -36,13 +36,23 @@ def root_be(eps_1, eps_2, N_k, mu_e, mu_h, be_exc, func):
         sys = system_data(m_e, m_h, eps_1, T)
     else:
         sys = system_data(m_e, m_h, eps_2, T)
-        sys.size_d = 1.37
+        sys.size_d = 1.37  # nm
         sys.eps_mat = eps_1
 
     return func(N_k, mu_e, mu_h, sys, -5e-2) - be_exc
 
 
 sys = system_data(m_e, m_h, eps_r, T)
+E_0 = sys.c_hbarc**2 * 0.5 / sys.c_m_e / m_e * pi**2 / size_d**2
+E_1 = sys.c_hbarc**2 * 0.5 / sys.c_m_e / m_e * (3 * pi)**2 / size_d**2
+E_cou = sys.c_aEM * sys.c_hbarc / sys.a0
+print('E_0 = %f eV' % E_0)
+print('E_1 = %f eV' % E_1)
+print('E_Cou = %f eV' % E_cou)
+print('ratio = %f' % ((E_1 - E_0)/E_cou))
+print('d_max = %f nm' % (8 * pi**2 / sys.c_aEM * sys.c_hbarc / sys.c_m_e / m_e))
+
+exit()
 
 mu_e = -1e2
 mu_h = sys.get_mu_h(mu_e)
@@ -87,12 +97,3 @@ with open('extra/biexcitons/permittivity.json', 'w+') as f:
             'N_k': N_k,
             'size_d': size_d
         }, f)
-"""
-plt.tight_layout()
-plt.legend()
-
-plt.savefig('/storage/Reference/Work/University/PhD/Excitons/%s.pdf' %
-            'exciton_be_ke_eps')
-
-plt.show()
-"""
