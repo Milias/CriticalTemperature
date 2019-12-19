@@ -23,7 +23,7 @@ mu_e = -1e2
 
 be_min = -200e-3
 
-N_eps = 48
+N_eps = 64
 N_ns = 5
 
 eps_vec = logspace(log10(eps_sol), log10(20.0), N_eps)
@@ -40,6 +40,8 @@ be_sol = time_func(
 
 print(exciton_be_cou(sys_sol))
 print(be_sol)
+
+size_d = sys_sol.exc_bohr_radius()
 
 sys_ke_vec = array(
     [system_data(m_e, m_h, eps_sol, T, size_d, eps) for eps in eps_vec])
@@ -99,7 +101,7 @@ def save_be_data():
     return file_id
 
 
-file_id = 'mmJFR_wOQ_OVtR7uFi1nZg'
+file_id = '1SPdBq3kQwOllTluF-gw6Q'
 #file_id = save_be_data()
 
 data = load_data('extra/keldysh/be_ns_%s' % file_id, globals())
@@ -178,13 +180,13 @@ for nd, c in zip(range(N_ns), colors):
 
 ax[0].legend(loc=0)
 
-ax[0].set_ylabel(r'$E_B$ / meV')
+ax[0].set_ylabel(r'$E_B$ (meV)')
 ax[0].yaxis.set_label_coords(-0.25, 0.5)
 ax[0].set_ylim(-1e3, 0)
 ax[0].set_yticks([-1e3, -0.75e3, -0.5e3, -0.25e3, 0])
 ax[0].set_yticklabels(['$%d$' % d for d in ax[0].get_yticks()])
 
-ax[0].set_xlabel(r'$\epsilon / \epsilon_{sol}$')
+ax[0].set_xlabel(r'$d^* / d$')
 ax[0].set_xlim(eps_vec[0] / eps_sol, eps_vec[-1] / eps_sol)
 ax[0].set_xticks([1])
 ax[0].set_xticklabels(['$%d$' % d for d in ax[0].get_xticks()])
@@ -195,11 +197,11 @@ ax[0].set_xticklabels(['$%d$' % d for d in ax[0].get_xticks(minor=True)],
 #ax[1].set_ylabel(r'$E_B$ / meV')
 #ax[1].yaxis.set_label_coords(1.35, 0.5)
 ax[1].yaxis.tick_right()
-ax[1].set_ylim(-85, -65)
-ax[1].set_yticks([-85, -80, -75, -70, -65])
+ax[1].set_ylim(-85, -70)
+ax[1].set_yticks([-85, -80, -75, -70])
 ax[1].set_yticklabels(['$%d$' % d for d in ax[1].get_yticks()])
 
-ax[1].set_xlabel(r'$\epsilon / \epsilon_{sol}$')
+ax[1].set_xlabel(r'$d^* / d$')
 ax[1].set_xlim(eps_vec[0] / eps_sol, 4)
 ax[1].set_xticks([1])
 ax[1].set_xticklabels(['$%d$' % d for d in ax[1].get_xticks()])

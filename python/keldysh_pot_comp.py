@@ -36,15 +36,21 @@ def qccougg_k_pot(u, x, size_d, *args):
 
 def qckegg_k_pot(u, x, size_d, eta):
     u2 = u * size_d / x
+    u2_low = u2[u2 < 700]
+    u2_high = u2[u2 >= 700]
 
-    if isinstance(u, float):
-        if u > 700:
-            return 32 * pi**4 * (u2 - 2 * sinh(eta)) / (u2 *
-                                                        (u2**2 + 4 * pi**2))**2
+    result = zeros_like(u)
 
-    return 32 * pi**4 * (u2 - (sinh(u2 + eta) * sinh(eta) + sinh(u2 + eta) *
-                               sinh(eta) - 2 * sinh(eta) * sinh(eta)) /
-                         sinh(u2 + 2 * eta)) / (u2 * (u2**2 + 4 * pi**2))**2
+    result[u2 < 700] = 32 * pi**4 * (
+        u2_low -
+        (sinh(u2_low + eta) * sinh(eta) + sinh(u2_low + eta) * sinh(eta) -
+         2 * sinh(eta) * sinh(eta)) / sinh(u2_low + 2 * eta)) / (
+             u2_low * (u2_low**2 + 4 * pi**2))**2
+
+    result[u2 >= 700] = 32 * pi**4 * (u2_high - 2 * sinh(eta)) / (
+        u2_high * (u2_high**2 + 4 * pi**2))**2
+
+    return result
 
 
 size_d = 1.0  # nm
@@ -56,7 +62,8 @@ eta = 0.5 * log((eps + eps_sol) / (eps - eps_sol))
 m_e, m_h, T = 0.22, 0.41, 294  # K
 sys = system_data(m_e, m_h, eps, T)
 
-u_vec = linspace(1e-3, 12, 256)
+#u_vec = linspace(1e-3, 11, 256)
+u_vec = logspace(-3, 3, 1 << 10)
 
 
 def plot_k_pot_comp():
@@ -69,46 +76,57 @@ def plot_k_pot_comp():
 
     full_ke_vec = qckegg_vec + qc_vec
 
-    ax[0].plot(
+    c = matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([1, 0.8, 0.8]))
+
+    ax[0].axhline(y=factor / eps, color='k', linewidth=0.6)
+
+    ax[0].axvline(
+        x=1,
+        linestyle='--',
+        color='m',
+        dashes=(3., 5.),
+        dash_capstyle='round',
+        linewidth=0.8,
+    )
+
+    ax[0].semilogx(
         u_vec,
         clke_vec,
-        'r',
+        color=c,
         linestyle='--',
         dashes=(3., 5.),
         dash_capstyle='round',
         linewidth=1.4,
-        label=r'${\textrm{RK}}$',
+        label=r'$\mathcal{V}$: ${\textrm{RK}}$',
     )
 
-    ax[0].plot(
+    ax[0].semilogx(
         u_vec,
         HN_vec,
-        'r',
+        color=c,
         linestyle='--',
-        dashes=(0.2, 2.),
+        dashes=(0.8, 4.),
         dash_capstyle='round',
-        linewidth=1.4,
-        label=r'${\mathcal{H}\textrm{N}}$',
+        linewidth=1.0,
+        label=r'$\mathcal{V}$: ${\mathcal{H}\textrm{N}}$',
     )
 
-    ax[0].plot(
+    ax[0].semilogx(
         u_vec,
         full_ke_vec,
-        color='r',
+        color=c,
         linestyle='-',
         linewidth=1.8,
-        label=r'${\textrm{qc,RK}}$',
+        label=r'$\mathcal{V}$: ${\textrm{qc,RK}}$',
     )
-
-    ax[0].axhline(y=factor / eps, color='k', linewidth=0.7)
 
     ax[0].set_yticks([0, factor / eps, factor / eps_sol])
     ax[0].set_yticklabels([
         r'$0$',
         r'$1$',
-        r'$\epsilon / \epsilon_{sol}$',
+        r'$\frac{d^*}{d}$',
     ])
-    ax[0].set_ylabel(r'$V(k) ~/~ V_{\textrm{Cou}}(k)$')
+    ax[0].set_ylabel(r'$V_\mathcal{V}(k) ~/~ V_{Cou}(k)$')
     ax[0].set_xlabel(r'$kd$')
     ax[0].yaxis.set_label_coords(-0.05, 0.5)
 
@@ -123,5 +141,5 @@ plot_k_pot_comp()
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'k_pot_comp')
+            'k_pot_comp_v2')
 plt.show()

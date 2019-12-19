@@ -89,7 +89,7 @@ def register_pickle_custom(struct, *params):
 
 register_pickle_func(Uint32Vector, tuple)
 register_pickle_func(DoubleVector, tuple)
-register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T')
+register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T', 'size_d', 'eps_mat')
 
 
 ## Define how to convert a result_s type to a python object
