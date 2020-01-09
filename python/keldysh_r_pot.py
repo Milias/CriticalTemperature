@@ -1,5 +1,6 @@
 from common import *
 
+plt.style.use('dark_background')
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
     'font.family': 'serif',
@@ -9,7 +10,8 @@ plt.rcParams.update({
 
 fig_size = tuple(array([6.8, 5.3]))
 
-n_x, n_y = 1, 2
+n_x, n_y = 1, 1
+#n_x, n_y = 1, 2
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
@@ -82,13 +84,13 @@ def integ_pot(pot_func, x, sys):
     ])
 
 
-N_x, N_eps = 32, 3
+N_x, N_eps = 32, 2
 
 size_d = 1  # nm
 eps_sol = 1
 m_e, m_h, T = 0.22, 0.41, 294  # K
 
-eps_vec = eps_sol / array([1.0, 0.5, 0.2])
+eps_vec = eps_sol / array([1.0, 0.2])
 
 sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, eps_sol)
 sys_vec = [system_data(m_e, m_h, eps_sol, T, size_d, eps) for eps in eps_vec]
@@ -124,7 +126,9 @@ def plot_qccou_r_pot():
     ]).reshape((N_eps, N_x)).T
     full_vec = gg_vec + qc_vec
 
-    ax[0].axhline(y=0, color='k', linewidth=0.7)
+    cou_vec = -size_d / x_vec  #+ (size_d / x_vec)**3 - 9 * (size_d / x_vec)**5
+
+    ax[0].axhline(y=0, color='w', linewidth=0.7)
 
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -139,6 +143,14 @@ def plot_qccou_r_pot():
             dashes=(3., 5.),
             dash_capstyle='round',
             linewidth=0.8,
+        )
+
+        ax[0].semilogx(
+            x_vec,
+            cou_vec,
+            color=c,
+            linestyle='-',
+            linewidth=0.7,
         )
 
     for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
@@ -175,7 +187,7 @@ def plot_qccou_r_pot():
     ax[0].set_yticks([0])
     ax[0].yaxis.set_label_coords(-0.01, 0.5)
 
-    ax[0].set_ylabel(r'$V_{qc,Cou}(r)$')
+    ax[0].set_ylabel(r'$V_{qc}^{C}(r)$')
     ax[0].set_xlabel('$r / d$')
 
     ax[0].set_ylim(-10, 0)
@@ -183,8 +195,11 @@ def plot_qccou_r_pot():
 
     plt.tight_layout()
 
-    plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-                'r_qccou_pot_v4')
+    plt.savefig(
+        '/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
+        'r_qccou_pot_v4_dark',
+        transparent=True,
+    )
 
 
 def plot_qcke_r_pot():
@@ -204,6 +219,20 @@ def plot_qcke_r_pot():
         sys,
     ) for x, sys in itertools.product(x_vec, sys_vec)]
 
+    integ_ke_args = [(
+        integ_pot,
+        ke_k_pot,
+        x * size_d_eff(sys) / sys.size_d,
+        sys,
+    ) for x, sys in itertools.product(x_vec, sys_vec)]
+
+    integ_ke_args2 = [(
+        integ_pot,
+        ke_k_pot,
+        x,
+        sys,
+    ) for x, sys in itertools.product(x_vec, sys_vec)]
+
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
     gg_vec = array(time_func(
@@ -218,6 +247,18 @@ def plot_qcke_r_pot():
         integ_args2,
     )).reshape((N_x, N_eps))
 
+    ke_vec = array(time_func(
+        pool.starmap,
+        time_func,
+        integ_ke_args,
+    )).reshape((N_x, N_eps))
+
+    ke_vec2 = array(time_func(
+        pool.starmap,
+        time_func,
+        integ_ke_args2,
+    )).reshape((N_x, N_eps))
+
     pool.terminate()
 
     qc_vec = array([
@@ -227,12 +268,10 @@ def plot_qcke_r_pot():
         ) for sys in sys_vec
     ]).reshape((N_eps, N_x)).T
 
-    qc_vec2 = array([
-        qc_x_pot(
-            x_vec,
-            sys,
-        ) for sys in sys_vec
-    ]).reshape((N_eps, N_x)).T
+    qc_vec2 = array([qc_x_pot(
+        x_vec,
+        sys,
+    ) for sys in sys_vec]).reshape((N_eps, N_x)).T
 
     full_vec = gg_vec + qc_vec
     full_vec2 = gg_vec2 + qc_vec2
@@ -243,6 +282,17 @@ def plot_qcke_r_pot():
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
         for h in linspace(0, 0.7, eps_vec.size)
     ]
+
+    for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
+        energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / sys.eps_mat / sys.size_d
+
+        ax[0].semilogx(
+            x_vec,
+            ke_vec[:, n_eps] / energy_norm,
+            color=c,
+            linestyle='-',
+            linewidth=0.7,
+        )
 
     for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
         ax[0].axvline(
@@ -284,6 +334,17 @@ def plot_qcke_r_pot():
             dashes=(0.8, 4.),
             dash_capstyle='round',
             linewidth=1.0,
+        )
+
+    for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
+        energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / sys.eps_mat / sys.size_d
+
+        ax[1].semilogx(
+            x_vec,
+            ke_vec2[:, n_eps] / energy_norm,
+            color=c,
+            linestyle='-',
+            linewidth=0.7,
         )
 
     ax[1].axvline(
@@ -330,7 +391,7 @@ def plot_qcke_r_pot():
     ax[0].set_yticks([0])
     ax[0].yaxis.set_label_coords(-0.01, 0.5)
 
-    ax[0].set_ylabel(r'$V_{qc,RK}(r)$')
+    ax[0].set_ylabel(r'$V_{qc}^{RK}(r)$')
     ax[0].set_xlabel('$r / d^*$')
 
     ax[0].legend()
@@ -351,9 +412,9 @@ def plot_qcke_r_pot():
     fig.subplots_adjust(wspace=0)
 
     plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-                'r_qcke_pot_dual_v1')
+                'r_qcke_pot_dual_v3')
 
 
-#plot_qccou_r_pot()
-plot_qcke_r_pot()
+plot_qccou_r_pot()
+#plot_qcke_r_pot()
 plt.show()

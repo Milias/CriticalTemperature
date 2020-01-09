@@ -180,7 +180,7 @@ for nd, c in zip(range(N_ns), colors):
 
 ax[0].legend(loc=0)
 
-ax[0].set_ylabel(r'$E_B$ (meV)')
+ax[0].set_ylabel(r'$\mathcal{E}$ (meV)')
 ax[0].yaxis.set_label_coords(-0.25, 0.5)
 ax[0].set_ylim(-1e3, 0)
 ax[0].set_yticks([-1e3, -0.75e3, -0.5e3, -0.25e3, 0])
@@ -194,7 +194,7 @@ ax[0].set_xticks([2, 4, 8], minor=True)
 ax[0].set_xticklabels(['$%d$' % d for d in ax[0].get_xticks(minor=True)],
                       minor=True)
 
-#ax[1].set_ylabel(r'$E_B$ / meV')
+#ax[1].set_ylabel(r'$\mathcal{E}$ / meV')
 #ax[1].yaxis.set_label_coords(1.35, 0.5)
 ax[1].yaxis.tick_right()
 ax[1].set_ylim(-85, -70)

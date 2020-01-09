@@ -24,9 +24,9 @@ mu_exc_lim = mu_e_lim + mu_h_lim
 n_q_inf = sys.density_ideal(mu_e_lim)
 n_exc_inf = sys.density_exc(mu_exc_lim, be_exc)
 
-fig_size = tuple(array([6.8, 5.3]) * 2)
+fig_size = tuple(array([6.8, 5.3]))
 
-n_x, n_y = 1, 2
+n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
@@ -64,22 +64,21 @@ def solve_eqst_cT(cT, n0, n1, c):
 
     ax[0].plot(cT_n_vec * cT_sys.a0**2, [cT] * cT_n_vec.size, '-', color=c)
     ax[1].semilogx(cT_n_vec * cT_sys.a0**2,
-               cT_sys.beta * (cT_mu_exc - be_exc),
-               '--',
-               color=c,
-               label=r'$\mu_{exc} - E_{B,X}$')
+                   cT_sys.beta * (cT_mu_exc - be_exc),
+                   '--',
+                   color=c,
+                   label=r'$\mu_{exc} - E_{B,X}$')
     ax[1].semilogx(cT_n_vec * cT_sys.a0**2,
-               cT_sys.beta * (2 * (cT_mu_exc - be_exc) - be_biexc),
-               ':',
-               color=c,
-               label=r'$2 \mu_{exc} - 2 E_{B,X} - E_{B,X_2}$')
+                   cT_sys.beta * (2 * (cT_mu_exc - be_exc) - be_biexc),
+                   ':',
+                   color=c,
+                   label=r'$2 \mu_{exc} - 2 E_{B,X} - E_{B,X_2}$')
 
 
-N_n, N_T = 1 << 9, 1 << 9
+N_n, N_T = 1 << 10, 1 << 10
 
 n_gamma_vec = logspace(-1.5, 2.7, N_n) / sys.a0**2
 T_vec = logspace(1.8, 3.5, N_T)
-result = zeros((n_gamma_vec.size, T_vec.size, 5))
 plot_image = zeros((N_T, N_n, 3))
 
 n_q_color = array([0.8, 0.1, 0.1])
@@ -90,12 +89,8 @@ n_exc2_deg_color = array([0.8, 0.1, 0.8])
 
 mu_e_u_data = solve_eqst_data(T_vec, n_gamma_vec)
 
-[solve_eqst_cT(T, 0.2, 2.0, c) for T, c in [(1e3, 'r'), (2e3, 'b'), (3e3, 'g')]]
 
-ax[1].axhline(y=0, color='k', linewidth=0.2)
-ax[1].legend()
-
-for enum_n, (i, j) in enumerate(itertools.product(range(N_n), range(N_T))):
+def calc_image(plot_image, enum_n, i, j):
     n_gamma, sys = n_gamma_vec[i], system_data(m_e, m_h, eps_r, T_vec[j])
     mu_e, u = mu_e_u_data[enum_n]
 
@@ -114,26 +109,40 @@ for enum_n, (i, j) in enumerate(itertools.product(range(N_n), range(N_T))):
         n_exc = sys.density_exc(mu_exc, be_exc)
         n_exc2 = sys.density_exc2_u(u)
 
-    result[i, j, 0] = mu_e
-    result[i, j, 1] = mu_h
-    result[i, j, 2] = n_q * sys.lambda_th**2
-    result[i, j, 3] = n_exc * sys.lambda_th**2
-    result[i, j, 4] = n_exc2 * sys.lambda_th_biexc**2
+    num_exc = n_exc * sys.lambda_th**2
+    num_exc2 = n_exc2 * sys.lambda_th_biexc**2
 
-    plot_image[j, i] = n_q / n_gamma * n_q_color
-    plot_image[j, i] += n_exc / n_gamma * (n_exc_color if result[i, j, 3] < 4
-                                           else n_exc_deg_color)
-    plot_image[j, i] += n_exc2 / n_gamma * (n_exc2_color if result[i, j, 4] < 1
-                                            else n_exc2_deg_color)
+    result = n_q / n_gamma * n_q_color
+    result += n_exc / n_gamma * (n_exc_color
+                                 if num_exc < 4 else n_exc_deg_color)
+    result += n_exc2 / n_gamma * (n_exc2_color
+                                  if num_exc2 < 1 else n_exc2_deg_color)
+
+    return result
+
+
+integ_args = [(
+    plot_image,
+    enum_n,
+    i,
+    j,
+) for enum_n, (i, j) in enumerate(itertools.product(range(N_n), range(N_T)))]
+
+pool = multiprocessing.Pool(multiprocessing.cpu_count())
+
+plot_image = array(time_func(pool.starmap, calc_image, integ_args)).reshape(
+    (N_n, N_T, 3))
+
+pool.terminate()
 
 n_gamma_vec = n_gamma_vec * sys.a0**2
 
 X, Y = meshgrid(n_gamma_vec, T_vec)
 
 color_tuples = array([
-    plot_image[:-1, :-1, 0].flatten(),
-    plot_image[:-1, :-1, 1].flatten(),
-    plot_image[:-1, :-1, 2].flatten(),
+    plot_image[:-1, :-1, 0].T.flatten(),
+    plot_image[:-1, :-1, 1].T.flatten(),
+    plot_image[:-1, :-1, 2].T.flatten(),
 ]).transpose()
 
 ax[0].set_xscale('log')
@@ -145,6 +154,8 @@ im = ax[0].pcolormesh(
     zeros_like(X),
     color=color_tuples,
     snap=True,
+    antialiased=True,
+    rasterized=True,
 )
 im.set_array(None)
 
@@ -171,7 +182,14 @@ print('n_q_inf: %e, n_exc_inf: %e' % (n_q_inf, n_exc_inf))
 
 plt.tight_layout()
 #"""
-plt.savefig('plots/papers/biexciton1/%s.png' % 'biexciton_diagram_mu_dark', dpi = 900)
-plt.savefig('plots/papers/biexciton1/%s.pdf' % 'biexciton_diagram_mu_dark')
+plt.savefig(
+    'plots/papers/biexciton1/%s.png' % 'biexciton_diagram_mu_dark',
+    transparent=True,
+    dpi=300,
+)
+plt.savefig(
+    'plots/papers/biexciton1/%s.pdf' % 'biexciton_diagram_mu_dark',
+    transparent=True,
+)
 #"""
 plt.show()

@@ -97,7 +97,7 @@ def plot_k_pot_comp():
         dashes=(3., 5.),
         dash_capstyle='round',
         linewidth=1.4,
-        label=r'$\mathcal{V}$: ${\textrm{RK}}$',
+        label=r'$V^{RK}$',
     )
 
     ax[0].semilogx(
@@ -108,7 +108,7 @@ def plot_k_pot_comp():
         dashes=(0.8, 4.),
         dash_capstyle='round',
         linewidth=1.0,
-        label=r'$\mathcal{V}$: ${\mathcal{H}\textrm{N}}$',
+        label=r'$V^{\mathcal{H}N}$',
     )
 
     ax[0].semilogx(
@@ -117,7 +117,7 @@ def plot_k_pot_comp():
         color=c,
         linestyle='-',
         linewidth=1.8,
-        label=r'$\mathcal{V}$: ${\textrm{qc,RK}}$',
+        label=r'$V_{qc}^{RK}$',
     )
 
     ax[0].set_yticks([0, factor / eps, factor / eps_sol])
@@ -126,7 +126,7 @@ def plot_k_pot_comp():
         r'$1$',
         r'$\frac{d^*}{d}$',
     ])
-    ax[0].set_ylabel(r'$V_\mathcal{V}(k) ~/~ V_{Cou}(k)$')
+    ax[0].set_ylabel(r'$V(k) ~/~ V^{C}(k)$')
     ax[0].set_xlabel(r'$kd$')
     ax[0].yaxis.set_label_coords(-0.05, 0.5)
 

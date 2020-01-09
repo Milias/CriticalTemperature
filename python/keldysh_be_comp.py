@@ -186,7 +186,7 @@ ax[0].semilogx(
     #linestyle='--',
     #dashes=(9.5, 10.),
     #dash_capstyle='round',
-    label=r'$\tilde E_B^{sol}$',
+    label=r'$\mathcal{E}^{C}_{sol}$',
 )
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
@@ -201,7 +201,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
             color='m',
             linestyle='-',
             linewidth=1.8,
-            label=r'$\tilde E_B^{\mathcal{H}N}$',
+            label=r'$\mathcal{E}^{\mathcal{H}N}$',
             zorder=10,
         )
     elif nd == N_d - 1:
@@ -281,7 +281,7 @@ ax[0].set_xlim(
 ax[0].set_ylim(-5, 0)
 
 ax[0].set_xlabel(r'$(d^* / d) \cdot (d^* / a_0)$')
-ax[0].set_ylabel(r'$\tilde E_B$')
+ax[0].set_ylabel(r'$\mathcal{E}$')
 
 plt.tight_layout()
 

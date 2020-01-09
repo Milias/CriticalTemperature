@@ -1,5 +1,6 @@
 from common import *
 
+plt.style.use('dark_background')
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
     'font.family': 'serif',
@@ -347,7 +348,7 @@ def energy_level_mb_density(plot_type='semilogx'):
 
     ax[0].axhline(
         y=z_sys_lwl * 1e3,
-        color='k',
+        color='w',
         linestyle='--',
         label=r'$\langle N_q\rangle\rightarrow\infty$',
         linewidth=0.9,
@@ -394,7 +395,7 @@ def energy_level_mb_density(plot_type='semilogx'):
 
     fig.tight_layout()
 
-    return 'energy_level_mb_density_%s' % plot_type
+    return 'energy_level_mb_density_dark_%s' % plot_type
 
 
 def density_result(plot_type='loglog'):
@@ -511,7 +512,7 @@ def density_result(plot_type='loglog'):
 
     fig.tight_layout()
 
-    return 'density_result_%s' % plot_type
+    return 'density_result_dark_%s' % plot_type
 
 
 def eb_photo_density(plot_type='semilogx'):
@@ -880,8 +881,8 @@ def cond_fit(plot_type='plot'):
         n_exp_vec / surf_area * sys.a0**2,
         cond_real * 1e3,
         'o',
-        markeredgecolor='k',
-        markerfacecolor='#FFFFFF',
+        markeredgecolor='w',
+        markerfacecolor='#000000',
         zorder=10,
     )
 
@@ -889,7 +890,7 @@ def cond_fit(plot_type='plot'):
         n_exp_vec / surf_area * sys.a0**2,
         -cond_imag * 1e3,
         'o',
-        color='k',
+        color='w',
         zorder=10,
     )
 
@@ -899,7 +900,7 @@ def cond_fit(plot_type='plot'):
         yerr=cond_err_real * 1e3,
         fmt='none',
         capsize=5,
-        color='k',
+        color='w',
         zorder=10,
     )
 
@@ -909,7 +910,7 @@ def cond_fit(plot_type='plot'):
         yerr=cond_err_imag * 1e3,
         fmt='none',
         capsize=5,
-        color='k',
+        color='w',
         zorder=10,
     )
 
@@ -928,7 +929,7 @@ def cond_fit(plot_type='plot'):
 
     ax[0].axhline(
         y=0,
-        color='k',
+        color='w',
         linestyle='-',
         linewidth=0.9,
         zorder=10,
@@ -974,12 +975,12 @@ def cond_fit(plot_type='plot'):
         '$\mu_{\mathrm{DC},e}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$\n$\mu_{\mathrm{DC},h}$: $%.0f$ cm$^2$ V$^{-1}$ s$^{-1}$'
         % (mob_dc_minzed[0], mob_dc_minzed[1]),
         transform=ax[0].transAxes,
-        bbox=dict(boxstyle='round', fc='#FFFFFF99', ec='#AAAAAA'),
+        bbox=dict(boxstyle='round', fc='#00000099', ec='#666666'),
     )
 
     fig.tight_layout()
 
-    return 'cond_fit_%s' % plot_type
+    return 'cond_fit_dark_%s' % plot_type
 
 
 def mobility_2d_sample(plot_type='semilogx'):
@@ -1059,7 +1060,6 @@ def mobility_2d_sample(plot_type='semilogx'):
 
     ax[0].set_xlim(x_vec[0], x_vec[-1])
     ax[0].set_ylim(0, None)
-
     """
     ax[0].legend([('g', '--')], [r'$\mu(\omega)$'],
                  handler_map={tuple: AnyObjectHandler()},
@@ -1101,4 +1101,7 @@ for p, l in plots_list:
     print('Calling %s(%s)' % (p, l))
     filename = locals()[p](l)
 
-    plt.savefig('plots/papers/exciton1/%s.pdf' % filename)
+    plt.savefig(
+        'plots/papers/exciton1/%s.pdf' % filename,
+        transparent=True,
+    )

@@ -17,21 +17,21 @@ plots_list=()
 func_list+=("energy_level_mb_density")
 plots_list+=("semilogx")
 
-#func_list+=("density_result")
-#plots_list+=("loglog")
+func_list+=("density_result")
+plots_list+=("loglog")
 
 #func_list+=("eb_photo_density")
 #plots_list+=("semilogx")
 
-#func_list+=("cond_fit")
-#plots_list+=("plot")
+func_list+=("cond_fit")
+plots_list+=("plot")
 
 #func_list+=("mobility_2d_sample")
 #plots_list+=("semilogx")
 
 for ((i=0;i<${#func_list[@]};++i)); do
     printf "Plotting %s as %s\n" "${func_list[i]}" "${plots_list[i]}"
-    python bin/paper_exciton1_plots_v2.py "${func_list[i]}" "${plots_list[i]}"
+    python bin/paper_exciton1_plots.py "${func_list[i]}" "${plots_list[i]}"
     printf "\n"
 done
 

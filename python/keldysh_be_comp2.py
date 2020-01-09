@@ -158,7 +158,7 @@ ax[0].semilogx(eps_vec / eps_sol,
                color='m',
                linestyle='-',
                linewidth=0.6,
-               label=r'$E_B^{Cou}(\epsilon)$')
+               label=r'$\mathcal{E}^{C}(\epsilon)$')
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
     x_vec = eps_vec / eps_sol
@@ -202,14 +202,14 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
 ax[0].legend(loc=0)
 
 ax[0].set_yticks([be_sol, -1.5, -1, -0.5, 0])
-ax[0].set_yticklabels([r'$E_B^{sol}$'] +
+ax[0].set_yticklabels([r'$\mathcal{E}^{sol}$'] +
                       [r'$%.1f$' % v for v in ax[0].get_yticks()[1:]])
 
 ax[0].set_xlim(0.97, eps_vec[-1] / eps_sol)
 ax[0].set_ylim(1.05 * be_sol, 0)
 
 ax[0].set_xlabel(r'$d^* / d$')
-ax[0].set_ylabel(r'$E_B$ (eV)')
+ax[0].set_ylabel(r'$\mathcal{E}$ (eV)')
 
 plt.tight_layout()
 

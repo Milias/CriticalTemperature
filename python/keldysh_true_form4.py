@@ -9,7 +9,7 @@ plt.rcParams.update({
 
 fig_size = tuple(array([6.8, 5.3]))
 
-n_x, n_y = 1, 2
+n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
@@ -32,13 +32,18 @@ def ke_k_pot(u, x, sys):
     return -special.j0(u) * pot / x / sys.eps_mat * sys.c_aEM * sys.c_hbarc
 
 
-N_x, N_eps = 32, 3
+def hn_r_pot_norm(x, sys):
+    return -pi * (special.struve(0, 2 * x / size_d_eff(sys)) -
+                  special.y0(2 * x / size_d_eff(sys)))
+
+
+N_x, N_eps = 128, 1
 
 size_d = 1  # nm
 eps_sol = 1
 m_e, m_h, T = 0.22, 0.41, 294  # K
 
-eps_vec = eps_sol / array([1.0, 0.5, 0.2])
+eps_vec = eps_sol / array([0.1])
 
 sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, eps_sol)
 sys_vec = [system_data(m_e, m_h, eps_sol, T, size_d, eps) for eps in eps_vec]
@@ -52,65 +57,51 @@ def integ_pot(pot_func, x, sys):
             4 * (n + 1) * pi,
             limit=500,
             args=(x, sys),
-        )[0] for n in arange(0.5e4)
+        )[0] for n in arange(1e4)
     ])
 
 
 #x_vec = linspace(5e-3, 4 * eps / eps_sol * size_d, 256)
-x_vec = logspace(log10(1e-2), log10(10), N_x)
+x_vec = logspace(log10(2e-2), log10(40), N_x)
 
 integ_ke_args = [(
     integ_pot,
     ke_k_pot,
-    x * size_d_eff(sys) / sys.size_d,
+    x,
     sys,
 ) for x, sys in itertools.product(x_vec, sys_vec)]
 
-x_vec2 = logspace(log10(1e-2), log10(10), N_x)
-integ_ke_args2 = [(
-    integ_pot,
-    ke_k_pot,
-    x,
-    sys,
-) for x, sys in itertools.product(x_vec2, sys_vec)]
-
 pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-y_vec = array(time_func(
+ke_vec = array(time_func(
     pool.starmap,
     time_func,
     integ_ke_args,
 )).reshape((N_x, N_eps))
 
-y_vec2 = array(time_func(
-    pool.starmap,
-    time_func,
-    integ_ke_args2,
-)).reshape((N_x, N_eps))
-
 pool.terminate()
+
+hn_vec = array([hn_r_pot_norm(x_vec, sys) for sys in sys_vec]).reshape(
+    (N_eps, N_x)).T
 
 colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
     for h in linspace(0, 0.7, eps_vec.size)
 ]
 
+ax[0].axvline(
+    x=1,
+    linestyle='-',
+    color='g',
+    linewidth=0.9,
+)
+
 for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
     ax[0].axvline(
         x=size_d / size_d_eff(sys),
-        linestyle='--',
-        color=c,
-        dashes=(3., 5.),
-        dash_capstyle='round',
-        linewidth=0.8,
-    )
-    ax[1].axvline(
-        x=size_d_eff(sys) / size_d,
-        linestyle='--',
-        color=c,
-        dashes=(3., 5.),
-        dash_capstyle='round',
-        linewidth=0.8,
+        linestyle='-',
+        color='b',
+        linewidth=0.7,
     )
 
 for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
@@ -118,42 +109,88 @@ for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
 
     ax[0].semilogx(
         x_vec,
-        y_vec[:, n_eps] / energy_norm,
-        '-',
+        ke_vec[:, n_eps] / energy_norm,
         color=c,
-        label=r'$d / d^*$: $%.1f$' % (size_d / size_d_eff(sys)),
-    )
-    ax[1].semilogx(
-        x_vec2,
-        y_vec2[:, n_eps] / energy_norm,
-        '-',
-        color=c,
-        label=r'$d^* / d$: $%d$' % (size_d_eff(sys) / size_d),
+        linestyle='-',
+        linewidth=2.0,
+        label=r'$V^{RK}(r)$',
+        zorder=10,
     )
 
-ax[0].axhline(y=0, color='k', linewidth=0.7)
+    ax[0].semilogx(
+        x_vec[x_vec < 0.09],
+        -size_d / x_vec[x_vec < 0.09],
+        color='b',
+        linestyle='-',
+        linewidth=0.8,
+        label=r'$V^{C}(r)$',
+    )
+
+    ax[0].semilogx(
+        x_vec[x_vec > 0.11],
+        hn_vec[x_vec > 0.11, n_eps],
+        color='m',
+        linestyle='--',
+        dashes=(0.8, 4.),
+        dash_capstyle='round',
+        linewidth=1.0,
+        label=r'$V^{\mathcal{H}N}(r)$',
+    )
+
+    ax[0].semilogx(
+        x_vec[x_vec > 1.1],
+        -size_d_eff(sys) / x_vec[x_vec > 1.1],
+        color='g',
+        linestyle='--',
+        dashes=(3., 5.),
+        dash_capstyle='round',
+        linewidth=1.0,
+        label=r'$V_{sol}^{C}(r)$',
+    )
+
+ax[0].text(
+    0.032,
+    -15,
+    r'$-\frac{d}{r}$',
+    color='b',
+    fontsize=28,
+)
+
+ax[0].text(
+    0.14,
+    -6,
+    r'$V^{\mathcal{H}N}$',
+    color='m',
+    fontsize=24,
+)
+
+ax[0].text(
+    2,
+    -8,
+    r'$-\frac{d^*}{r}$',
+    color='g',
+    fontsize=28,
+)
 
 ax[0].set_yticks([0])
-ax[1].set_yticks([])
 ax[0].yaxis.set_label_coords(-0.02, 0.5)
 
-ax[0].set_ylabel(r'$V^{RK}(r)$')
-ax[0].set_xlabel(r'$r / d^*$')
-ax[1].set_xlabel(r'$r / d$')
+ax[0].set_xticks([0.1, 1])
+ax[0].set_xticks([], minor=True)
+ax[0].set_xticklabels([r'$d$', r'$d^*$'])
+ax[0].xaxis.tick_top()
 
-ax[0].legend()
-ax[1].legend()
+ax[0].set_ylabel(r'$V(r)$')
+ax[0].set_xlabel(r'$r$')
 
-ax[0].set_ylim(-20, 0)
-ax[1].set_ylim(-20, 0)
-ax[0].set_xlim(x_vec[0], x_vec[-1] * 0.99)
-ax[1].set_xlim(x_vec2[0] * 1.01, x_vec2[-1])
+ax[0].set_ylim(-25, 0)
+ax[0].set_xlim(x_vec[0], x_vec[-1])
+
+ax[0].legend(loc=0)
 
 plt.tight_layout()
 
-fig.subplots_adjust(wspace=0)
-
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'pot_comparison_B4')
+            'pot_scheme_v1')
 
 plt.show()
