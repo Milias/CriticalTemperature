@@ -196,4 +196,6 @@ struct system_data {
 
     double exc_bohr_radius() const;
     double exc_bohr_radius_mat() const;
+
+    double eta_func() const;
 };

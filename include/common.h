@@ -1,20 +1,11 @@
 #pragma once
 
+#include <acb.h>
+#include <arb.h>
+#include <arb_hypgeom.h>
+#include <arf.h>
 #include <assert.h>
-#include <chrono>
-#include <iostream>
-#include <thread>
-#include <typeinfo>
-#include <utility>
-
-#include <complex>
-#include <ratio>
-
-#include <cmath>
-
 #include <gmp.h>
-#include <omp.h>
-
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
@@ -30,22 +21,23 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
-
 #include <mpfr.h>
+#include <omp.h>
+
 #include <boost/numeric/odeint.hpp>
-
-#include <arf.h>
-
-#include <arb.h>
-#include <arb_hypgeom.h>
-
-#include <acb.h>
+#include <chrono>
+#include <cmath>
+#include <complex>
+#include <iostream>
+#include <ratio>
+#include <thread>
+#include <typeinfo>
+#include <utility>
 
 //#include <optim/optim.hpp>
 #include <armadillo>
 
 #include "Faddeeva.hh"
-
 #include "utils.h"
 
 /*** MPFR ***/

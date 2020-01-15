@@ -1,6 +1,5 @@
 from common import *
 
-plt.style.use('dark_background')
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
     'font.family': 'serif',
@@ -128,8 +127,6 @@ def plot_qccou_r_pot():
 
     cou_vec = -size_d / x_vec  #+ (size_d / x_vec)**3 - 9 * (size_d / x_vec)**5
 
-    ax[0].axhline(y=0, color='w', linewidth=0.7)
-
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
         for h in linspace(0, 0.7, len(sys_vec))
@@ -151,6 +148,7 @@ def plot_qccou_r_pot():
             color=c,
             linestyle='-',
             linewidth=0.7,
+            label=r'$V^{C}(r)$',
         )
 
     for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
@@ -172,6 +170,7 @@ def plot_qccou_r_pot():
             color=c,
             linestyle='-',
             linewidth=2.0,
+            label=r'$V_{qc}^{C}(r)$',
         )
 
         ax[0].semilogx(
@@ -187,18 +186,19 @@ def plot_qccou_r_pot():
     ax[0].set_yticks([0])
     ax[0].yaxis.set_label_coords(-0.01, 0.5)
 
-    ax[0].set_ylabel(r'$V_{qc}^{C}(r)$')
+    ax[0].set_ylabel(r'$V(r)$')
     ax[0].set_xlabel('$r / d$')
 
     ax[0].set_ylim(-10, 0)
     ax[0].set_xlim(1e-2, 1e1)
 
+    ax[0].legend()
+
     plt.tight_layout()
 
     plt.savefig(
         '/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-        'r_qccou_pot_v4_dark',
-        transparent=True,
+        'r_qccou_pot_v4',
     )
 
 

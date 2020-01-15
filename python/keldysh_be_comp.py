@@ -33,7 +33,7 @@ mu_e = -1e2
 be_min = -200e-3
 
 N_eps = 64
-N_d = 4
+N_d = 5
 
 eps_vec = logspace(log10(eps_sol), log10(200.0), N_eps)
 eps_hn_vec = logspace(log10(eps_sol), log10(1000.0), N_eps)
@@ -48,7 +48,7 @@ be_sol = time_func(
     be_min,
 )
 
-d_vec = array([0.2, 0.5, 1, 5]) * sys_sol.exc_bohr_radius()
+d_vec = array([0.1, 0.2, 1, 5, 10]) * sys_sol.exc_bohr_radius()
 
 print(exciton_be_cou(sys_sol))
 print(be_sol)
@@ -139,8 +139,7 @@ def save_be_data():
     return file_id
 
 
-#file_id = 'X-p05-BmQIaSzIPEPmeEbg'
-file_id = 'GB2wOKCDRZ2Z3mpKx4o-oQ'
+file_id = 'zPx8SiFzQhS1qItviCS5uQ'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -260,19 +259,29 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         markerfacecolor='#FFFFFF',
     )
 
-    ax[0].semilogx(
-        x_vec,
-        be_qcke_vec[:, nd] / energy_norm,
-        color=c,
-        linestyle='-',
-        linewidth=1.8,
-        label=r'$d^* / a_0$: $%.1f$' % (d / sys_sol.exc_bohr_radius()),
-    )
+    if d / sys_sol.exc_bohr_radius() < 1:
+        ax[0].semilogx(
+            x_vec,
+            be_qcke_vec[:, nd] / energy_norm,
+            color=c,
+            linestyle='-',
+            linewidth=1.8,
+            label=r'$d^* / a_0$: $%.1f$' % (d / sys_sol.exc_bohr_radius()),
+        )
+    else:
+        ax[0].semilogx(
+            x_vec,
+            be_qcke_vec[:, nd] / energy_norm,
+            color=c,
+            linestyle='-',
+            linewidth=1.8,
+            label=r'$d^* / a_0$: $%d$' % (d / sys_sol.exc_bohr_radius()),
+        )
 
 ax[0].legend(loc='upper right')
 
 ax[0].set_xlim(
-    4e-1 /
+    8e-1 /
     (d_vec[1] * eps_vec[0] * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p *
      (eps_sol / d_vec[1] / eps_vec[0])**2),
     200,
@@ -286,6 +295,6 @@ ax[0].set_ylabel(r'$\mathcal{E}$')
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_comp_v8')
+            'be_comp_v9')
 
 plt.show()

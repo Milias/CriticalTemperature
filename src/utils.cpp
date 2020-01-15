@@ -413,9 +413,13 @@ double system_data::exc_mu_val(double val) const {
 }
 
 double system_data::exc_bohr_radius() const {
-    return eps_r * c_hbarc / c_aEM / m_p;
+    return eps_r * c_hbarc / c_aEM / m_p * 0.25;
 }
 
 double system_data::exc_bohr_radius_mat() const {
-    return eps_mat * c_hbarc / c_aEM / m_p;
+    return eps_mat * c_hbarc / c_aEM / m_p * 0.25;
+}
+
+double system_data::eta_func() const {
+    return 0.5 * log((eps_mat + eps_r) / (eps_mat - eps_r));
 }

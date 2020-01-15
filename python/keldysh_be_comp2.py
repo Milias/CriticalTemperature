@@ -33,7 +33,7 @@ mu_e = -1e2
 be_min = -200e-3
 
 N_eps = 64
-N_d = 4
+N_d = 5
 
 eps_vec = logspace(log10(eps_sol), log10(200.0), N_eps)
 
@@ -47,7 +47,7 @@ be_sol = time_func(
     be_min,
 )
 
-d_vec = array([0.2, 0.5, 1, 5]) * sys_sol.exc_bohr_radius()
+d_vec = array([0.01, 0.1, 1, 10, 100]) * sys_sol.exc_bohr_radius()
 
 print(exciton_be_cou(sys_sol))
 print(be_sol)
@@ -114,7 +114,9 @@ def save_be_data():
     return file_id
 
 
-file_id = 'GB2wOKCDRZ2Z3mpKx4o-oQ'
+#file_id = 'GB2wOKCDRZ2Z3mpKx4o-oQ'
+#file_id = 'aaT4BjkOSPKqUrAfDPhdAQ'
+file_id = 'zPx8SiFzQhS1qItviCS5uQ'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -153,15 +155,26 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         linewidth=0.9,
     )
 
-ax[0].semilogx(eps_vec / eps_sol,
-               be_cou_vec[:, 0],
-               color='m',
-               linestyle='-',
-               linewidth=0.6,
-               label=r'$\mathcal{E}^{C}(\epsilon)$')
+ax[0].semilogx(
+    eps_vec / eps_sol,
+    be_cou_vec[:, 0],
+    color='m',
+    linestyle='-',
+    linewidth=0.6,
+    label=r'$\mathcal{E}^{C}(\epsilon)$',
+)
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
     x_vec = eps_vec / eps_sol
+
+    """
+    ax[0].axvline(
+        x=sys_sol.exc_bohr_radius() / d,
+        linestyle='-',
+        color=c,
+        linewidth=0.5,
+    )
+    """
 
     ax[0].semilogx(
         [x_vec[0]],
@@ -170,14 +183,24 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         marker='o',
     )
 
-    ax[0].semilogx(
-        x_vec,
-        be_qcke_vec[:, nd],
-        color=c,
-        linestyle='-',
-        linewidth=1.8,
-        label=r'$d^* / a_0$: $%.1f$' % (d / sys_sol.exc_bohr_radius()),
-    )
+    if d / sys_sol.exc_bohr_radius() < 1:
+        ax[0].semilogx(
+            x_vec,
+            be_qcke_vec[:, nd],
+            color=c,
+            linestyle='-',
+            linewidth=1.8,
+            label=r'$d^* / a_0$: $%.1f$' % (d / sys_sol.exc_bohr_radius()),
+        )
+    else:
+        ax[0].semilogx(
+            x_vec,
+            be_qcke_vec[:, nd],
+            color=c,
+            linestyle='-',
+            linewidth=1.8,
+            label=r'$d^* / a_0$: $%d$' % (d / sys_sol.exc_bohr_radius()),
+        )
 
 ax[0].semilogx(
     [eps_vec[0] / eps_sol],
@@ -201,8 +224,10 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
 
 ax[0].legend(loc=0)
 
+ax[0].set_xticks([1, 10, 100])
+ax[0].set_xticklabels([r'$1$', r'$10$', r'$100$'])
 ax[0].set_yticks([be_sol, -1.5, -1, -0.5, 0])
-ax[0].set_yticklabels([r'$\mathcal{E}^{sol}$'] +
+ax[0].set_yticklabels([r'$\mathcal{E}^{C}_{sol}$'] +
                       [r'$%.1f$' % v for v in ax[0].get_yticks()[1:]])
 
 ax[0].set_xlim(0.97, eps_vec[-1] / eps_sol)
@@ -214,6 +239,6 @@ ax[0].set_ylabel(r'$\mathcal{E}$ (eV)')
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_comp_B1')
+            'be_comp_B2')
 
 plt.show()

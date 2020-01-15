@@ -163,14 +163,15 @@ ax[0].plot(
     [6.27 / surf_area * sys.a0**2, 52.85 / surf_area * sys.a0**2],
     [294, 294],
     '-',
-    color='m',
+    linewidth=0.6,
+    color='w',
 )
 
 ax[0].plot(
     [6.27 / surf_area * sys.a0**2, 52.85 / surf_area * sys.a0**2],
     [294, 294],
     'o',
-    markeredgecolor='m',
+    markeredgecolor='w',
     markerfacecolor='#000000',
 )
 

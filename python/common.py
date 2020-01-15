@@ -41,10 +41,13 @@ initializeMPFR_GSL()
 
 
 def save_data(filename, vars_list, extra_data=None):
-    export_data = zeros((vars_list[0].size, len(vars_list)))
+    export_data = zeros((
+        max(*[v.size for v in vars_list]),
+        len(vars_list),
+    ))
 
     for (i, var) in enumerate(vars_list):
-        export_data[:, i] = var
+        export_data[:var.size, i] = var
 
     savetxt('%s.csv.gz' % filename, export_data, delimiter=',')
 
@@ -89,7 +92,8 @@ def register_pickle_custom(struct, *params):
 
 register_pickle_func(Uint32Vector, tuple)
 register_pickle_func(DoubleVector, tuple)
-register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T', 'size_d', 'eps_mat')
+register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T', 'size_d',
+                       'eps_mat')
 
 
 ## Define how to convert a result_s type to a python object
@@ -109,7 +113,6 @@ class result_s:
                 self, key,
                 key_python_type((key_type * self.n_int).from_address(
                     int(getattr(self.c_result, key)))))
-
 
     def total_value(self):
         return self.c_result.total_value()

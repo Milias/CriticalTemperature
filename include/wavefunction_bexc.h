@@ -174,10 +174,10 @@ double wf_gen_E_t(
         n = wf_gen_n_t<pot_s>(
             z_max, params.rmin, params.alpha, params.pot, params.rmax);
 
-        /*
+        ///*
         printf(
             "[%d] searching -- n: %d, z: (%.4e, %.4e)\n", i, n, z_min, z_max);
-        */
+        //*/
 
         if (i == 1 && n > 0) {
             return std::numeric_limits<double>::quiet_NaN();
@@ -227,11 +227,11 @@ double wf_gen_E_t(
 
         status = gsl_root_test_interval(z_min, z_max, 0, 1e-15);
 
-        /*
+        ///*
         printf(
             "[%d] iterating -- (%f, %f), (%.2e, %.2e)\n", iter, z_min, z_max,
             funct.function(z_min, &params), funct.function(z_max, &params));
-        */
+        //*/
     }
 
     gsl_root_fsolver_free(s);
