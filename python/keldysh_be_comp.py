@@ -24,7 +24,7 @@ def eta_func(eps_mat, eps_sol):
 
 N_k = 1 << 9
 
-size_d = 1.0  # nm
+size_d = 1.37  # nm
 eps_sol = 2
 m_e, m_h, T = 0.22, 0.41, 294  # K
 
@@ -249,6 +249,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         [be_qcke_vec[0, nd] / energy_norm[0]],
         color=c,
         marker='o',
+        zorder=20,
     )
 
     ax[0].semilogx(
@@ -257,6 +258,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         marker='o',
         markeredgecolor='m',
         markerfacecolor='#FFFFFF',
+        zorder=20,
     )
 
     if d / sys_sol.exc_bohr_radius() < 1:
@@ -278,7 +280,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
             label=r'$d^* / a_0$: $%d$' % (d / sys_sol.exc_bohr_radius()),
         )
 
-ax[0].legend(loc='upper right')
+ax[0].legend(loc='lower left')
 
 ax[0].set_xlim(
     8e-1 /

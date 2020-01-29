@@ -91,13 +91,11 @@ def plot_k_pot_comp():
 
     ax[0].semilogx(
         u_vec,
-        clke_vec,
+        full_ke_vec,
         color=c,
-        linestyle='--',
-        dashes=(3., 5.),
-        dash_capstyle='round',
-        linewidth=1.4,
-        label=r'$V^{RK}$',
+        linestyle='-',
+        linewidth=1.8,
+        label=r'$V_{qc}^{RK}$',
     )
 
     ax[0].semilogx(
@@ -113,11 +111,13 @@ def plot_k_pot_comp():
 
     ax[0].semilogx(
         u_vec,
-        full_ke_vec,
+        clke_vec,
         color=c,
-        linestyle='-',
-        linewidth=1.8,
-        label=r'$V_{qc}^{RK}$',
+        linestyle='--',
+        dashes=(3., 5.),
+        dash_capstyle='round',
+        linewidth=1.4,
+        label=r'$V^{RK}$',
     )
 
     ax[0].set_yticks([0, factor / eps, factor / eps_sol])
