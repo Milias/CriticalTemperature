@@ -21,8 +21,9 @@ import cmath
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.collections import LineCollection, PatchCollection
-from matplotlib.colors import LogNorm, SymLogNorm
+from matplotlib.colors import LogNorm, SymLogNorm, ListedColormap
 import matplotlib.colors
+from matplotlib.cm import ScalarMappable
 from matplotlib.patches import Rectangle
 
 import scipy.integrate
@@ -38,6 +39,32 @@ from semiconductor import *
 from job_api import JobAPI
 
 initializeMPFR_GSL()
+
+
+# https://stackoverflow.com/questions/18311909/how-do-i-annotate-with-power-of-ten-formatting
+# Define function for string formatting of scientific notation
+def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
+    """
+    Returns a string representation of the scientific
+    notation of the given number formatted for use with
+    LaTeX or Mathtext, with specified number of significant
+    decimal digits and precision (number of decimal digits
+    to show). The exponent to be used can also be specified
+    explicitly.
+    """
+
+    if isinf(num):
+        return r'$\infty$'
+    elif num == 0:
+        return r'$0$'
+
+    if exponent is None:
+        exponent = int(floor(log10(abs(num))))
+    coeff = round(num / float(10**exponent), decimal_digits)
+    if precision is None:
+        precision = decimal_digits
+
+    return r'${0:.{2}f}\cdot10^{{{1:d}}}$'.format(coeff, exponent, precision)
 
 
 def save_data(filename, vars_list, extra_data=None):

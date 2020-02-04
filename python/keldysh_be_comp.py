@@ -139,7 +139,8 @@ def save_be_data():
     return file_id
 
 
-file_id = 'zPx8SiFzQhS1qItviCS5uQ'
+#file_id = 'zPx8SiFzQhS1qItviCS5uQ'
+file_id = 'U0gcAzwjQAutd9Ih9Rg9NQ'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -171,7 +172,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
 
 eps_full_vec = logspace(log10(eps_sol), log10(5e2), N_eps)
 d = d_vec[0]
-bohr_vec = eps_full_vec * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
+bohr_vec = eps_full_vec / 2 * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
 energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / eps_full_vec / d
 
 x_vec = 1 / (d * bohr_vec * (eps_sol / d / eps_full_vec)**2)
@@ -189,7 +190,7 @@ ax[0].semilogx(
 )
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
-    bohr_vec = eps_vec * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
+    bohr_vec = eps_vec / 2 * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
     energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / eps_vec / d
 
     x_vec = 1 / (d * bohr_vec * (eps_sol / d / eps_vec)**2)
@@ -214,7 +215,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
         )
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
-    bohr_vec = eps_vec * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
+    bohr_vec = eps_vec / 2 * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
     energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / eps_vec / d
 
     x_vec = 1 / (d * bohr_vec * (eps_sol / d / eps_vec)**2)
@@ -239,7 +240,7 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
     """
 
 for (nd, d), c in zip(enumerate(d_vec), colors):
-    bohr_vec = eps_vec * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
+    bohr_vec = eps_vec / 2 * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p
     energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / eps_vec / d
 
     x_vec = 1 / (d * bohr_vec * (eps_sol / d / eps_vec)**2)
@@ -284,7 +285,7 @@ ax[0].legend(loc='lower left')
 
 ax[0].set_xlim(
     8e-1 /
-    (d_vec[1] * eps_vec[0] * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p *
+    (d_vec[1] / 2 * eps_vec[0] * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p *
      (eps_sol / d_vec[1] / eps_vec[0])**2),
     200,
 )
