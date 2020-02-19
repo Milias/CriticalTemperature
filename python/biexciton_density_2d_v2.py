@@ -14,7 +14,7 @@ be_exc = -193e-3
 be_biexc = -45e-3
 
 surf_area = 326.4  # nm^2
-m_e, m_h, eps_r, T = 0.22, 0.41, 6.369171898453055, 1000  # K
+m_e, m_h, eps_r, T = 0.27, 0.45, 6.369171898453055, 1000  # K
 sys = system_data(m_e, m_h, eps_r, T)
 
 mu_e_lim = sys.exc_mu_val(be_exc + 0.5 * be_biexc)
@@ -65,24 +65,41 @@ def solve_eqst_data(T_vec, N_vec):
 
 
 N_n, N_T = 1 << 9, 1 << 9
+#N_n, N_T = 1 << 4, 1 << 4
 
 n_gamma_vec = logspace(-2.2, 1, N_n) / sys.a0**2
 T_vec = logspace(1.8, log10(10e2), N_T)
 color_image = zeros((N_T, N_n, 3))
 
-include_free_charges = 1
-include_excitons = 1
-include_biexcitons = 1
+try:
+    argv_data = json.loads(pysys.argv[-1])
+except:
+    argv_data = {}
 
-degeneracy = 0
+include_free_charges = argv_data.get('include_free_charges', 1)
+include_excitons = argv_data.get('include_excitons', 1)
+include_biexcitons = argv_data.get('include_biexcitons', 1)
+degeneracy = argv_data.get('degeneracy', 0)
+total_density = argv_data.get('total_density', 0)
 
-colors = array([
+show_fig = argv_data.get('show_fig', 1)
+file_id = argv_data.get('file_id', '')
+
+savefig_folder = 'plots/papers/biexciton1'
+
+hsv_colors = array([
     [0.0, 0.8, 0.8],
-    [1 / 3.0, 0.8, 0.8] if not degeneracy else [1 / 3. - 1 / 10.0, 0.8, 0.8],
-    [2 / 3.0, 0.8, 0.8] if not degeneracy else [2 / 3. - 1 / 10.0, 0.8, 0.8],
+    [1 / 3.0, 0.8, 0.8],
+    [2 / 3.0, 0.8, 0.8],
 ])
 
-colors = array([matplotlib.colors.hsv_to_rgb(c) for c in colors])
+if degeneracy:
+    hsv_colors[:, 0] -= 0.1
+    hsv_colors[0, 0] = 0.9
+elif total_density:
+    hsv_colors[:, 0] += 0.05
+
+colors = array([matplotlib.colors.hsv_to_rgb(c) for c in hsv_colors])
 
 mu_e_u_data = solve_eqst_data(T_vec, n_gamma_vec)
 
@@ -117,15 +134,24 @@ def calc_image(
     max_data_values=1,
     min_data_values=0,
 ):
-    if degeneracy:
-        n_s_vec = (-min_data_values + data[i, j]) / (-min_data_values +
-                                                     max_data_values)
-
+    if total_density:
+        result = data[i, j] / max_data_values
     else:
-        n_s_vec = data[i, j] / sqrt(sum(data[i, j]**2))
+        result = data[i, j] / sqrt(sum(data[i, j]**2))
 
-    n_s_vec = array([n_s_vec[i] for i in selection])
-    return sum(array([colors[i] for i in selection]).T * n_s_vec, axis=1)
+    if degeneracy:
+        result = (-min_data_values + data[i, j]) / (-min_data_values +
+                                                    max_data_values)
+
+    result = clip(
+        sum(array([result[i] * colors[i] for i in selection]), axis=0), 0, 1)
+
+    if total_density and len(selection) == 3:
+        result_hsv = matplotlib.colors.rgb_to_hsv(result)
+        result_hsv[2] = (sum(data[i, j]) / sum(max_data_values))**0.2
+        return matplotlib.colors.hsv_to_rgb(result_hsv)
+
+    return result
 
 
 if not include_free_charges and not include_excitons and not include_biexcitons:
@@ -140,13 +166,29 @@ data_args = [
     for enum_n, (i, j) in enumerate(itertools.product(range(N_n), range(N_T)))
 ]
 
+n_gamma_vec *= sys.a0**2
+X, Y = meshgrid(n_gamma_vec, T_vec)
+
 pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-data_image = array(time_func(
-    pool.starmap,
-    calc_data,
-    data_args,
-)).reshape((N_n, N_T, 3))
+if file_id == '':
+    data_image = array(time_func(
+        pool.starmap,
+        calc_data,
+        data_args,
+    )).reshape((N_n, N_T, 3))
+
+    file_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
+
+    save_data(
+        'extra/biexcitons/density_2d_%s' % file_id,
+        [data_image.flatten()],
+    )
+else:
+    data_image = load_data(
+        'extra/biexcitons/density_2d_%s' % file_id,
+        globals(),
+    ).reshape((N_n, N_T, 3))
 
 if degeneracy:
     lambda_th2_arr = repeat(
@@ -164,17 +206,20 @@ if degeneracy:
     data_image[:, :, 2] *= lambda_th_biexc2_arr
     data_image[:, :, 1] = clip(data_image[:, :, 1], 0, 2)
     data_image[:, :, 2] = clip(data_image[:, :, 2], 0, 2)
-
-    #data_image = log10(data_image)
 else:
     data_image *= sys.a0**2
 
 max_data_values = amax(data_image, axis=(0, 1))
 min_data_values = amin(data_image, axis=(0, 1))
 
-image_args = [(data_image, i, j, selector_list, max_data_values,
-               min_data_values)
-              for (i, j) in itertools.product(range(N_n), range(N_T))]
+image_args = [(
+    data_image,
+    i,
+    j,
+    selector_list,
+    max_data_values,
+    min_data_values,
+) for (i, j) in itertools.product(range(N_n), range(N_T))]
 
 color_image = array(time_func(
     pool.starmap,
@@ -183,10 +228,6 @@ color_image = array(time_func(
 )).reshape((N_n, N_T, 3))
 
 pool.terminate()
-
-n_gamma_vec = n_gamma_vec * sys.a0**2
-
-X, Y = meshgrid(n_gamma_vec, T_vec)
 
 color_tuples = array([
     color_image[:-1, :-1, 0].T.flatten(),
@@ -197,35 +238,75 @@ color_tuples = array([
 ax[0].set_xscale('log')
 ax[0].set_yscale('log')
 
-im = ax[0].pcolormesh(
-    X,
-    Y,
-    zeros_like(X),
-    color=color_tuples,
-    snap=True,
-    antialiased=True,
-    rasterized=True,
-)
-im.set_array(None)
+if len(selector_list) > 1:
+    im = ax[0].pcolormesh(
+        X,
+        Y,
+        zeros_like(X),
+        color=color_tuples,
+        snap=True,
+        antialiased=True,
+        rasterized=True,
+    )
+    im.set_array(None)
+else:
+    n_boundaries = 11
+    n_ticks = 6
 
-if len(selector_list) == 1:
     cm = ListedColormap(
         [x * colors[selector_list[0]] for x in linspace(0, 1, 256)])
 
-    min_value, max_value = min_data_values[selector_list[0]], max_data_values[
-        selector_list[0]]
+    if total_density:
+        max_value = amax(data_image[:, :, selector_list[0]])
+        min_value = amin(data_image[:, :, selector_list[0]])
+    else:
+        max_value = amax(data_image[:, :, selector_list[0]] /
+                         sqrt(sum(data_image**2, axis=2)))
+        min_value = amin(data_image[:, :, selector_list[0]] /
+                         sqrt(sum(data_image**2, axis=2)))
+
+    if total_density:
+        im = ax[0].pcolormesh(
+            X,
+            Y,
+            data_image[:, :, selector_list[0]].T,
+            cmap=cm,
+            norm=BoundaryNorm(
+                linspace(min_value, max_value, n_boundaries),
+                ncolors=cm.N,
+                clip=True,
+            ),
+            antialiased=True,
+            rasterized=True,
+        )
+    else:
+        im = ax[0].pcolormesh(
+            X,
+            Y,
+            zeros_like(X),
+            color=color_tuples,
+            snap=True,
+            antialiased=True,
+            rasterized=True,
+        )
+        im.set_array(None)
 
     if degeneracy:
-        boundaries_list = linspace(0, max_value, 256)
-        ticks = floor(linspace(boundaries_list[0], boundaries_list[-1], 6))
-        #boundaries_list = linspace(min_value, 1, 256)
-        #ticks = linspace(min_value, 0, 5).tolist() + [1]
+        boundaries_list = linspace(0, 2, 256)
+        ticks = [0, 1, 2]
         format = ['$%.2f$', '$%.0f$', '$%.0f$'][selector_list[0]]
         extend = ['neither', 'max', 'max'][selector_list[0]]
-    else:
-        boundaries_list = linspace(min_value, max_value, 256)
-        ticks = linspace(boundaries_list[0], boundaries_list[-1], 6)
+
+    elif total_density:
+        boundaries_list = linspace(0, max_value, n_boundaries)
+        ticks = linspace(boundaries_list[0], boundaries_list[-1], n_ticks)
         format = ['$%.2f$', '$%.1f$', '$%.0f$'][selector_list[0]]
+        extend = 'neither'
+
+    else:
+        boundaries_list = linspace(0, max_value, 256)
+        ticks = linspace(boundaries_list[0], boundaries_list[-1], n_ticks)
+        format = ['$%.2f$', '$%.1f$', '$%.1f$'][selector_list[0]]
         extend = 'neither'
 
     cb = fig.colorbar(
@@ -239,11 +320,36 @@ if len(selector_list) == 1:
         extend=extend,
     )
 
-    if not degeneracy:
-        cb.ax.set_ylabel(r'$%s a_0^2$' %
-                         ['n_q', 'n_X', 'n_{X_2}'][selector_list[0]])
+    species_label = ['q', 'X', '{X_2}'][selector_list[0]]
 
+    if degeneracy:
+        cb.ax.set_ylabel(r'$\eta_%s$' % species_label)
+        cb.ax.yaxis.set_label_coords(1.7, 0.25)
+    elif total_density:
+        cb.ax.set_ylabel(r'$n_%s a_0^2$' % species_label)
         cb.ax.yaxis.set_label_coords(1.7, 0.5)
+    else:
+        cb.ax.set_ylabel(r'$\mathcal{X}_%s$' % species_label)
+        cb.ax.yaxis.set_label_coords(1.7, 0.5)
+
+sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in T_vec]
+beta_vec = 1 / (sys_T_vec[0].c_kB * T_vec)
+delta_boundary_vec = 2 / beta_vec * log(cosh(0.5 * beta_vec * be_biexc))
+
+n_boundary_vec = array([
+    (sys_T.density_exc(be_biexc, delta) + 2 * sys_T.density_exc2(0, 0, delta))
+    * sys_T.a0**2 for sys_T, delta in zip(sys_T_vec, delta_boundary_vec)
+])
+
+ax[0].plot(
+    n_boundary_vec,
+    T_vec,
+    color='w',
+    linestyle='--',
+    linewidth=1.0,
+    dashes=(3., 5.),
+    dash_capstyle='round',
+)
 
 ax[0].plot(
     [6.27 / surf_area * sys.a0**2, 52.85 / surf_area * sys.a0**2],
@@ -260,16 +366,6 @@ ax[0].plot(
     markeredgecolor='w',
     markerfacecolor='#000000',
 )
-"""
-ax[0].axvline(
-    x=1,
-    color='w',
-    linestyle='--',
-    dashes=(3., 5.),
-    dash_capstyle='round',
-    linewidth=0.8,
-)
-"""
 
 if include_free_charges:
     ax[0].text(
@@ -344,12 +440,25 @@ print('mu_e_lim: %f, mu_exc_lim: %f' % (mu_e_lim, mu_exc_lim))
 print('n_q_inf: %e, n_exc_inf: %e' % (n_q_inf, n_exc_inf))
 print('a_0^2: %f nm^2' % sys.a0**2)
 
+ax[0].set_xlim(n_gamma_vec[0], n_gamma_vec[-1])
+ax[0].set_ylim(T_vec[0], T_vec[-1])
+
 plt.tight_layout()
+
+if total_density:
+    savefig_label = 'total'
+elif degeneracy:
+    savefig_label = 'deg'
+else:
+    savefig_label = 'prop'
+
 plt.savefig(
-    '/storage/Reference/Work/University/PhD/OwnPapers/biexcitons1/figures/%s.pdf'
-    % ('biexciton_diagram_%s%s' %
-       (''.join(['%s' % i
-                 for i in selector_list]), '_deg' if degeneracy else '')),
+    '%s/%s.pdf' % (savefig_folder, 'biexciton_diagram_%s_%s_B2' % (
+        ''.join(['%s' % i for i in selector_list]),
+        savefig_label,
+    )),
     transparent=True,
 )
-plt.show()
+
+if show_fig:
+    plt.show()

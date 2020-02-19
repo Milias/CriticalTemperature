@@ -36,7 +36,7 @@ N_x, N_eps = 32, 3
 
 size_d = 1  # nm
 eps_sol = 1
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 eps_vec = eps_sol / array([1.0, 0.5, 0.2])
 
@@ -141,8 +141,8 @@ ax[0].set_ylabel(r'$V^{RK}(r)$')
 ax[0].set_xlabel(r'$r / d^*$')
 ax[1].set_xlabel(r'$r / d$')
 
-ax[0].legend()
-ax[1].legend()
+ax[0].legend(title=r'$d / d^* = \epsilon_{sol} / \epsilon$')
+ax[1].legend(title=r'$d^* / d = \epsilon / \epsilon_{sol}$')
 
 ax[0].set_ylim(-20, 0)
 ax[1].set_ylim(-20, 0)

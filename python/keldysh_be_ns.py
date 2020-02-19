@@ -15,9 +15,9 @@ ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
 N_k = 1 << 9
 
-size_d = 1  # nm
+size_d = 1.37  # nm
 eps_sol = 2
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 mu_e = -1e2
 
@@ -25,6 +25,34 @@ be_min = -200e-3
 
 N_eps = 64
 N_ns = 5
+
+eps_mat_cou = 6.93623977987222
+eps_mat_qcke = 13.983616346186604
+"""
+sys_mat_cdse = system_data(m_e, m_h, eps_sol, T, size_d, eps_mat_qcke)
+
+be_mat_qcke_vec = array(
+    time_func(
+        plasmon_det_zero_qcke_ns,
+        N_k,
+        mu_e,
+        sys_mat_cdse.get_mu_h(mu_e),
+        sys_mat_cdse,
+        be_min,
+    ))
+"""
+
+#"""
+be_mat_qcke_vec = array([
+    -0.19299999987750235,
+    -0.09614861524056979,
+    -0.058598180586066015,
+    -0.03918135199515177,
+    -0.027930693472945932,
+])
+#"""
+
+print(be_mat_qcke_vec.tolist())
 
 eps_vec = logspace(log10(eps_sol), log10(20.0), N_eps)
 
@@ -41,7 +69,7 @@ be_sol = time_func(
 print(exciton_be_cou(sys_sol))
 print(be_sol)
 
-size_d = sys_sol.exc_bohr_radius()
+#size_d = sys_sol.exc_bohr_radius()
 
 sys_ke_vec = array(
     [system_data(m_e, m_h, eps_sol, T, size_d, eps) for eps in eps_vec])
@@ -57,23 +85,47 @@ be_hn_vec = zeros((N_eps, N_ns))
 
 def save_be_data():
     be_cou_vec[:] = array([
-        time_func(plasmon_det_zero_ke_ns, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_cou_vec
+        time_func(
+            plasmon_det_zero_ke_ns,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_cou_vec
     ]).reshape(N_eps, N_ns)
 
     be_qcke_vec[:] = array([
-        time_func(plasmon_det_zero_qcke_ns, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec
+        time_func(
+            plasmon_det_zero_qcke_ns,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec
     ]).reshape(N_eps, N_ns)
 
     be_ke_vec[:] = array([
-        time_func(plasmon_det_zero_ke_ns, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec
+        time_func(
+            plasmon_det_zero_ke_ns,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec
     ]).reshape(N_eps, N_ns)
 
     be_hn_vec[:] = array([
-        time_func(plasmon_det_zero_hn_ns, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec
+        time_func(
+            plasmon_det_zero_hn_ns,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec
     ]).reshape(N_eps, N_ns)
 
     file_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
@@ -101,7 +153,9 @@ def save_be_data():
     return file_id
 
 
-file_id = '1SPdBq3kQwOllTluF-gw6Q'
+#file_id = '1SPdBq3kQwOllTluF-gw6Q'
+#file_id = 'EY4og9NaTVSeCRQg7nFYaA'
+file_id = '-0XCPujfQZyUvb4rdfPXig'
 #file_id = save_be_data()
 
 data = load_data('extra/keldysh/be_ns_%s' % file_id, globals())
@@ -150,6 +204,14 @@ for nd, c in zip(range(N_ns), colors):
         label=r'$%d$s' % (nd + 1),
     )
 
+    ax[0].semilogx(
+        [eps_mat_qcke / eps_sol],
+        [be_mat_qcke_vec[nd] * 1e3],
+        marker='o',
+        markeredgecolor=c,
+        markerfacecolor='#FFFFFF',
+    )
+
     ax[1].semilogx(
         eps_vec / eps_sol,
         be_ke_vec[:, nd] * 1e3,
@@ -178,12 +240,20 @@ for nd, c in zip(range(N_ns), colors):
         linewidth=1.8,
     )
 
+    ax[1].semilogx(
+        [eps_mat_qcke / eps_sol],
+        [be_mat_qcke_vec[nd] * 1e3],
+        marker='o',
+        markeredgecolor=c,
+        markerfacecolor='#FFFFFF',
+    )
+
 ax[0].legend(loc=0)
 
 ax[0].set_ylabel(r'$\mathcal{E}$ (meV)')
 ax[0].yaxis.set_label_coords(-0.25, 0.5)
-ax[0].set_ylim(-1e3, 0)
-ax[0].set_yticks([-1e3, -0.75e3, -0.5e3, -0.25e3, 0])
+ax[0].set_ylim(-0.8e3, 0)
+ax[0].set_yticks([-0.8e3, -0.6e3, -0.4e3, -0.2e3, 0])
 ax[0].set_yticklabels(['$%d$' % d for d in ax[0].get_yticks()])
 
 ax[0].set_xlabel(r'$d^* / d$')
@@ -197,8 +267,8 @@ ax[0].set_xticklabels(['$%d$' % d for d in ax[0].get_xticks(minor=True)],
 #ax[1].set_ylabel(r'$\mathcal{E}$ / meV')
 #ax[1].yaxis.set_label_coords(1.35, 0.5)
 ax[1].yaxis.tick_right()
-ax[1].set_ylim(-85, -70)
-ax[1].set_yticks([-85, -80, -75, -70])
+ax[1].set_ylim(-100, -70)
+ax[1].set_yticks([-100, -95, -90, -85, -80, -75, -70])
 ax[1].set_yticklabels(['$%d$' % d for d in ax[1].get_yticks()])
 
 ax[1].set_xlabel(r'$d^* / d$')
@@ -229,9 +299,9 @@ ax[0].add_collection(collection)
 plt.tight_layout()
 #plt.setp(ax[0].get_xticklabels(), visible=False)
 #plt.setp(ax[0].get_xticklabels(minor=True), visible=False)
-fig.subplots_adjust(wspace=0.01)
+fig.subplots_adjust(wspace=0)
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_ns_v1')
+            'be_ns_v3')
 
 plt.show()

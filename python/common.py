@@ -21,10 +21,12 @@ import cmath
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.collections import LineCollection, PatchCollection
-from matplotlib.colors import LogNorm, SymLogNorm, ListedColormap
+from matplotlib.colors import LogNorm, SymLogNorm, ListedColormap, BoundaryNorm
 import matplotlib.colors
 from matplotlib.cm import ScalarMappable
 from matplotlib.patches import Rectangle
+
+from mpl_toolkits.mplot3d import Axes3D
 
 import scipy.integrate
 from scipy.integrate import (quad, simps)
@@ -69,7 +71,8 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
 
 def save_data(filename, vars_list, extra_data=None):
     export_data = zeros((
-        max(*[v.size for v in vars_list]),
+        max(*[v.size
+              for v in vars_list]) if len(vars_list) > 1 else vars_list[0].size,
         len(vars_list),
     ))
 

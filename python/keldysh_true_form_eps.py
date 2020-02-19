@@ -36,7 +36,7 @@ N_x, N_eps = 128, 3
 
 size_d = 1  # nm
 eps_sol = 1
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 eps_vec = eps_sol / array([1.0, 0.5, 0.2])
 
@@ -80,6 +80,7 @@ colors = [
 
 for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
     energy_norm = sys.c_aEM * sys.c_hbarc / sys.eps_mat / sys.size_d
+
     ax[0].semilogx(
         x_vec,
         -1 / (y_vec[:, n_eps] / energy_norm * x_vec),
@@ -87,6 +88,7 @@ for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
         color=c,
         label=r'$d^* / d$: $%d$' % (size_d_eff(sys) / size_d),
     )
+
     ax[0].axhline(y=eps_sol / sys.eps_mat, color=c, linewidth=0.7)
 
 ax[0].set_yticks([0, 1])
@@ -95,15 +97,20 @@ ax[0].yaxis.set_label_coords(-0.02, 0.5)
 ax[0].set_ylabel(r'$\epsilon(r) / \epsilon$')
 ax[0].set_xlabel(r'$r / d$')
 
+ax_right = ax[0].twinx()
+ax_right.set_ylim(ax[0].get_ylim())
+ax_right.set_yticks(1 / eps_vec)
+ax_right.set_yticklabels(['$1$', r'$\frac{1}{2}$', r'$\frac{1}{5}$'])
+
 ax[0].set_xlim(x_vec[0], x_vec[-1])
 
-ax[0].legend()
+ax[0].legend(title=r'$d^* / d = \epsilon / \epsilon_{sol}$')
 
 plt.tight_layout()
 
 fig.subplots_adjust(wspace=0)
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'pot_comparison_eps_v1')
+            'pot_comparison_eps_v3')
 
 plt.show()

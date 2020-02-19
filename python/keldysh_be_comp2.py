@@ -24,9 +24,9 @@ def eta_func(eps_mat, eps_sol):
 
 N_k = 1 << 9
 
-size_d = 1.0  # nm
+size_d = 1.37  # nm
 eps_sol = 2
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 mu_e = -1e2
 
@@ -47,9 +47,15 @@ be_sol = time_func(
     be_min,
 )
 
+print('eb_sol: %f eV' % be_sol)
 
-def solve_eps(eps_mat, be_exc, det_zero_func):
-    sys = system_data(m_e, m_h, eps_mat, T, 1.37, eps_mat)
+
+def solve_eps(eps_mat, be_exc, det_zero_func, eps=None):
+    if eps is None:
+        sys = system_data(m_e, m_h, eps_mat, T, 1.37, eps_mat)
+    else:
+        sys = system_data(m_e, m_h, eps, T, 1.37, eps_mat)
+
     return be_exc - time_func(
         det_zero_func,
         N_k,
@@ -73,25 +79,29 @@ eps_mat_solved = root_scalar(
     solve_eps,
     bracket=(3, 20),
     method='brentq',
-    args=(-193e-3, plasmon_det_zero_qcke),
+    args=(-193e-3, plasmon_det_zero_qcke, eps_sol),
 )
 eps_mat_qcke = eps_mat_solved.root
 """
 
-eps_mat_cou = 6.389276286774717
-eps_mat_qcke = 12.929731608105103
+#eps_mat_cou = 6.389276286774717
+#eps_mat_qcke = 12.929731608105103
 
-print(eps_mat_cou / eps_sol)
-print(eps_mat_qcke / eps_sol)
+eps_mat_cou = 6.93623977987222
+eps_mat_qcke = 13.983616346186604
 
-print('Approximate a_0: %.2f nm' % system_data(
-    m_e,
-    m_h,
-    eps_sol,
-    T,
-    1.37,
-    eps_mat_qcke,
-).exc_bohr_radius_mat())
+print('eps Cou: %f, %f' % (eps_mat_cou, eps_mat_cou / eps_sol))
+print('eps qcke: %f, %f' % (eps_mat_qcke, eps_mat_qcke / eps_sol))
+
+#exit()
+
+print('d_max: %e nm' %
+      (3 * pi**2 / sys_sol.c_aEM * sys_sol.c_hbarc / sys_sol.m_h))
+
+sys_cdse = system_data(m_e, m_h, eps_sol, T, 1.37, eps_mat_qcke)
+
+print('Approximate a_0: %.2f nm' % sys_cdse.exc_bohr_radius_mat())
+print('d / a_0: %2f' % (1.37 / sys_cdse.exc_bohr_radius()))
 
 d_vec = array([
     0.1,
@@ -101,10 +111,8 @@ d_vec = array([
     10,
 ]) * sys_sol.exc_bohr_radius()
 
-print(1.37 / sys_sol.exc_bohr_radius())
-
-print(exciton_be_cou(sys_sol))
-print(be_sol)
+#print(exciton_be_cou(sys_sol))
+#print(be_sol)
 
 sys_ke_vec = array([
     system_data(m_e, m_h, eps_sol, T, d, eps)
@@ -124,23 +132,47 @@ be_hn_vec = zeros_like(sys_ke_vec)
 
 def save_be_data():
     be_cou_vec[:] = array([
-        time_func(plasmon_det_zero_ke, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_cou_vec[:, 0].flatten()
+        time_func(
+            plasmon_det_zero_ke,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_cou_vec[:, 0].flatten()
     ]).reshape(N_eps, 1)
 
     be_qcke_vec[:] = array([
-        time_func(plasmon_det_zero_qcke, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec.flatten()
+        time_func(
+            plasmon_det_zero_qcke,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec.flatten()
     ]).reshape(N_eps, N_d)
 
     be_ke_vec[:] = array([
-        time_func(plasmon_det_zero_ke, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec.flatten()
+        time_func(
+            plasmon_det_zero_ke,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec.flatten()
     ]).reshape(N_eps, N_d)
 
     be_hn_vec[:] = array([
-        time_func(plasmon_det_zero_hn, N_k, mu_e, sys.get_mu_h(mu_e), sys,
-                  be_min) for sys in sys_ke_vec.flatten()
+        time_func(
+            plasmon_det_zero_hn,
+            N_k,
+            mu_e,
+            sys.get_mu_h(mu_e),
+            sys,
+            be_min,
+        ) for sys in sys_ke_vec.flatten()
     ]).reshape(N_eps, N_d)
 
     file_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
@@ -173,7 +205,8 @@ def save_be_data():
 #file_id = 'zPx8SiFzQhS1qItviCS5uQ'
 #file_id = 'U0gcAzwjQAutd9Ih9Rg9NQ'
 #file_id = '9oCu__E_RxSIGnoWMw8HdQ'
-file_id = 'wwaR50NQRn-e_D3u_TDveg'
+#file_id = 'wwaR50NQRn-e_D3u_TDveg'
+file_id = 'GKxSttfcTCmZCCs5xuMk_w'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -337,6 +370,6 @@ ax[0].set_ylabel(r'$\mathcal{E}$ (eV)')
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_comp_B2')
+            'be_comp_B3')
 
 plt.show()

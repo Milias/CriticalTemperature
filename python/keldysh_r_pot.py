@@ -9,8 +9,8 @@ plt.rcParams.update({
 
 fig_size = tuple(array([6.8, 5.3]))
 
-n_x, n_y = 1, 1
-#n_x, n_y = 1, 2
+#n_x, n_y = 1, 1
+n_x, n_y = 1, 2
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
@@ -87,7 +87,7 @@ N_x, N_eps = 32, 2
 
 size_d = 1  # nm
 eps_sol = 1
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 eps_vec = eps_sol / array([1.0, 0.2])
 
@@ -394,7 +394,7 @@ def plot_qcke_r_pot():
     ax[0].set_ylabel(r'$V_{qc}^{RK}(r)$')
     ax[0].set_xlabel('$r / d^*$')
 
-    ax[0].legend()
+    ax[0].legend(title=r'$d / d^* = \epsilon_{sol} / \epsilon$')
 
     ax[0].set_ylim(-10, 0)
     ax[0].set_xlim(1e-2, 1e1 * 0.99)
@@ -403,7 +403,7 @@ def plot_qcke_r_pot():
 
     ax[1].set_xlabel('$r / d$')
 
-    ax[1].legend()
+    ax[1].legend(title=r'$d^* / d = \epsilon / \epsilon_{sol}$')
 
     ax[1].set_ylim(-10, 0)
     ax[1].set_xlim(1e-2 * 1.01, 1e1)
@@ -412,9 +412,9 @@ def plot_qcke_r_pot():
     fig.subplots_adjust(wspace=0)
 
     plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-                'r_qcke_pot_dual_v3')
+                'r_qcke_pot_dual_v4')
 
 
-plot_qccou_r_pot()
-#plot_qcke_r_pot()
+#plot_qccou_r_pot()
+plot_qcke_r_pot()
 plt.show()

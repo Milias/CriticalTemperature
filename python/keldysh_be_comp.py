@@ -26,7 +26,7 @@ N_k = 1 << 9
 
 size_d = 1.37  # nm
 eps_sol = 2
-m_e, m_h, T = 0.22, 0.41, 294  # K
+m_e, m_h, T = 0.27, 0.45, 294  # K
 
 mu_e = -1e2
 
@@ -140,7 +140,8 @@ def save_be_data():
 
 
 #file_id = 'zPx8SiFzQhS1qItviCS5uQ'
-file_id = 'U0gcAzwjQAutd9Ih9Rg9NQ'
+#file_id = 'U0gcAzwjQAutd9Ih9Rg9NQ'
+file_id = '6shei8iZSUWYN0SbrciSGg'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -298,6 +299,6 @@ ax[0].set_ylabel(r'$\mathcal{E}$')
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_comp_v9')
+            'be_comp_v10')
 
 plt.show()
