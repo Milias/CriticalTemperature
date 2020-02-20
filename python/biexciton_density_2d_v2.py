@@ -14,8 +14,19 @@ be_exc = -193e-3
 be_biexc = -45e-3
 
 surf_area = 326.4  # nm^2
-m_e, m_h, eps_r, T = 0.27, 0.45, 6.369171898453055, 1000  # K
+m_e, m_h, eps_r, T = 0.27, 0.45, 6.8981648008805205, 1000  # K
 sys = system_data(m_e, m_h, eps_r, T)
+
+"""
+def be_exc_func(eps_r):
+    return be_exc - system_data(m_e, m_h, eps_r, T).get_E_n(0.5)
+
+be_exc_sol = root_scalar(be_exc_func, method='brentq', bracket=[2,10])
+
+print(be_exc_sol.root)
+"""
+print('E_X: %d eV' % (1e3 * sys.get_E_n(0.5)))
+print('a_0: %f nm' % sys.a0)
 
 mu_e_lim = sys.exc_mu_val(be_exc + 0.5 * be_biexc)
 mu_h_lim = sys.get_mu_h(mu_e_lim)
@@ -31,11 +42,11 @@ ax = [fig.add_subplot(n_x, n_y, i + 1) for i in range(n_x * n_y)]
 
 
 def lambda_th(T, sys):
-    return sys.c_hbarc * sqrt(2 * pi / sys.m_p / sys.c_kB / T)
+    return sys.c_hbarc * sqrt(2 * pi / (sys.m_e + sys.m_h) / sys.c_kB / T)
 
 
 def lambda_th_biexc(T, sys):
-    return 2 * sys.c_hbarc * sqrt(pi / (sys.m_e + sys.m_h) / sys.c_kB / T)
+    return sys.c_hbarc * sqrt(pi / (sys.m_e + sys.m_h) / sys.c_kB / T)
 
 
 def solve_eq_state(n_gamma, sys):
@@ -81,6 +92,7 @@ include_excitons = argv_data.get('include_excitons', 1)
 include_biexcitons = argv_data.get('include_biexcitons', 1)
 degeneracy = argv_data.get('degeneracy', 0)
 total_density = argv_data.get('total_density', 0)
+draw_all_lines = argv_data.get('draw_all_lines', 0)
 
 show_fig = argv_data.get('show_fig', 1)
 file_id = argv_data.get('file_id', '')
@@ -93,13 +105,27 @@ hsv_colors = array([
     [2 / 3.0, 0.8, 0.8],
 ])
 
+hsv_colors_deg = array([
+    [0.9, 0.8, 0.8],
+    [1 / 3.0 - 0.1, 0.8, 0.8],
+    [2 / 3.0 - 0.1, 0.8, 0.8],
+])
+
+hsv_colors_total = array([
+    [0.05, 0.8, 0.8],
+    [1 / 3.0 + 0.05, 0.8, 0.8],
+    [2 / 3.0 + 0.05, 0.8, 0.8],
+])
+
 if degeneracy:
-    hsv_colors[:, 0] -= 0.1
-    hsv_colors[0, 0] = 0.9
+    hsv_colors = hsv_colors_deg
 elif total_density:
-    hsv_colors[:, 0] += 0.05
+    hsv_colors = hsv_colors_total
 
 colors = array([matplotlib.colors.hsv_to_rgb(c) for c in hsv_colors])
+colors_deg = array([matplotlib.colors.hsv_to_rgb(c) for c in hsv_colors_deg])
+colors_total = array(
+    [matplotlib.colors.hsv_to_rgb(c) for c in hsv_colors_total])
 
 mu_e_u_data = solve_eqst_data(T_vec, n_gamma_vec)
 
@@ -204,6 +230,10 @@ if degeneracy:
 
     data_image[:, :, 1] *= lambda_th2_arr
     data_image[:, :, 2] *= lambda_th_biexc2_arr
+
+    print('Max: %s' % amax(data_image, axis=(0, 1)))
+    print('Min: %s' % amin(data_image, axis=(0, 1)))
+
     data_image[:, :, 1] = clip(data_image[:, :, 1], 0, 2)
     data_image[:, :, 2] = clip(data_image[:, :, 2], 0, 2)
 else:
@@ -211,6 +241,9 @@ else:
 
 max_data_values = amax(data_image, axis=(0, 1))
 min_data_values = amin(data_image, axis=(0, 1))
+
+print('Max: %s' % max_data_values)
+print('Min: %s' % max_data_values)
 
 image_args = [(
     data_image,
@@ -256,9 +289,10 @@ else:
     cm = ListedColormap(
         [x * colors[selector_list[0]] for x in linspace(0, 1, 256)])
 
-    if total_density:
+    if total_density or degeneracy:
         max_value = amax(data_image[:, :, selector_list[0]])
         min_value = amin(data_image[:, :, selector_list[0]])
+
     else:
         max_value = amax(data_image[:, :, selector_list[0]] /
                          sqrt(sum(data_image**2, axis=2)))
@@ -292,20 +326,26 @@ else:
         im.set_array(None)
 
     if degeneracy:
-        boundaries_list = linspace(0, 2, 256)
-        ticks = [0, 1, 2]
-        format = ['$%.2f$', '$%.0f$', '$%.0f$'][selector_list[0]]
-        extend = ['neither', 'max', 'max'][selector_list[0]]
+        if max_value < 2:
+            boundaries_list = linspace(0, max_value, 256)
+            ticks = linspace(0, max_value, n_ticks)
+            format = '$%.1f$'
+            extend = 'neither'
+        else:
+            boundaries_list = linspace(0, 2, 256)
+            ticks = [0, 1, 2]
+            format = ['$%.2f$', '$%.0f$', '$%.0f$'][selector_list[0]]
+            extend = 'max'
 
     elif total_density:
         boundaries_list = linspace(0, max_value, n_boundaries)
-        ticks = linspace(boundaries_list[0], boundaries_list[-1], n_ticks)
+        ticks = linspace(0, max_value, n_ticks)
         format = ['$%.2f$', '$%.1f$', '$%.0f$'][selector_list[0]]
         extend = 'neither'
 
     else:
         boundaries_list = linspace(0, max_value, 256)
-        ticks = linspace(boundaries_list[0], boundaries_list[-1], n_ticks)
+        ticks = linspace(0, max_value, n_ticks)
         format = ['$%.2f$', '$%.1f$', '$%.1f$'][selector_list[0]]
         extend = 'neither'
 
@@ -324,32 +364,103 @@ else:
 
     if degeneracy:
         cb.ax.set_ylabel(r'$\eta_%s$' % species_label)
-        cb.ax.yaxis.set_label_coords(1.7, 0.25)
+        if ticks[-1] == 2:
+            cb.ax.yaxis.set_label_coords(1.7, 0.25)
+        else:
+            cb.ax.yaxis.set_label_coords(1.7, 0.5)
     elif total_density:
         cb.ax.set_ylabel(r'$n_%s a_0^2$' % species_label)
         cb.ax.yaxis.set_label_coords(1.7, 0.5)
     else:
         cb.ax.set_ylabel(r'$\mathcal{X}_%s$' % species_label)
-        cb.ax.yaxis.set_label_coords(1.7, 0.5)
+        cb.ax.yaxis.set_label_coords(1.8, 0.5)
 
-sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in T_vec]
-beta_vec = 1 / (sys_T_vec[0].c_kB * T_vec)
-delta_boundary_vec = 2 / beta_vec * log(cosh(0.5 * beta_vec * be_biexc))
+if (include_excitons or include_biexcitons) or draw_all_lines == 1:
+    sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in T_vec]
+    beta_vec = 1 / (sys_T_vec[0].c_kB * T_vec)
+    delta_boundary_vec = 2 / beta_vec * log(cosh(0.5 * beta_vec * be_biexc))
 
-n_boundary_vec = array([
-    (sys_T.density_exc(be_biexc, delta) + 2 * sys_T.density_exc2(0, 0, delta))
-    * sys_T.a0**2 for sys_T, delta in zip(sys_T_vec, delta_boundary_vec)
-])
+    n_boundary_vec = array([
+        (sys_T.density_exc(be_biexc, delta) +
+         2 * sys_T.density_exc2(0, 0, delta)) * sys_T.a0**2
+        for sys_T, delta in zip(sys_T_vec, delta_boundary_vec)
+    ])
 
-ax[0].plot(
-    n_boundary_vec,
-    T_vec,
-    color='w',
-    linestyle='--',
-    linewidth=1.0,
-    dashes=(3., 5.),
-    dash_capstyle='round',
-)
+    ax[0].plot(
+        n_boundary_vec,
+        T_vec,
+        color='w',
+        linewidth=1.4,
+        linestyle='--',
+        dashes=(3., 5.),
+        dash_capstyle='round',
+    )
+
+if degeneracy == 1 or draw_all_lines == 1:
+    if include_excitons or draw_all_lines == 1:
+        T_lim = be_biexc * 0.5 / sys.c_kB / log(1 - 1 / e)
+        print('Limit temperature: %.0f K' % T_lim)
+
+        local_T_vec = linspace(T_lim, T_vec[-1], 1 << 14)
+        sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in local_T_vec]
+        beta_vec = array([1 / (sys_T.c_kB * sys_T.T) for sys_T in sys_T_vec])
+
+        n_boundary_deg_vec = array([
+            (sys_T.density_exc(log(1 - 1 / e) / sys_T.beta, 0) +
+             2 * sys_T.density_exc2(log(1 - 1 / e) / sys_T.beta, 0, be_biexc))
+            * sys_T.a0**2 for sys_T in sys_T_vec
+        ])
+
+        ax[0].plot(
+            [
+                n_boundary_deg_vec[isfinite(n_boundary_deg_vec)][0],
+                n_gamma_vec[-1]
+            ],
+            [local_T_vec[isfinite(n_boundary_deg_vec)][0], T_lim],
+            color=colors_deg[1],
+            marker='o',
+            markeredgecolor='w',
+            markeredgewidth=0.4,
+            markevery=0.025,
+            markersize=5.,
+            linestyle='',
+        )
+
+        ax[0].plot(
+            n_boundary_deg_vec[isfinite(n_boundary_deg_vec)],
+            local_T_vec[isfinite(n_boundary_deg_vec)],
+            color=colors_deg[1],
+            marker='o',
+            markeredgecolor='w',
+            markeredgewidth=0.4,
+            markevery=0.025,
+            markersize=5.,
+            linestyle='',
+        )
+
+    if include_biexcitons or draw_all_lines == 1:
+        local_T_vec = linspace(T_vec[0], T_vec[-1], 1 << 11)
+        sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in local_T_vec]
+        beta_vec = array([1 / (sys_T.c_kB * sys_T.T) for sys_T in sys_T_vec])
+
+        n_boundary_deg_vec = array([
+            (sys_T.density_exc(
+                0.5 / sys_T.beta * log(1 - 1 / e) + 0.5 * be_biexc, 0) +
+             2 * sys_T.density_exc2(0, 0, -log(1 - 1 / e) / sys_T.beta)) *
+            sys_T.a0**2 for sys_T in sys_T_vec
+        ])
+
+        ax[0].plot(
+            n_boundary_deg_vec,
+            local_T_vec,
+            color=colors_deg[2],
+            marker='D',
+            markeredgecolor='w',
+            markeredgewidth=0.4,
+            markevery=0.025,
+            markersize=5.,
+            linestyle='',
+        )
 
 ax[0].plot(
     [6.27 / surf_area * sys.a0**2, 52.85 / surf_area * sys.a0**2],
@@ -365,69 +476,41 @@ ax[0].plot(
     'o',
     markeredgecolor='w',
     markerfacecolor='#000000',
+    markeredgewidth=0.8,
+    markersize=6.,
 )
 
 if include_free_charges:
-    ax[0].text(
-        8e-3,
-        9e2,
-        r'$q$',
-        color='k',
-        fontsize=31,
-        va='center',
-        ha='center',
-    )
-
-    ax[0].text(
-        8e-3,
-        9e2,
-        r'$q$',
+    ax[0].plot(
+        [8e-3],
+        [9e2],
         color='w',
-        fontsize=28,
-        va='center',
-        ha='center',
+        marker='$q$',
+        markeredgecolor='k',
+        markeredgewidth=0.2,
+        markersize=20,
     )
 
 if include_excitons:
-    ax[0].text(
-        4e-2,
-        4e2,
-        r'$X$',
-        color='k',
-        fontsize=31,
-        va='center',
-        ha='center',
-    )
-
-    ax[0].text(
-        4e-2,
-        4e2,
-        r'$X$',
+    ax[0].plot(
+        [4e-2],
+        [4e2],
         color='w',
-        fontsize=28,
-        va='center',
-        ha='center',
+        marker='$X$',
+        markeredgecolor='k',
+        markeredgewidth=0.2,
+        markersize=28,
     )
 
 if include_biexcitons:
-    ax[0].text(
-        3,
-        1e2,
-        r'$X_2$',
-        color='k',
-        fontsize=31,
-        va='center',
-        ha='center',
-    )
-
-    ax[0].text(
-        3,
-        1e2,
-        r'$X_2$',
+    ax[0].plot(
+        [3],
+        [1e2],
         color='w',
-        fontsize=28,
-        va='center',
-        ha='center',
+        marker='$X_2$',
+        markeredgecolor='k',
+        markeredgewidth=0.2,
+        markersize=38,
     )
 
 #ax[0].set_xlabel(r '$\langle N_\gamma \rangle$')
@@ -438,7 +521,8 @@ ax[0].yaxis.set_label_coords(-0.04, 0.5)
 
 print('mu_e_lim: %f, mu_exc_lim: %f' % (mu_e_lim, mu_exc_lim))
 print('n_q_inf: %e, n_exc_inf: %e' % (n_q_inf, n_exc_inf))
-print('a_0^2: %f nm^2' % sys.a0**2)
+print('3d a_0^2: %f nm^2' % sys.a0**2)
+print('2d a_0^2: %f nm^2' % sys.exc_bohr_radius()**2)
 
 ax[0].set_xlim(n_gamma_vec[0], n_gamma_vec[-1])
 ax[0].set_ylim(T_vec[0], T_vec[-1])
@@ -451,6 +535,9 @@ elif degeneracy:
     savefig_label = 'deg'
 else:
     savefig_label = 'prop'
+
+if draw_all_lines:
+    savefig_label = '%s_lines' % savefig_label
 
 plt.savefig(
     '%s/%s.pdf' % (savefig_folder, 'biexciton_diagram_%s_%s_B2' % (
