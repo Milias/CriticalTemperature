@@ -16,7 +16,6 @@ be_biexc = -45e-3
 surf_area = 326.4  # nm^2
 m_e, m_h, eps_r, T = 0.27, 0.45, 6.8981648008805205, 1000  # K
 sys = system_data(m_e, m_h, eps_r, T)
-
 """
 def be_exc_func(eps_r):
     return be_exc - system_data(m_e, m_h, eps_r, T).get_E_n(0.5)
@@ -93,6 +92,7 @@ include_biexcitons = argv_data.get('include_biexcitons', 1)
 degeneracy = argv_data.get('degeneracy', 0)
 total_density = argv_data.get('total_density', 0)
 draw_all_lines = argv_data.get('draw_all_lines', 0)
+norm_sqrt = argv_data.get('norm_sqrt', 0)
 
 show_fig = argv_data.get('show_fig', 1)
 file_id = argv_data.get('file_id', '')
@@ -163,7 +163,10 @@ def calc_image(
     if total_density:
         result = data[i, j] / max_data_values
     else:
-        result = data[i, j] / sqrt(sum(data[i, j]**2))
+        if norm_sqrt == 1:
+            result = data[i, j] / sqrt(sum(data[i, j]**2))
+        else:
+            result = data[i, j] / sum(data[i, j])
 
     if degeneracy:
         result = (-min_data_values + data[i, j]) / (-min_data_values +
@@ -540,9 +543,10 @@ if draw_all_lines:
     savefig_label = '%s_lines' % savefig_label
 
 plt.savefig(
-    '%s/%s.pdf' % (savefig_folder, 'biexciton_diagram_%s_%s_B2' % (
+    '%s/%s.pdf' % (savefig_folder, 'biexciton_diagram_%s_%s_B2%s' % (
         ''.join(['%s' % i for i in selector_list]),
         savefig_label,
+        '_sqrt' if norm_sqrt else '',
     )),
     transparent=True,
 )

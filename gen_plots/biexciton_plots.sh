@@ -10,6 +10,9 @@ args_list=()
 # All, proportion
 args_list+=("{\"include_free_charges\":1,\"include_excitons\":1,\"include_biexcitons\":1,\"degeneracy\":0,\"total_density\":0,\"draw_all_lines\":1,\"show_fig\":0,\"file_id\":\"$file_id\"}")
 
+# All, proportion, sqrt
+args_list+=("{\"include_free_charges\":1,\"include_excitons\":1,\"include_biexcitons\":1,\"degeneracy\":0,\"total_density\":0,\"draw_all_lines\":1,\"show_fig\":0,\"norm_sqrt\":1,\"file_id\":\"$file_id\"}")
+
 # Free charges, proportion
 args_list+=("{\"include_free_charges\":1,\"include_excitons\":0,\"include_biexcitons\":0,\"degeneracy\":0,\"total_density\":0,\"show_fig\":0,\"file_id\":\"$file_id\"}")
 

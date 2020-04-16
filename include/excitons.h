@@ -41,3 +41,48 @@ std::vector<double> exciton_wf_ke(
     double be_exc, double r_max, uint32_t n_steps, const system_data& sys);
 
 double exciton_be_ke(const system_data& sys);
+
+double exciton_os(double Lx, double Ly, uint32_t nx, uint32_t ny);
+
+double exciton_cm_se(
+    double Lx, double Ly, uint32_t nx, uint32_t ny, const system_data& sys);
+
+double exciton_PL_d(
+    double energy, uint32_t nx, uint32_t ny, const system_data& sys);
+
+std::vector<double> exciton_PL_d_vec(
+    const std::vector<double>& energy,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+double exciton_PL(
+    double energy,
+    double gamma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+std::vector<double> exciton_PL_vec(
+    const std::vector<double>& energy,
+    double gamma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+double exciton_dd_var_E(
+    double alpha,
+    double rho_cm,
+    double th_cm,
+    double phi,
+    double delta_z,
+    const system_data& sys);
+
+double exciton_dd_var_E_a0(
+    double alpha,
+    double a0,
+    double rho_cm,
+    double th_cm,
+    double phi,
+    double delta_z,
+    const system_data& sys);

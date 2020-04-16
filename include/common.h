@@ -21,6 +21,7 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_randist.h>
 #include <mpfr.h>
 #include <omp.h>
 

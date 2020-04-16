@@ -39,7 +39,12 @@ system_data::system_data(
     double eps_r,
     double T,
     double size_d,
-    double eps_mat) :
+    double size_Lx,
+    double size_Ly,
+    double hwhm_x,
+    double hwhm_y,
+    double eps_mat,
+    double ext_dist_l) :
     m_e(m_e * c_m_e),
     m_h(m_h * c_m_e),
     eps_r(eps_r),
@@ -61,7 +66,14 @@ system_data::system_data(
     sys_ls(M_1_PI * c_aEM / eps_r / c_hbarc * m_p * (1 / m_pe + 1 / m_ph)),
     zt_len(0.5 * c_hbarc / m_2p),
     eps_mat(eps_mat),
-    size_d(size_d) {
+    size_d(size_d),
+    size_Lx(size_Lx),
+    size_Ly(size_Ly),
+    hwhm_x(hwhm_x),
+    hwhm_y(hwhm_y),
+    sigma_x(hwhm_x / (std::sqrt(2 * std::log(2)))),
+    sigma_y(hwhm_y / (std::sqrt(2 * std::log(2)))),
+    ext_dist_l(ext_dist_l) {
     lambda_th = f_lambda_th(beta, m_p);
     lambda_th_biexc =
         2 * c_hbarc * std::sqrt(M_PI * beta / (m_e + m_h) / c_m_e);
@@ -110,6 +122,33 @@ double system_data::get_mu_h(double mu_e) const {
     } else {
         return result;
     }
+}
+
+double system_data::distr_fd(double energy, double mu) const {
+    const double r{(energy - mu) * beta};
+    if (std::abs(r) > 700) {
+        return 0;
+    }
+
+    return 1 / (std::exp(r) + 1);
+}
+
+double system_data::distr_be(double energy, double mu) const {
+    const double r{(energy - mu) * beta};
+    if (std::abs(r) > 700) {
+        return 0;
+    }
+
+    return 1 / (std::exp(r) - 1);
+}
+
+double system_data::distr_mb(double energy, double mu) const {
+    const double r{(energy - mu) * beta};
+    if (std::abs(r) > 700) {
+        return 0;
+    }
+
+    return std::exp(-r);
 }
 
 double system_data::density_ideal_t0(double mu_e) const {
@@ -422,4 +461,12 @@ double system_data::exc_bohr_radius_mat() const {
 
 double system_data::eta_func() const {
     return 0.5 * log((eps_mat + eps_r) / (eps_mat - eps_r));
+}
+
+void system_data::set_hwhm(double hwhm_x, double hwhm_y) {
+    this->hwhm_x = hwhm_x;
+    this->hwhm_y = hwhm_y;
+
+    sigma_x = hwhm_x / std::sqrt(2 * std::log(2));
+    sigma_y = hwhm_y / std::sqrt(2 * std::log(2));
 }

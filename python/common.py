@@ -29,13 +29,19 @@ from matplotlib.patches import Rectangle
 from mpl_toolkits.mplot3d import Axes3D
 
 import scipy.integrate
-from scipy.integrate import (quad, simps)
+from scipy.integrate import (quad, simps, dblquad)
 from scipy.interpolate import interp1d
 from scipy import special
 import scipy.misc
 import scipy.linalg
 import scipy.stats as stats
-from scipy.optimize import minimize, root, root_scalar, curve_fit
+from scipy.optimize import (
+    minimize,
+    minimize_scalar,
+    root,
+    root_scalar,
+    curve_fit,
+)
 
 from semiconductor import *
 from job_api import JobAPI
@@ -71,8 +77,8 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
 
 def save_data(filename, vars_list, extra_data=None):
     export_data = zeros((
-        max(*[v.size
-              for v in vars_list]) if len(vars_list) > 1 else vars_list[0].size,
+        max(*[v.size for v in vars_list])
+        if len(vars_list) > 1 else vars_list[0].size,
         len(vars_list),
     ))
 
@@ -122,8 +128,20 @@ def register_pickle_custom(struct, *params):
 
 register_pickle_func(Uint32Vector, tuple)
 register_pickle_func(DoubleVector, tuple)
-register_pickle_custom(system_data, 'dl_m_e', 'dl_m_h', 'eps_r', 'T', 'size_d',
-                       'eps_mat')
+register_pickle_custom(
+    system_data,
+    'dl_m_e',
+    'dl_m_h',
+    'eps_r',
+    'T',
+    'size_d',
+    'size_Lx',
+    'size_Ly',
+    'hwhm_x',
+    'hwhm_y',
+    'eps_mat',
+    'ext_dist_l',
+)
 
 
 ## Define how to convert a result_s type to a python object

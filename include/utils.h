@@ -97,8 +97,15 @@ struct system_data {
     double E0{0}; // eV
     double l0{0}; // nm
 
-    double eps_mat{1.0}; // dimensionless
-    double size_d{0.0};  // nm
+    double eps_mat{1.0};    // dimensionless
+    double size_d{0.0};     // nm
+    double size_Lx{0.0};    // nm
+    double size_Ly{0.0};    // nm
+    double hwhm_x{0.0};     // nm
+    double hwhm_y{0.0};     // nm
+    double sigma_x{0.0};     // nm
+    double sigma_y{0.0};     // nm
+    double ext_dist_l{0.0}; // nm
 
     /*
      * Constructor methods
@@ -111,8 +118,13 @@ struct system_data {
         double m_h,
         double eps_r,
         double T,
-        double size_d  = 1.0,
-        double eps_mat = 1.0);
+        double size_d     = 1.0,
+        double size_Lx    = 0.0,
+        double size_Ly    = 0.0,
+        double hwhm_x     = 0.0,
+        double hwhm_y     = 0.0,
+        double eps_mat    = 1.0,
+        double ext_dist_l = 0.0);
     system_data(const system_data& sys) = default;
 
     ~system_data() {}
@@ -173,6 +185,10 @@ struct system_data {
     double get_mu_h_ht(double mu_e) const;
     double get_mu_h(double mu_e) const;
 
+    double distr_fd(double energy, double mu) const;
+    double distr_be(double energy, double mu) const;
+    double distr_mb(double energy, double mu) const;
+
     double density_ideal_t0(double mu_e) const;
     double density_ideal_ht(double mu_e) const;
     double density_ideal(double mu_e) const;
@@ -198,4 +214,6 @@ struct system_data {
     double exc_bohr_radius_mat() const;
 
     double eta_func() const;
+
+    void set_hwhm(double hwhm_x, double hwhm_y);
 };
