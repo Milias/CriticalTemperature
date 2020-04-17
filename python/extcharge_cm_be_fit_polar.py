@@ -73,7 +73,7 @@ def load_raw_PL_data(path, eV_max):
     ]).T
 
 
-nmax = 5
+nmax = 1
 
 states_vec = list(
     itertools.product(
@@ -140,6 +140,7 @@ save_data(
     'extra/extcharge/cm_be_polar_fit_params_%s' % file_id,
     [popt],
     extra_data={
+        'labels_vec': labels_vec,
         'sizes_vec': sizes_vec,
         'hwhm_vec': hwhm_vec,
         'states_vec': states_vec,

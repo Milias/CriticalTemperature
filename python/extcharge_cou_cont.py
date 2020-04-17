@@ -35,31 +35,58 @@ sys = system_data(
 
 
 def cou_energy(LS, sys):
-    return (sys.c_hbarc * pi)**2 * 0.5 / sys.m_p * LS**2 / (
+    #return -(sys.c_hbarc * pi)**2 * 0.5 / sys.m_p * LS**2 / (
+    return -(sys.c_hbarc * pi)**2 * 0.5 / (sys.m_e + sys.m_h) * LS**2 / (
         sys.size_Lx *
-        sys.size_Ly)**2 - sys.c_aEM * sys.c_hbarc / sys.eps_mat / LS
+        sys.size_Ly)**2 + sys.c_aEM * sys.c_hbarc / sys.eps_mat / LS
 
 
 print(sys.exc_bohr_radius_mat())
 print(sys.get_E_n(0.5))
 
-sizes_vec = array([
-    (25.40, 8.05),
-    (13.74, 13.37),
-    (26.11, 6.42),
+labels_vec = [
+    'BS065',
+    'BS006',
+    'BS066',
+    'BS068',
+]
+sizes_vec = [
     (29.32, 5.43),
-])
+    (26.11, 6.42),
+    (25.4, 8.05),
+    (13.74, 13.37),
+]
+hwhm_vec = [
+    (3.3, 0.81),
+    (3.34, 1.14),
+    (2.9, 0.95),
+    (2.17, 1.85),
+]
+
+sizes_vec = array(sizes_vec)
+hwhm_vec = array(hwhm_vec)
 
 LS_samples_vec = sqrt(sizes_vec[:, 0]**2 + sizes_vec[:, 1]**2)
+LS_up_vec = sqrt((sizes_vec[:, 0] + hwhm_vec[:, 0] * 0.5)**2 +
+                 (sizes_vec[:, 1] + hwhm_vec[:, 1] * 0.5)**2)
+LS_low_vec = sqrt((sizes_vec[:, 0] - hwhm_vec[:, 0] * 0.5)**2 +
+                  (sizes_vec[:, 1] - hwhm_vec[:, 1] * 0.5)**2)
 
 N_LS = 1 << 8
 
 LS_vec = linspace(15, 35, N_LS)
 
 colors = [
-    matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
+    matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8])
     for h in linspace(0, 0.7, LS_samples_vec.size)
 ]
+
+ax[0].axhline(
+    y=0,
+    linestyle='-',
+    linewidth=0.9,
+    color='k',
+)
 
 for i in range(LS_samples_vec.size):
     sys.size_Lx, sys.size_Ly = sizes_vec[i]
@@ -69,6 +96,8 @@ for i in range(LS_samples_vec.size):
         cou_energy(LS_vec, sys) * 1e3,
         linewidth=1.3,
         color=colors[i],
+        label=r'%s: $%.1f\times%.1f$ nm' %
+        (labels_vec[i], *tuple(sizes_vec[i])),
     )
 
     ax[0].plot(
@@ -80,8 +109,15 @@ for i in range(LS_samples_vec.size):
         markerfacecolor=(1, 1, 1, 1),
         markersize=8.0,
         markeredgewidth=1.8,
-        label=r'$%.1f \times %.1f$ nm' % tuple(sizes_vec[i]),
     )
+
+ax[0].plot(
+    LS_vec,
+    sys.c_aEM * sys.c_hbarc / sys.eps_mat / LS_vec * 1e3,
+    linestyle='--',
+    linewidth=0.6,
+    label='Coulomb',
+)
 
 ax[0].set_xlim(LS_vec[0], LS_vec[-1])
 ax[0].set_xticks(arange(15, 36, 5))
@@ -89,7 +125,11 @@ ax[0].set_xticks(arange(15, 36, 5))
 ax[0].set_xlabel(r'$L_S$ (nm)')
 ax[0].set_ylabel(r'$E$ (meV)')
 
-ax[0].legend()
+lg = ax[0].legend(
+    loc=0,
+    prop={'size': 11},
+)
+lg.get_title().set_fontsize(11)
 
 plt.tight_layout()
 
