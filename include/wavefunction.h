@@ -53,7 +53,7 @@ private:
     double pot_static_2d(double x) const {
         const double mu_e{lambda_s};
 
-        return plasmon_rpot_ht(x, mu_e, sys.get_mu_h(mu_e), sys);
+        return 0; //plasmon_rpot_ht(x, mu_e, sys.get_mu_h(mu_e), sys);
     }
 
     constexpr static double (wf_c<state, pot_index, dim>::*pot_func[])(

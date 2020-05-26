@@ -25,13 +25,14 @@ popt_PL = load_data(
 
 globals().update(params_PL_dict)
 
-nmax = 5
+nmax = 3
 
-states_vec = list(
-    itertools.product(
-        range(1, nmax + 1, 2),
-        range(1, nmax + 1, 2),
-    ))
+states_vec = list(itertools.product(
+    range(1, nmax + 1),
+    range(1, nmax + 1),
+))
+
+print(states_vec)
 
 N_states = len(states_vec)
 N_samples = len(sizes_vec)
@@ -63,9 +64,8 @@ def cou_energy(sys):
                                            sys.size_Ly**2) / sys.eps_mat
 
 
-def lorentz_cont(energy, gamma_c, sys):
-    return array(exciton_cont_vec(energy, gamma_c, sys))
-    #return 0.5 + arctan(2 * energy / gamma_c) / pi
+def lorentz_cont(energy, gamma_c):
+    return 0.5 + arctan(2 * energy / gamma_c) / pi
 
 
 def model_abs(loaded_data, sizes_vec, hwhm_vec, sys_hh, sys_lh):
@@ -80,6 +80,7 @@ def model_abs(loaded_data, sizes_vec, hwhm_vec, sys_hh, sys_lh):
         E_hh, E_lh = array(popt[12:16]), array(popt[16:20])
         energy_c_hh, energy_c_lh = array(popt[20:24]), array(popt[24:28])
         gamma_hh, gamma_lh, gamma_c_hh, gamma_c_lh = popt_PL[0], *popt[28:31]
+        even_states_coef = popt[31]
 
         print(time.strftime('%X'))
 
@@ -100,6 +101,8 @@ def model_abs(loaded_data, sizes_vec, hwhm_vec, sys_hh, sys_lh):
         print('mag_peak_lh: %.2f, %.2f, %.2f, %.2f' % mag_peak_lh_vec)
         print('mag_cont_lh: %.2f, %.2f, %.2f, %.2f' % mag_cont_lh_vec)
         print('mag_cont_hh: %.2f, %.2f, %.2f, %.2f' % mag_cont_hh_vec)
+
+        print('even_states_coef: %.3f' % even_states_coef)
         print('\n', flush=True)
 
         sum_model_all = []
@@ -116,38 +119,36 @@ def model_abs(loaded_data, sizes_vec, hwhm_vec, sys_hh, sys_lh):
             data_cont_hh = lorentz_cont(
                 xdata_ii - energy_c_hh[ii],
                 gamma_c_hh,
-                sys_hh,
             ) * mag_cont_hh_vec[ii]
 
             data_cont_lh = lorentz_cont(
                 xdata_ii - energy_c_lh[ii],
                 gamma_c_lh,
-                sys_lh,
             ) * mag_cont_lh_vec[ii]
 
             data_hh_sum = sum(
-                array([
-                    exciton_lorentz_nomb_vec(
-                        xdata_ii - (energy_c_hh[ii] + E_hh[ii]),
-                        gamma_hh,
-                        nx,
-                        ny,
-                        sys_hh,
-                    ) for nx, ny in states_vec
-                ]),
+                array([(even_states_coef if
+                        (nx % 2 == 0 or ny % 2 == 0) else 1) * array(
+                            exciton_lorentz_nomb_vec(
+                                xdata_ii - (energy_c_hh[ii] + E_hh[ii]),
+                                gamma_hh,
+                                nx,
+                                ny,
+                                sys_hh,
+                            )) for nx, ny in states_vec]),
                 axis=0,
             )
 
             data_lh_sum = sum(
-                array([
-                    exciton_lorentz_nomb_vec(
-                        xdata_ii - (energy_c_lh[ii] + E_lh[ii]),
-                        gamma_lh,
-                        nx,
-                        ny,
-                        sys_lh,
-                    ) for nx, ny in states_vec
-                ]),
+                array([(even_states_coef if
+                        (nx % 2 == 0 or ny % 2 == 0) else 1) * array(
+                            exciton_lorentz_nomb_vec(
+                                xdata_ii - (energy_c_lh[ii] + E_lh[ii]),
+                                gamma_lh,
+                                nx,
+                                ny,
+                                sys_lh,
+                            )) for nx, ny in states_vec]),
                 axis=0,
             )
 
@@ -184,15 +185,15 @@ p0_values = (
     0.3,
     0.3,
     #
-    -190e-3,
-    -190e-3,
-    -190e-3,
-    -190e-3,
+    -150e-3,
+    -150e-3,
+    -150e-3,
+    -150e-3,
     #
-    -270e-3,
-    -270e-3,
-    -270e-3,
-    -270e-3,
+    -300e-3,
+    -300e-3,
+    -300e-3,
+    -300e-3,
     #
     2.6,
     2.6,
@@ -207,6 +208,8 @@ p0_values = (
     120e-3,
     20e-3,
     60e-3,
+    #
+    1.0,
 )
 
 lower_bounds = (
@@ -235,6 +238,8 @@ lower_bounds = (
     0,
     0,
     0,
+    #
+    0,
 )
 
 upper_bounds = (
@@ -262,6 +267,8 @@ upper_bounds = (
     #
     inf,
     inf,
+    inf,
+    #
     inf,
 )
 

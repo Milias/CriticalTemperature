@@ -35,7 +35,6 @@ sys = system_data(
 
 
 def cou_energy(LS, sys):
-    #return -(sys.c_hbarc * pi)**2 * 0.5 / sys.m_p * LS**2 / (
     return -(sys.c_hbarc * pi)**2 * 0.5 / (sys.m_e + sys.m_h) * LS**2 / (
         sys.size_Lx *
         sys.size_Ly)**2 + sys.c_aEM * sys.c_hbarc / sys.eps_mat / LS

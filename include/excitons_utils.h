@@ -9,7 +9,7 @@ struct exciton_root_s {
     const system_data& sys;
 };
 
-struct exciton_PL_s {
+struct exciton_lorentz_s {
     double energy;
 
     uint32_t nx;
@@ -18,5 +18,14 @@ struct exciton_PL_s {
     const system_data& sys;
 
     double gamma = 0.0;
-    double t = 0.0;
+    double t     = 0.0;
+};
+
+struct exciton_cont_s {
+    double energy;
+    double gamma_c;
+
+    const system_data& sys;
+
+    double y = 0.0;
 };

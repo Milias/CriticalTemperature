@@ -47,27 +47,34 @@ double exciton_os(double Lx, double Ly, uint32_t nx, uint32_t ny);
 double exciton_cm_se(
     double Lx, double Ly, uint32_t nx, uint32_t ny, const system_data& sys);
 
-double exciton_PL_d(
+double exciton_cm_energy(uint32_t nx, uint32_t ny, const system_data& sys);
+
+double exciton_lorentz_d(
     double energy, uint32_t nx, uint32_t ny, const system_data& sys);
 
-std::vector<double> exciton_PL_d_vec(
+std::vector<double> exciton_lorentz_d_vec(
     const std::vector<double>& energy,
     uint32_t nx,
     uint32_t ny,
     const system_data& sys);
 
-double exciton_PL(
-    double energy,
+std::vector<double> exciton_lorentz_vec(
+    const std::vector<double>& energy,
     double gamma,
     uint32_t nx,
     uint32_t ny,
     const system_data& sys);
 
-std::vector<double> exciton_PL_vec(
+std::vector<double> exciton_lorentz_nomb_vec(
     const std::vector<double>& energy,
     double gamma,
     uint32_t nx,
     uint32_t ny,
+    const system_data& sys);
+
+std::vector<double> exciton_cont_vec(
+    const std::vector<double>& energy_vec,
+    double gamma_c,
     const system_data& sys);
 
 double exciton_dd_var_E(

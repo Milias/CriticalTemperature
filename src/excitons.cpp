@@ -320,6 +320,11 @@ double exciton_cm_se(
            std::pow(M_PI * sys.c_hbarc, 2) * 0.5 / (sys.m_e + sys.m_h);
 }
 
+double exciton_cm_energy(uint32_t nx, uint32_t ny, const system_data& sys) {
+    return (std::pow(nx / sys.size_Lx, 2) + std::pow(ny / sys.size_Ly, 2)) *
+           std::pow(M_PI * sys.c_hbarc, 2) * 0.5 / (sys.m_e + sys.m_h);
+}
+
 double exciton_cm_sep(
     double th, uint32_t nx, uint32_t ny, const system_data& sys) {
     return 0.5 * std::pow(M_PI * sys.c_hbarc, 2) / (sys.m_e + sys.m_p) *
@@ -327,7 +332,7 @@ double exciton_cm_sep(
             std::pow(ny / sys.sigma_y / std::sin(th), 2));
 }
 
-double exciton_PL_dirac_f(double th, exciton_PL_s* s) {
+double exciton_lorentz_dirac_f(double th, exciton_lorentz_s* s) {
     if (th == 0 || th == 0.5 * M_PI) {
         return 0;
     }
@@ -344,7 +349,7 @@ double exciton_PL_dirac_f(double th, exciton_PL_s* s) {
     return std::cos(th) * std::sin(th) * E_S * E_S * std::exp(r);
 }
 
-double exciton_PL_d(
+double exciton_lorentz_d(
     double energy, uint32_t nx, uint32_t ny, const system_data& sys) {
     if (energy <= 0) {
         return 0;
@@ -355,12 +360,13 @@ double exciton_PL_d(
 
     double result[n_int] = {0}, error[n_int] = {0};
 
-    exciton_PL_s s{energy, nx, ny, sys};
+    exciton_lorentz_s s{energy, nx, ny, sys};
 
     gsl_function integrands[n_int];
 
-    integrands[0].function = &templated_f<exciton_PL_s, exciton_PL_dirac_f>;
-    integrands[0].params   = &s;
+    integrands[0].function =
+        &templated_f<exciton_lorentz_s, exciton_lorentz_dirac_f>;
+    integrands[0].params = &s;
 
     gsl_integration_workspace* ws =
         gsl_integration_workspace_alloc(local_ws_size);
@@ -379,7 +385,7 @@ double exciton_PL_d(
            result[0];
 }
 
-std::vector<double> exciton_PL_d_vec(
+std::vector<double> exciton_lorentz_d_vec(
     const std::vector<double>& energy_vec,
     uint32_t nx,
     uint32_t ny,
@@ -388,13 +394,14 @@ std::vector<double> exciton_PL_d_vec(
 
 #pragma omp parallel for
     for (uint32_t i = 0; i < energy_vec.size(); i++) {
-        r[i] = exciton_PL_d(energy_vec[i], nx, ny, sys);
+        r[i] = exciton_lorentz_d(energy_vec[i], nx, ny, sys);
     }
 
     return r;
 }
 
-double exciton_PL_f_th(double th, exciton_PL_s* s) {
+template <bool include_mb = true>
+double exciton_lorentz_f_th(double th, exciton_lorentz_s* s) {
     if (th == 0 || th == 0.5 * M_PI) {
         return 0;
     }
@@ -403,18 +410,24 @@ double exciton_PL_f_th(double th, exciton_PL_s* s) {
         exciton_cm_sep(th, s->nx, s->ny, s->sys) / std::pow(s->t, 2),
     };
 
-    const double r{
-        -0.5 * s->t * s->t +
+    double r;
+
+    if constexpr (include_mb) {
+        r = -0.5 * s->t * s->t +
             s->t * (s->sys.size_Lx / s->sys.sigma_x * std::cos(th) +
                     s->sys.size_Ly / s->sys.sigma_y * std::sin(th)) -
-            s->sys.beta * E_S,
-    };
-
+            s->sys.beta * E_S;
+    } else {
+        r = -0.5 * s->t * s->t +
+            s->t * (s->sys.size_Lx / s->sys.sigma_x * std::cos(th) +
+                    s->sys.size_Ly / s->sys.sigma_y * std::sin(th));
+    }
     return std::cos(th) * std::sin(th) * std::exp(r) *
            gsl_ran_cauchy_pdf(s->energy - E_S, 0.5 * s->gamma);
 }
 
-double exciton_PL_f_t(double t, exciton_PL_s* s) {
+template <bool include_mb = true>
+double exciton_lorentz_f_t(double t, exciton_lorentz_s* s) {
     if (t == 0) {
         return 0;
     }
@@ -428,8 +441,9 @@ double exciton_PL_f_t(double t, exciton_PL_s* s) {
 
     gsl_function integrands[n_int];
 
-    integrands[0].function = &templated_f<exciton_PL_s, exciton_PL_f_th>;
-    integrands[0].params   = s;
+    integrands[0].function =
+        &templated_f<exciton_lorentz_s, exciton_lorentz_f_th<include_mb>>;
+    integrands[0].params = s;
 
     gsl_integration_workspace* ws =
         gsl_integration_workspace_alloc(local_ws_size);
@@ -443,7 +457,8 @@ double exciton_PL_f_t(double t, exciton_PL_s* s) {
     return std::pow(t, 3) * result[0];
 }
 
-double exciton_PL(
+template <bool include_mb = true>
+double exciton_lorentz(
     double energy,
     double gamma,
     uint32_t nx,
@@ -454,12 +469,13 @@ double exciton_PL(
 
     double result[n_int] = {0}, error[n_int] = {0};
 
-    exciton_PL_s s{energy, nx, ny, sys, gamma};
+    exciton_lorentz_s s{energy, nx, ny, sys, gamma};
 
     gsl_function integrands[n_int];
 
-    integrands[0].function = &templated_f<exciton_PL_s, exciton_PL_f_t>;
-    integrands[0].params   = &s;
+    integrands[0].function =
+        &templated_f<exciton_lorentz_s, exciton_lorentz_f_t<include_mb>>;
+    integrands[0].params = &s;
 
     gsl_integration_workspace* ws =
         gsl_integration_workspace_alloc(local_ws_size);
@@ -476,7 +492,7 @@ double exciton_PL(
            result[0];
 }
 
-std::vector<double> exciton_PL_vec(
+std::vector<double> exciton_lorentz_vec(
     const std::vector<double>& energy_vec,
     double gamma,
     uint32_t nx,
@@ -486,7 +502,95 @@ std::vector<double> exciton_PL_vec(
 
 #pragma omp parallel for
     for (uint32_t i = 0; i < energy_vec.size(); i++) {
-        r[i] = exciton_PL(energy_vec[i], gamma, nx, ny, sys);
+        r[i] = exciton_lorentz<true>(energy_vec[i], gamma, nx, ny, sys);
+    }
+
+    return r;
+}
+
+std::vector<double> exciton_lorentz_nomb_vec(
+    const std::vector<double>& energy_vec,
+    double gamma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys) {
+    std::vector<double> r(energy_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < energy_vec.size(); i++) {
+        r[i] = exciton_lorentz<false>(energy_vec[i], gamma, nx, ny, sys);
+    }
+
+    return r;
+}
+
+double exciton_cont_f_x(double x, exciton_cont_s* s) {
+    const double E_S{
+        exciton_cm_se(x, s->y, 1, 1, s->sys),
+    };
+
+    return (0.5 + M_1_PI * std::atan(2 * (s->energy - E_S) / s->gamma_c)) *
+           gsl_ran_gaussian_pdf(x - s->sys.size_Lx, s->sys.sigma_x) *
+           gsl_ran_gaussian_pdf(s->y - s->sys.size_Ly, s->sys.sigma_y);
+}
+
+double exciton_cont_f_y(double y, exciton_cont_s* s) {
+    s->y = y;
+
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{1 << 6};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    integrands[0].function = &templated_f<exciton_cont_s, exciton_cont_f_x>;
+    integrands[0].params   = s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qagi(
+        integrands, 0, global_eps, local_ws_size, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0];
+}
+
+double exciton_cont(double energy, double gamma_c, const system_data& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{1 << 6};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    exciton_cont_s s{energy, gamma_c, sys};
+
+    gsl_function integrands[n_int];
+
+    integrands[0].function = &templated_f<exciton_cont_s, exciton_cont_f_y>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qagi(
+        integrands, 0, global_eps, local_ws_size, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0];
+}
+
+std::vector<double> exciton_cont_vec(
+    const std::vector<double>& energy_vec,
+    double gamma_c,
+    const system_data& sys) {
+    std::vector<double> r(energy_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < energy_vec.size(); i++) {
+        r[i] = exciton_cont(energy_vec[i], gamma_c, sys);
     }
 
     return r;

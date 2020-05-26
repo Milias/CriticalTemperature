@@ -1,91 +1,8 @@
 from common import *
 
-
-def model_data_1g_d(loaded_data, size_vec, hwhm_vec, sys):
-    def model_data_func(xdata, shift1, shift2, shift3, shift4):
-        shift_vec = array([shift1, shift2, shift3, shift4])
-        print('s: %.2f, %.2f, %.2f, %.2f meV' % tuple(shift_vec * 1e3))
-
-        sum_model_all = []
-
-        for ii, shift in enumerate(shift_vec):
-            sys.size_Lx, sys.size_Ly = size_vec[ii]
-            sys.set_hwhm(*hwhm_vec[ii])
-
-            xdata_ii = loaded_data[ii][:, 0]
-
-            data = array([
-                exciton_PL_d_vec(xdata_ii - shift, nx, ny, sys)
-                for nx, ny in states_vec
-            ])
-
-            sum_model = sum(data, axis=0)
-            sum_model /= amax(sum_model)
-
-            sum_model_all.extend(sum_model)
-
-        return array(sum_model_all)
-
-    return model_data_func
-
-
-def model_data_1g(loaded_data, size_vec, hwhm_vec, sys):
-    def model_data_func(xdata, gamma, shift1, shift2, shift3, shift4):
-        shift_vec = array([shift1, shift2, shift3, shift4])
-
-        print('Γ: %.2f meV' % (gamma * 1e3))
-        print('s: %.2f, %.2f, %.2f, %.2f meV' % tuple(shift_vec * 1e3))
-
-        sum_model_all = []
-
-        for ii, shift in enumerate(shift_vec):
-            sys.size_Lx, sys.size_Ly = size_vec[ii]
-            sys.set_hwhm(*hwhm_vec[ii])
-
-            xdata_ii = loaded_data[ii][:, 0]
-
-            data = array([
-                exciton_PL_vec(xdata_ii - shift, gamma, nx, ny, sys)
-                for nx, ny in states_vec
-            ])
-
-            sum_model = sum(data, axis=0)
-            sum_model /= amax(sum_model)
-
-            sum_model_all.extend(sum_model)
-
-        return array(sum_model_all)
-
-    return model_data_func
-
-
-def load_raw_PL_data(path, eV_max):
-    raw = loadtxt(path)
-    arg_max = raw[:, 1].argmax()
-    xdata_eV = 1240.0 / raw[::-1, 0]
-    xdata_eV -= xdata_eV[arg_max]
-
-    xdata_eV_arg = abs(xdata_eV) < eV_max
-
-    return array([
-        xdata_eV[xdata_eV_arg],
-        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
-    ]).T
-
-
-nmax = 1
-
-states_vec = list(
-    itertools.product(
-        range(1, nmax + 1, 2),
-        range(1, nmax + 1, 2),
-    ))
-
-N_states = len(states_vec)
-
 size_d = 1.37  # nm
 eps_sol = 6.8981
-m_e, m_h, T = 0.27, 0.45, 294  # K
+m_e, m_lh, m_hh, T = 0.27, 0.52, 0.45, 294  # K
 
 labels_vec = [
     'BS065',
@@ -106,33 +23,115 @@ hwhm_vec = [
     (2.17, 1.85),
 ]
 
-sys = system_data(m_e, m_h, eps_sol, T, size_d, 1, 1, eps_sol)
+nmax = 5
+
+states_vec = list(
+    itertools.product(
+        range(1, nmax + 1, 2),
+        range(1, nmax + 1, 2),
+    ))
+
+N_states = len(states_vec)
+N_samples = len(labels_vec)
+
+sys_lh = system_data(m_e, m_lh, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
+sys_hh = system_data(m_e, m_hh, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
+
+
+def cou_energy(sys):
+    return -sys.c_aEM * sys.c_hbarc / sqrt(sys.size_Lx**2 +
+                                           sys.size_Ly**2) / sys.eps_mat
+
+
+def model_PL(calc_func, loaded_data, size_vec, hwhm_vec, sys):
+    def model_PL_func(xdata, *popt):
+        gamma_hh = popt[0]
+        peak_hh = array(popt[1:5])
+
+        print(time.strftime('%X'))
+        print('Γ_hh: %.2f meV' % (gamma_hh * 1e3))
+        print('ɛ_hh: %.0f, %.0f, %.0f, %.0f meV' % tuple(peak_hh * 1e3))
+        print('\n', flush=True)
+
+        sum_model_all = []
+
+        for ii in range(N_samples):
+            sys.size_Lx, sys.size_Ly = size_vec[ii]
+            sys.set_hwhm(*hwhm_vec[ii])
+
+            xdata_ii = loaded_data[ii][:, 0]
+
+            sum_model = sum(
+                array([
+                    calc_func(
+                        xdata_ii - peak_hh[ii],
+                        gamma_hh,
+                        nx,
+                        ny,
+                        sys,
+                    ) for nx, ny in states_vec
+                ]),
+                axis=0,
+            )
+
+            sum_model_all.extend(sum_model / amax(sum_model))
+
+        return array(sum_model_all)
+
+    return model_PL_func
+
+
+def load_raw_PL_data(path, eV_max):
+    raw = loadtxt(path)
+    raw[:, 0] = raw[::-1, 0]
+    raw[:, 1] = raw[::-1, 1]
+    arg_max = raw[:, 1].argmax()
+    xdata_eV = 1240.0 / raw[:, 0]
+    peak_eV = xdata_eV[arg_max]
+
+    xdata_eV_arg = abs(xdata_eV - peak_eV) < eV_max
+
+    return array([
+        xdata_eV[xdata_eV_arg],
+        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
+    ]).T
+
 
 loaded_data = array([
     load_raw_PL_data('extra/data/extcharge/PL-%s.txt' % label, 0.15)
     for label in labels_vec
 ])
 
+peak_eV_vec = [d[d[:, 1].argmax(), 0] for d in loaded_data]
+
 concat_data = concatenate(loaded_data[:])
 
-popt_list, pcov_list = [], []
-gamma_p0 = [20e-3]
-#gamma_p0 = []
-shift_p0 = [-0.02] * len(sizes_vec)
+p0_values = (
+    30e-3,
+    2.4,
+    2.4,
+    2.4,
+    2.4,
+)
+lower_bounds = (
+    0,
+    0,
+    0,
+    0,
+    0,
+)
 
 popt, pcov = time_func(
     curve_fit,
-    model_data_1g(loaded_data, sizes_vec, hwhm_vec, sys) if len(gamma_p0) > 0
-    else model_data_1g_d(loaded_data, sizes_vec, hwhm_vec, sys),
+    model_PL(exciton_lorentz_vec, loaded_data, sizes_vec, hwhm_vec, sys_hh),
     concat_data[:, 0],
     concat_data[:, 1],
-    p0=tuple(gamma_p0 + shift_p0),
-    bounds=(tuple([0 for g in gamma_p0] + [-inf for s in shift_p0]), inf),
+    p0=p0_values,
+    bounds=(lower_bounds, inf),
     method='trf',
 )
 
-print(popt)
-print(pcov)
+print(popt.tolist(), flush=True)
 
 file_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()[:-2]
 
@@ -145,6 +144,5 @@ save_data(
         'hwhm_vec': hwhm_vec,
         'states_vec': states_vec,
         'pcov': pcov.tolist(),
-        'n_gamma': len(gamma_p0),
     },
 )

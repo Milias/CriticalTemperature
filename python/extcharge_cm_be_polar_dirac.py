@@ -87,9 +87,9 @@ def save_PL(ii, sys, states_vec, size_Lx, size_Ly, hwhm_x, hwhm_y, popt):
     print('\n', flush=True)
 
     data_hh = array([
-        exciton_lorentz_vec(
+        exciton_lorentz_d_vec(
             E_vec - peak_hh[ii],
-            gamma_hh,
+            #gamma_hh,
             nx,
             ny,
             sys,
@@ -97,9 +97,9 @@ def save_PL(ii, sys, states_vec, size_Lx, size_Ly, hwhm_x, hwhm_y, popt):
     ])
 
     data_hh_at_fit = array([
-        exciton_lorentz_vec(
+        exciton_lorentz_d_vec(
             loaded_data[ii][:, 0] - peak_hh[ii],
-            gamma_hh,
+            #gamma_hh,
             nx,
             ny,
             sys,
@@ -187,7 +187,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     sum_data_at_fit /= amax(sum_data_at_fit)
 
     savetxt(
-        'extra/extcharge/export_PL/%s_all.csv' % labels_vec[ii],
+        'extra/extcharge/export_PL/%s_dirac_all.csv' % labels_vec[ii],
         hstack((
             E_vec.T.reshape(-1, 1),
             data.T,
@@ -200,7 +200,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     )
 
     savetxt(
-        'extra/extcharge/export_PL/%s_fit.csv' % labels_vec[ii],
+        'extra/extcharge/export_PL/%s_dirac_fit.csv' % labels_vec[ii],
         hstack((
             loaded_data[ii][:, 0].T.reshape(-1, 1),
             data_at_fit.T,
@@ -210,15 +210,6 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
         newline='\n',
         header='E_vec (eV), %s, PL (sum)' %
         ', '.join(['%d_%d' % (nx, ny) for nx, ny in states_vec]),
-    )
-
-    savetxt(
-        'extra/extcharge/export_PL/%s_exp.csv' % labels_vec[ii],
-        hstack((loaded_data[ii][:, 0].T.reshape(-1, 1),
-                loaded_data[ii][:, 1].T.reshape(-1, 1))),
-        delimiter=',',
-        newline='\n',
-        header='E_vec (eV), PL (sum)',
     )
 
     colors = [
@@ -315,10 +306,10 @@ savetxt(
 print(popt)
 
 file_id_list = [
-    'KzrrIRvPRr-hk1Xl6-y37A',
-    't8SPJrOGSFaU8SAufp9AoQ',
-    'GoMgpNIfSxGuCrcrSbDOKw',
-    'pA7ZCbM4TMe4RXsfFPdfMA',
+    #'KzrrIRvPRr-hk1Xl6-y37A',
+    #'t8SPJrOGSFaU8SAufp9AoQ',
+    #'GoMgpNIfSxGuCrcrSbDOKw',
+    #'pA7ZCbM4TMe4RXsfFPdfMA',
 ]
 
 if len(file_id_list) == 0:
