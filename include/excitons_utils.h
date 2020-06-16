@@ -19,6 +19,7 @@ struct exciton_lorentz_s {
 
     double gamma = 0.0;
     double t     = 0.0;
+    double th    = 0.0;
 };
 
 struct exciton_cont_s {

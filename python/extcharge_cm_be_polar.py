@@ -268,7 +268,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
         ax[ii].set_xticklabels([])
 
     ax[ii].set_xlim(E_vec[0], E_vec[-1])
-    ax[ii].set_ylim(0, None)
+    ax[ii].set_ylim(0, 1.2)
 
     lg = ax[ii].legend(
         loc='upper left',
@@ -286,7 +286,12 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     lg.get_title().set_fontsize(14)
 
 
-file_id_params = 'MxJ9JSiIQTGfQirOhPOEcg'
+#file_id_params = 'MxJ9JSiIQTGfQirOhPOEcg'
+#file_id_params = 'nWdmSwy9QnCtQvySivCvUw'
+#file_id_params = 'B9lXdF7lRv-t6I4J-oJffQ'
+file_id_params = 'd-fccRMqSQKcwq3ju3MHtw'
+#file_id_params = '7Vb0FoIESG-25gl1DKjWBw'
+#file_id_params = '8BmZaec0QuysuEPFplSkXA'
 
 extra_dict_params = {}
 popt = load_data(
@@ -313,13 +318,23 @@ savetxt(
 )
 
 print(popt)
-
+"""
 file_id_list = [
     'KzrrIRvPRr-hk1Xl6-y37A',
     't8SPJrOGSFaU8SAufp9AoQ',
     'GoMgpNIfSxGuCrcrSbDOKw',
     'pA7ZCbM4TMe4RXsfFPdfMA',
 ]
+
+file_id_list = [
+    'XqSCXRjKTH6HFASVYV9AaA',
+    '0ouYQitlRlacqCPXaCwPCw',
+    'iEVCF_CNSn2EV7-ELQNkOQ',
+    'c25wm-qVR7-hk6CUTHLWTw',
+]
+file_id_list = ['bo3FNjx-SgObbIbgDx3jYQ', 'CKTZcRisTq-fcs_UDjmrIw', 'ETVBWXS6RF2ajeT5k1TcKQ', 'xpat21uVQIi0BUBK5GmA6g']
+"""
+file_id_list = []
 
 if len(file_id_list) == 0:
     for ii, ((Lx, Ly), (hwhm_x, hwhm_y)) in enumerate(

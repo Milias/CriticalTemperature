@@ -195,7 +195,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
         )),
         delimiter=',',
         newline='\n',
-        header='E_vec (eV), %s, PL (sum)' %
+        header='E_vec (eV),%s,PL (sum)' %
         ', '.join(['%d_%d' % (nx, ny) for nx, ny in states_vec]),
     )
 
@@ -208,7 +208,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
         )),
         delimiter=',',
         newline='\n',
-        header='E_vec (eV), %s, PL (sum)' %
+        header='E_vec (eV),%s,PL (sum)' %
         ', '.join(['%d_%d' % (nx, ny) for nx, ny in states_vec]),
     )
 
@@ -290,7 +290,7 @@ savetxt(
     array(popt).reshape((1, -1)),
     delimiter=',',
     newline='\n',
-    header='gamma_hh (eV), %s' %
+    header='gamma_hh (eV),%s' %
     ', '.join(['peak_hh (%s) (eV)' % l for l in labels_vec]),
 )
 
@@ -299,7 +299,7 @@ savetxt(
     array(extra_dict_params['pcov']),
     delimiter=',',
     newline='\n',
-    header='gamma_hh (eV), %s' %
+    header='gamma_hh (eV),%s' %
     ', '.join(['peak_hh (%s) (eV)' % l for l in labels_vec]),
 )
 
@@ -356,7 +356,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/ExternalCharge/%s.pdf' %
-    ('cm_be_polar_%ds_%dp' %
+    ('cm_be_polar_%ds_%dp_dirac' %
      (len(states_vec), len(diag(extra_dict_params['pcov'])))),
     transparent=True,
 )

@@ -51,7 +51,7 @@ def aic_criterion(data, model, n_params=1):
     return (rss + 2 * n_params * sigma2) / (data.size * sigma2)
 
 
-file_id_PL = 'd-fccRMqSQKcwq3ju3MHtw'
+file_id_PL = 'MxJ9JSiIQTGfQirOhPOEcg'
 params_PL_dict = {}
 popt_PL = load_data(
     'extra/extcharge/cm_be_polar_fit_params_%s' % file_id_PL,
@@ -156,9 +156,8 @@ def plot_Abs(ii, sys_hh, sys_lh, popt, extra_dict):
     ) * mag_cont_lh_vec[ii]
 
     data_hh = array([
-        exciton_lorentz_nomb_vec(
+        exciton_d_nomb_vec(
             E_vec - (energy_c_hh[ii] + E_hh[ii]),
-            gamma_hh,
             nx,
             ny,
             sys_hh,
@@ -166,9 +165,8 @@ def plot_Abs(ii, sys_hh, sys_lh, popt, extra_dict):
     ])
 
     data_lh = array([
-        exciton_lorentz_nomb_vec(
+        exciton_d_nomb_vec(
             E_vec - (energy_c_lh[ii] + E_lh[ii]),
-            gamma_lh,
             nx,
             ny,
             sys_lh,
@@ -196,7 +194,7 @@ def plot_Abs(ii, sys_hh, sys_lh, popt, extra_dict):
     sum_model_at_fit = sum_model_interp(loaded_data[ii][:, 0])
 
     savetxt(
-        'extra/extcharge/export_abs/%s_states.csv' % labels_vec[ii],
+        'extra/extcharge/export_abs/%s_dirac_states.csv' % labels_vec[ii],
         hstack((
             E_vec.T.reshape(-1, 1),
             data_hh.T,
@@ -209,7 +207,7 @@ def plot_Abs(ii, sys_hh, sys_lh, popt, extra_dict):
     )
 
     savetxt(
-        'extra/extcharge/export_abs/%s_sum.csv' % labels_vec[ii],
+        'extra/extcharge/export_abs/%s_dirac_sum.csv' % labels_vec[ii],
         hstack((
             E_vec.T.reshape(-1, 1),
             data_hh_sum.T.reshape(-1, 1),
@@ -341,9 +339,8 @@ def plot_Abs(ii, sys_hh, sys_lh, popt, extra_dict):
 
 extra_dict_params = params_PL_dict
 del extra_dict_params['pcov']
-#file_id_params = 'nQ72NUHTRsGxiKlIZia1eA'
-#file_id_params = 'NJAfef5qR-eBm309cEZB4w'
-file_id_params = 'JYG5Q4unTBWbiJYL_QgcFQ'
+file_id_params = 'nQ72NUHTRsGxiKlIZia1eA'
+file_id_params = 'NJAfef5qR-eBm309cEZB4w'
 
 popt = load_data(
     'extra/extcharge/cm_be_polar_fit_params_abs_%s' % file_id_params,
@@ -392,7 +389,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/ExternalCharge/%s.pdf' %
-    ('cm_be_polar_%ds_abs_%dp' % (len(states_vec), popt.size)),
+    ('cm_be_polar_%ds_abs_%dp_dirac' % (len(states_vec), popt.size)),
     transparent=True,
 )
 

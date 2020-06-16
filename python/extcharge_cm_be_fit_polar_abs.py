@@ -16,7 +16,7 @@ def load_raw_Abs_data(path, eV_min, eV_max):
     ]).T
 
 
-file_id_PL = 'MxJ9JSiIQTGfQirOhPOEcg'
+file_id_PL = 'd-fccRMqSQKcwq3ju3MHtw'
 params_PL_dict = {}
 popt_PL = load_data(
     'extra/extcharge/cm_be_polar_fit_params_%s' % file_id_PL,
@@ -184,27 +184,27 @@ p0_values = (
     0.3,
     0.3,
     #
-    -190e-3,
-    -190e-3,
-    -190e-3,
-    -190e-3,
+    -170e-3,
+    -170e-3,
+    -170e-3,
+    -170e-3,
     #
     -270e-3,
     -270e-3,
     -270e-3,
     -270e-3,
     #
-    2.6,
-    2.6,
-    2.6,
-    2.6,
+    2.7,
+    2.7,
+    2.7,
+    2.7,
     #
     2.85,
     2.85,
     2.85,
     2.85,
     #
-    120e-3,
+    100e-3,
     20e-3,
     60e-3,
 )
@@ -212,15 +212,9 @@ p0_values = (
 lower_bounds = (
     *tuple([0] * N_samples * 3),
     #
-    -inf,
-    -inf,
-    -inf,
-    -inf,
+    *tuple([-200e-3] * N_samples),
     #
-    -inf,
-    -inf,
-    -inf,
-    -inf,
+    *tuple([-300e-3] * N_samples),
     #
     0,
     0,
@@ -240,15 +234,9 @@ lower_bounds = (
 upper_bounds = (
     *tuple([1] * N_samples * 3),
     #
-    0,
-    0,
-    0,
-    0,
+    *tuple([-150e-3] * N_samples),
     #
-    0,
-    0,
-    0,
-    0,
+    *tuple([-250e-3] * N_samples),
     #
     inf,
     inf,

@@ -28,7 +28,7 @@ size_d = 1.37  # nm
 eps_sol = 2
 m_e, m_h, T = 0.27, 0.45, 294  # K
 
-mu_e = -1e2
+mu_e = -100
 
 be_min = -200e-3
 
@@ -38,7 +38,14 @@ N_d = 5
 eps_vec = logspace(log10(eps_sol), log10(200.0), N_eps)
 eps_hn_vec = logspace(log10(eps_sol), log10(1000.0), N_eps)
 
-sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, eps_sol)
+eps_mat_cou = 6.93623977987222
+eps_mat_qcke = 13.983616346186604
+
+print('be_sol')
+
+sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
+print(sys_sol.eps_r)
+print(sys_sol.eps_mat)
 be_sol = time_func(
     plasmon_det_zero_ke,
     N_k,
@@ -48,18 +55,24 @@ be_sol = time_func(
     be_min,
 )
 
-d_vec = array([0.1, 0.2, 1, 5, 10]) * sys_sol.exc_bohr_radius()
+d_vec = array([
+    0.1,
+    0.2,
+    1,
+    1.37 / sys_sol.exc_bohr_radius(),
+    10,
+]) * sys_sol.exc_bohr_radius()
 
 print(exciton_be_cou(sys_sol))
 print(be_sol)
 
 sys_ke_vec = array([
-    system_data(m_e, m_h, eps_sol, T, d, eps)
+    system_data(m_e, m_h, eps_sol, T, d, 0, 0, 0, 0, eps)
     for eps, d in itertools.product(eps_vec, d_vec)
 ]).reshape(N_eps, N_d)
 
 sys_cou_vec = array([
-    system_data(m_e, m_h, eps, T, d, eps)
+    system_data(m_e, m_h, eps, T, d, 0, 0, 0, 0, eps)
     for eps, d in itertools.product(eps_vec, d_vec)
 ]).reshape(N_eps, N_d)
 
@@ -141,7 +154,7 @@ def save_be_data():
 
 #file_id = 'zPx8SiFzQhS1qItviCS5uQ'
 #file_id = 'U0gcAzwjQAutd9Ih9Rg9NQ'
-file_id = '6shei8iZSUWYN0SbrciSGg'
+file_id = 'lYKcUJHmTRCQu6sHlJhXUQ'
 #file_id = time_func(save_be_data)
 
 data = load_data('extra/keldysh/be_comp_%s' % file_id, globals())
@@ -272,6 +285,28 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
             linewidth=1.8,
             label=r'$d^* / a_0$: $%.1f$' % (d / sys_sol.exc_bohr_radius()),
         )
+
+    elif nd == 3:
+        ax[0].semilogx(
+            [
+                1 / (d * (eps_mat_qcke / 2 * sys_sol.c_hbarc / sys_sol.c_aEM /
+                          sys_sol.m_p) * (eps_sol / d / eps_mat_qcke)**2)
+            ],
+            [-193e-3 / (sys_sol.c_aEM * sys_sol.c_hbarc / eps_mat_qcke / d)],
+            marker='o',
+            markeredgecolor=colors[3],
+            markerfacecolor='#FFFFFF',
+            zorder=10,
+        )
+        ax[0].semilogx(
+            x_vec,
+            be_qcke_vec[:, nd] / energy_norm,
+            color=c,
+            linestyle='-',
+            linewidth=1.8,
+            label=r'$d^* / a_0$: CdSe',
+        )
+
     else:
         ax[0].semilogx(
             x_vec,
@@ -282,12 +317,15 @@ for (nd, d), c in zip(enumerate(d_vec), colors):
             label=r'$d^* / a_0$: $%d$' % (d / sys_sol.exc_bohr_radius()),
         )
 
-ax[0].legend(loc='lower left')
+lg = ax[0].legend(
+    loc='lower left',
+    prop={'size': 15},
+)
+lg.get_title().set_fontsize(15)
 
 ax[0].set_xlim(
-    8e-1 /
-    (d_vec[1] / 2 * eps_vec[0] * sys_sol.c_hbarc / sys_sol.c_aEM / sys_sol.m_p *
-     (eps_sol / d_vec[1] / eps_vec[0])**2),
+    8e-1 / (d_vec[1] / 2 * eps_vec[0] * sys_sol.c_hbarc / sys_sol.c_aEM /
+            sys_sol.m_p * (eps_sol / d_vec[1] / eps_vec[0])**2),
     200,
 )
 
@@ -299,6 +337,6 @@ ax[0].set_ylabel(r'$\mathcal{E}$')
 plt.tight_layout()
 
 plt.savefig('/storage/Reference/Work/University/PhD/Keldysh/%s.pdf' %
-            'be_comp_v10')
+            'be_comp_v11')
 
 plt.show()

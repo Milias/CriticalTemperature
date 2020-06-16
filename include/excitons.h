@@ -49,10 +49,13 @@ double exciton_cm_se(
 
 double exciton_cm_energy(uint32_t nx, uint32_t ny, const system_data& sys);
 
-double exciton_lorentz_d(
-    double energy, uint32_t nx, uint32_t ny, const system_data& sys);
+std::vector<double> exciton_d_vec(
+    const std::vector<double>& energy,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
 
-std::vector<double> exciton_lorentz_d_vec(
+std::vector<double> exciton_d_nomb_vec(
     const std::vector<double>& energy,
     uint32_t nx,
     uint32_t ny,
