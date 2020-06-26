@@ -87,7 +87,7 @@ def save_PL(ii, sys, states_vec, size_Lx, size_Ly, hwhm_x, hwhm_y, popt):
     print('\n', flush=True)
 
     data_hh = array([
-        exciton_lorentz_vec(
+        exciton_ga_vec(
             E_vec - peak_hh[ii],
             gamma_hh,
             nx,
@@ -97,7 +97,7 @@ def save_PL(ii, sys, states_vec, size_Lx, size_Ly, hwhm_x, hwhm_y, popt):
     ])
 
     data_hh_at_fit = array([
-        exciton_lorentz_vec(
+        exciton_ga_vec(
             loaded_data[ii][:, 0] - peak_hh[ii],
             gamma_hh,
             nx,
@@ -187,7 +187,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     sum_data_at_fit /= amax(sum_data_at_fit)
 
     savetxt(
-        'extra/extcharge/export_PL/%s_all.csv' % labels_vec[ii],
+        'extra/extcharge/export_PL/%s_ga_all.csv' % labels_vec[ii],
         hstack((
             E_vec.T.reshape(-1, 1),
             data.T,
@@ -200,7 +200,7 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     )
 
     savetxt(
-        'extra/extcharge/export_PL/%s_fit.csv' % labels_vec[ii],
+        'extra/extcharge/export_PL/%s_ga_fit.csv' % labels_vec[ii],
         hstack((
             loaded_data[ii][:, 0].T.reshape(-1, 1),
             data_at_fit.T,
@@ -286,16 +286,16 @@ def plot_PL(ii, sys, data, data_at_fit, extra_dict, extra_dict_params, popt):
     lg.get_title().set_fontsize(14)
 
 
-file_id_params = 'd-fccRMqSQKcwq3ju3MHtw'
+file_id_params = 'M_NdmTxjQSezNji-P10AHw'
 
 extra_dict_params = {}
 popt = load_data(
-    'extra/extcharge/cm_be_polar_fit_params_%s' % file_id_params,
+    'extra/extcharge/cm_be_polar_fit_params_ga_%s' % file_id_params,
     extra_dict_params,
 )
 
 savetxt(
-    'extra/extcharge/export_PL/popt.csv',
+    'extra/extcharge/export_PL/ga_popt.csv',
     array(popt).reshape((1, -1)),
     delimiter=',',
     newline='\n',
@@ -304,7 +304,7 @@ savetxt(
 )
 
 savetxt(
-    'extra/extcharge/export_PL/pcov.csv',
+    'extra/extcharge/export_PL/ga_pcov.csv',
     array(extra_dict_params['pcov']),
     delimiter=',',
     newline='\n',
@@ -315,10 +315,10 @@ savetxt(
 print(popt)
 
 file_id_list = [
-    '_pDbR360TE-bFAn6FXICXw',
-    'cITQmXb6SuOdvBMrHVvI4w',
-    'EjpTXy8dQXiNcGBcBZiMeg',
-    '_NRSCShqSw-50eVjAUZZAA',
+    'ZhjmY3G-RPiZt1tFFc5HFA',
+    'MJS6kdxzTyGF8GJSexkIKQ',
+    'Syw9P_WcTGmbj3evBU3ZSw',
+    'Fh2c2aJvRpejzGMUdgWklA',
 ]
 
 if len(file_id_list) == 0:
@@ -365,7 +365,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/ExternalCharge/%s.pdf' %
-    ('cm_be_polar_%ds_%dp' %
+    ('cm_be_polar_ga_%ds_%dp' %
      (len(states_vec), len(diag(extra_dict_params['pcov'])))),
     transparent=True,
 )

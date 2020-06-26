@@ -229,3 +229,47 @@ def time_func(func, *args, **kwargs):
     r = func(*args, **kwargs)
     print('%s (dt: %.2fs)' % (func.__name__, time.time() - t0))
     return r
+
+
+def states_sorted(n_states, Lx, Ly, sys, nmax=30):
+    """
+    Returns the ''n_states'' lowest energy states.
+    If ''n_states'' is negative, it is interpreted as the maximum energy.
+    """
+    states_vec = list(
+        itertools.product(
+            range(1, nmax + 1, 2),
+            range(1, nmax + 1, 2),
+        ))
+
+    energy_vec = [exciton_cm_se(Lx, Ly, nx, ny, sys) for nx, ny in states_vec]
+
+    if n_states > 0:
+        return [x for _, x in sorted(zip(energy_vec, states_vec))][:n_states]
+
+    return [
+        x for e, x in sorted(zip(energy_vec, states_vec)) if e < (-n_states)
+    ]
+
+
+def states_sorted_os(n_states, Lx, Ly, nmax=30):
+    """
+    Returns the ''n_states'' lowest energy states.
+    If ''n_states'' is negative, it is interpreted as the maximum energy.
+    """
+    states_vec = list(
+        itertools.product(
+            range(1, nmax + 1, 2),
+            range(1, nmax + 1, 2),
+        ))
+
+    so_vec = [exciton_os(Lx, Ly, nx, ny) for nx, ny in states_vec]
+
+    if n_states > 0:
+        return [x for _, x in sorted(zip(so_vec, states_vec), reverse=True)
+                ][:n_states]
+
+    return [
+        x for e, x in sorted(zip(so_vec, states_vec), reverse=True)
+        if e < (-n_states)
+    ]

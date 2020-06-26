@@ -650,8 +650,8 @@ double plasmon_disp_inv_t(
 
     if constexpr (check_bounds) {
         double kmax{plasmon_kmax(mu_e, mu_h, sys)};
-        double w_max{sys.m_pe * kmax * kmax +
-                     2 * std::sqrt(sys.m_pe * mu_e) * kmax};
+        double w_max{
+            sys.m_pe * kmax * kmax + 2 * std::sqrt(sys.m_pe * mu_e) * kmax};
 
         if (w > w_max) {
             return std::numeric_limits<double>::quiet_NaN();
@@ -659,8 +659,9 @@ double plasmon_disp_inv_t(
     }
 
     double z, z_min{1e-5},
-        z_max{std::sqrt(2 * sys.m_e * mu_e) * (std::sqrt(1 + w / mu_e) - 1) /
-              sys.c_hbarc};
+        z_max{
+            std::sqrt(2 * sys.m_e * mu_e) * (std::sqrt(1 + w / mu_e) - 1) /
+            sys.c_hbarc};
 
     plasmon_potcoef_s s{w, 0, 0, mu_e, mu_h, sys};
 

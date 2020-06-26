@@ -75,7 +75,54 @@ std::vector<double> exciton_lorentz_nomb_vec(
     uint32_t ny,
     const system_data& sys);
 
+std::vector<double> exciton_ga_nomb_vec(
+    const std::vector<double>& energy,
+    double gamma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+std::vector<double> exciton_ga_vec(
+    const std::vector<double>& energy,
+    double gamma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+std::vector<double> exciton_vo_nomb_vec(
+    const std::vector<double>& energy,
+    double gamma,
+    double sigma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
+std::vector<double> exciton_vo_vec(
+    const std::vector<double>& energy,
+    double gamma,
+    double sigma,
+    uint32_t nx,
+    uint32_t ny,
+    const system_data& sys);
+
 std::vector<double> exciton_cont_vec(
+    const std::vector<double>& energy_vec,
+    double gamma_c,
+    const system_data& sys);
+
+std::vector<double> exciton_cont_vo_vec(
+    const std::vector<double>& energy_vec,
+    double gamma_c,
+    double sigma,
+    const system_data& sys);
+
+std::vector<double> exciton_cont_apvo_vec(
+    const std::vector<double>& energy_vec,
+    double gamma_c,
+    double sigma,
+    const system_data& sys);
+
+std::vector<double> exciton_cont_ga_vec(
     const std::vector<double>& energy_vec,
     double gamma_c,
     const system_data& sys);

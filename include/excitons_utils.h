@@ -18,6 +18,7 @@ struct exciton_lorentz_s {
     const system_data& sys;
 
     double gamma = 0.0;
+    double sigma = 0.0;
     double t     = 0.0;
     double th    = 0.0;
 };
@@ -28,5 +29,6 @@ struct exciton_cont_s {
 
     const system_data& sys;
 
+    double sigma = 0.0;
     double y = 0.0;
 };

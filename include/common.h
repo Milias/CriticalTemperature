@@ -1,8 +1,9 @@
 #pragma once
 
-#include <acb.h>
 #include <arb.h>
 #include <arb_hypgeom.h>
+#include <acb.h>
+#include <acb_hypgeom.h>
 #include <arf.h>
 #include <assert.h>
 #include <gmp.h>
@@ -18,6 +19,7 @@
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_zeta.h>
+#include <gsl/gsl_sf_erf.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
@@ -44,7 +46,7 @@
 /*** MPFR ***/
 
 constexpr bool use_mpfr{false};
-constexpr mp_prec_t prec{256};
+constexpr mp_prec_t prec{64};
 
 /*** gsl constants ***/
 
