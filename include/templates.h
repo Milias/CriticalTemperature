@@ -4,15 +4,6 @@
 
 #ifndef SWIG
 
-template <uint32_t N, typename T>
-T sum_result(T* values) {
-    if constexpr (N > 1) {
-        return values[N - 1] + sum_result<N - 1, T>(values);
-    } else {
-        return values[0];
-    }
-}
-
 template <uint32_t N = 1, typename F, typename... Args>
 auto derivative_c2(const F& f, double x0, double h, Args... args) {
     if constexpr (N > 1) {

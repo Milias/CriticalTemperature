@@ -1,9 +1,9 @@
 #pragma once
 
-#include <arb.h>
-#include <arb_hypgeom.h>
 #include <acb.h>
 #include <acb_hypgeom.h>
+#include <arb.h>
+#include <arb_hypgeom.h>
 #include <arf.h>
 #include <assert.h>
 #include <gmp.h>
@@ -12,26 +12,28 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_multiroots.h>
+#include <gsl/gsl_randist.h>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_dawson.h>
 #include <gsl/gsl_sf_ellint.h>
+#include <gsl/gsl_sf_erf.h>
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_zeta.h>
-#include <gsl/gsl_sf_erf.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_randist.h>
 #include <mpfr.h>
 #include <omp.h>
 
+#include <algorithm>
 #include <boost/numeric/odeint.hpp>
 #include <chrono>
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <map>
 #include <ratio>
 #include <thread>
 #include <typeinfo>
@@ -134,6 +136,15 @@ struct result_s {
 
 #ifndef SWIG
 
+template <uint32_t N, typename T>
+T sum_result(T* values) {
+    if constexpr (N > 1) {
+        return values[N - 1] + sum_result<N - 1, T>(values);
+    } else {
+        return values[0];
+    }
+}
+
 template <typename T, double (*F)(double, T*)>
 double templated_f(double int_var, void* params) {
     T* s{static_cast<T*>(params)};
@@ -171,6 +182,37 @@ void templated_fdf(double int_var, void* params, double* f, double* df) {
 
     *f  = F(int_var, s);
     *df = dF(int_var, s);
+}
+
+/*
+ * Only for use in conjunction with gsl_function.
+ */
+template <
+    typename T = void,
+    double (*F)(double, T*),
+    uint32_t N_med       = 2,
+    uint32_t d_med_denom = 10000>
+double median_f(double x, T* s) {
+    std::vector<double> result(N_med);
+
+    for (uint32_t i = 0; i < N_med; i++) {
+        result[i] =
+            F(x + (i - N_med * 0.5) / static_cast<double>(d_med_denom), s);
+    }
+
+    std::sort(result.begin(), result.end());
+
+    double med;
+
+    constexpr uint32_t mid_point{(N_med + 1) / 2};
+
+    if constexpr (N_med % 2 == 0) {
+        med = 0.5 * (result[mid_point] + result[mid_point + 1]);
+    } else {
+        med = result[mid_point];
+    }
+
+    return med;
 }
 
 // real(erf(x + i * y))

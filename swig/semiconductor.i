@@ -3,15 +3,20 @@
 %module semiconductor
 
 %include "stdint.i"
+%include "std_string.i"
 %include "std_complex.i"
 %include "std_vector.i"
 %include "std_array.i"
+%include "std_map.i"
 
-%template(DoubleVector) std::vector<double>;
-%template(Uint32Vector) std::vector<uint32_t>;
-%template(ComplexDoubleVector) std::vector<std::complex<double>>;
-%template(DoubleVectorVector) std::vector<std::vector<double>>;
-%template(Uint32VectorVector) std::vector<std::vector<uint32_t>>;
+namespace std {
+    %template(DoubleVector) vector<double>;
+    %template(Uint32Vector) vector<uint32_t>;
+    %template(ComplexDoubleVector) vector<std::complex<double>>;
+    %template(DoubleVectorVector) vector<vector<double>>;
+    %template(Uint32VectorVector) vector<vector<uint32_t>>;
+    %template(MapStringDouble) map<string, double>;
+}
 
 %{
 #include "common.h"
@@ -26,6 +31,7 @@
 #include "biexcitons.h"
 #include "excitons.h"
 #include "Faddeeva.hh"
+#include "topo.h"
 %}
 
 
@@ -41,6 +47,7 @@
 %include "biexcitons.h"
 %include "excitons.h"
 %include "Faddeeva.hh"
+%include "topo.h"
 
 %template(Result1) result_s<1>;
 %template(Result2) result_s<2>;

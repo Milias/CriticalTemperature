@@ -15,6 +15,8 @@ import os
 from ctypes import *
 import multiprocessing
 
+import yaml
+
 from numpy import *
 import cmath
 
@@ -124,6 +126,13 @@ def register_pickle_custom(struct, *params):
     copyreg.pickle(struct, pickle_func)
 
 
+def initialize_struct(struct, attr_dict):
+    s = struct()
+    for k in attr_dict:
+        setattr(s, k, attr_dict[k])
+    return s
+
+
 ## Define how to pickle system_data objects
 
 register_pickle_func(Uint32Vector, tuple)
@@ -141,6 +150,26 @@ register_pickle_custom(
     'hwhm_y',
     'eps_mat',
     'ext_dist_l',
+)
+register_pickle_custom(
+    sys_params,
+    'm_e',
+    'm_lh',
+    'm_hh',
+    'eps_sol',
+    'T',
+    'M',
+    'A1',
+    'A2',
+    'B1',
+    'B2',
+    'C',
+    'D1',
+    'D2',
+)
+register_pickle_custom(
+    system_data_v2,
+    'params',
 )
 
 

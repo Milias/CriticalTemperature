@@ -470,3 +470,42 @@ void system_data::set_hwhm(double hwhm_x, double hwhm_y) {
     sigma_x = hwhm_x / std::sqrt(2 * std::log(2));
     sigma_y = hwhm_y / std::sqrt(2 * std::log(2));
 }
+
+system_data_v2::system_data_v2(const sys_params& params) :
+    params(params),
+    d_params(params),
+    m_e(params.m_e),
+    m_hh(params.m_hh),
+    m_lh(params.m_lh) {}
+
+/*
+ * Chemical potentials.
+ */
+
+double system_data_v2::mu_hh_t0(double mu_e) const {
+    return params.m_e / params.m_hh * mu_e;
+}
+
+double system_data_v2::mu_hh_ht(double mu_e) const {
+    return mu_e + std::log(params.m_e / params.m_hh) / d_params.beta;
+}
+
+double system_data_v2::mu_hh(double mu_e) const {
+    double result{
+        std::log(
+            std::pow(
+                1 + std::exp(d_params.beta * mu_e), params.m_e / params.m_hh) -
+            1) /
+            d_params.beta,
+    };
+
+    if (std::isinf(result)) {
+        if (mu_e > 0) {
+            return mu_hh_t0(mu_e);
+        } else {
+            return mu_hh_ht(mu_e);
+        }
+    }
+
+    return result;
+}

@@ -103,8 +103,8 @@ struct system_data {
     double size_Ly{0.0};    // nm
     double hwhm_x{0.0};     // nm
     double hwhm_y{0.0};     // nm
-    double sigma_x{0.0};     // nm
-    double sigma_y{0.0};     // nm
+    double sigma_x{0.0};    // nm
+    double sigma_y{0.0};    // nm
     double ext_dist_l{0.0}; // nm
 
     /*
@@ -216,4 +216,89 @@ struct system_data {
     double eta_func() const;
 
     void set_hwhm(double hwhm_x, double hwhm_y);
+};
+
+struct sys_params {
+    /*
+     * Mass.
+     */
+    double m_e;  // eV
+    double m_hh; // eV
+    double m_lh; // eV
+
+    /*
+     * Environment.
+     */
+    double eps_sol; // dimensionless
+    double T;       // K
+
+    /*
+     * Topological hamiltonian parameters.
+     */
+    double M, A1, A2, B1, B2, C, D1, D2;
+
+    sys_params()                         = default;
+    sys_params(const sys_params& params) = default;
+};
+
+struct der_params {
+    /*
+     * By default, m_p = m_p_hh.
+     */
+    double m_p;  // eV
+    double beta; // eV^-1
+
+    der_params(const sys_params& params) :
+        m_p(
+            system_data::c_m_e * params.m_e * params.m_hh /
+            (params.m_e + params.m_hh)),
+        beta(1 / (system_data::c_kB * params.T)) {}
+};
+
+struct system_data_v2 {
+    /*
+     * Fundamental constants
+     */
+
+    constexpr static double c_kB{8.6173303e-5};             // eV K^-1
+    constexpr static double c_m_e{0.5109989461e6};          // eV
+    constexpr static double c_hbar{6.582119514e-16};        // eV s
+    constexpr static double c_light{299792458e9};           // nm s^-1
+    constexpr static double c_hbarc{1.9732697879518254e2};  // eV nm
+    constexpr static double c_e_charge{1.602176620898e-19}; // C
+    /*
+     * Electromagnetic fine-structure constant,
+     * approx ~ 1 / 137.
+     */
+    constexpr static double c_aEM{7.2973525664e-3}; // dimensionless
+
+    /*
+     * Other parameters.
+     */
+
+    sys_params params;
+    der_params d_params;
+
+    /*
+     * Original constructor arguments
+     */
+    double m_e;
+    double m_hh;
+    double m_lh;
+
+    /*
+     * Constructor methods
+     */
+    system_data_v2(const sys_params& params);
+    system_data_v2(const system_data_v2& sys) = default;
+
+    ~system_data_v2() {}
+
+    /*
+     * Chemical potentials.
+     */
+
+    double mu_hh_t0(double mu_e) const;
+    double mu_hh_ht(double mu_e) const;
+    double mu_hh(double mu_e) const;
 };

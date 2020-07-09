@@ -1,5 +1,4 @@
 #include "plasmons.h"
-
 #include "plasmons_utils.h"
 
 template <

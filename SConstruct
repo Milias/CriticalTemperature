@@ -34,16 +34,39 @@ swig_py = 'bin/semiconductor.py'
 swig_cpp = 'src/semiconductor_wrapper.cpp'
 
 cc_flags = [
-    '-O3', '-Wall', '-std=c++17', '-pedantic', '-march=native', '-fopenmp',
-    '-Wno-unused-variable'
+    '-O3',
+    '-Wall',
+    '-std=c++17',
+    '-pedantic',
+    '-march=native',
+    '-fopenmp',
+    '-Wno-unused-variable',
+    '-Wno-deprecated-declarations',
 ]
 incl_libs = [
-    'gsl', 'cblas', 'm', 'gmpxx', 'mpfr', 'gmp', 'arb', 'itpp', 'armadillo',
-    'gomp'
+    'gsl',
+    'cblas',
+    'm',
+    'gmpxx',
+    'mpfr',
+    'gmp',
+    'arb',
+    'itpp',
+    'armadillo',
+    'gomp',
 ]
 swig_flags = [
-    '-python', '-builtin', '-py3', '-threads', '-c++', '-fcompact', '-Wall',
-    '-fastdispatch', '-fvirtual', '-fastproxy', '-dirvtable'
+    '-python',
+    '-builtin',
+    '-py3',
+    '-threads',
+    '-c++',
+    '-fcompact',
+    '-Wall',
+    '-fastdispatch',
+    '-fvirtual',
+    '-fastproxy',
+    '-dirvtable',
 ]
 
 swig_cmd = 'swig %s -o $TARGET -Iinclude -outdir %s $SOURCE' % (
