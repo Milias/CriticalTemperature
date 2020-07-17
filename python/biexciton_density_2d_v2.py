@@ -1,5 +1,4 @@
 from common import *
-import pyperclip
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -24,7 +23,7 @@ be_exc_sol = root_scalar(be_exc_func, method='brentq', bracket=[2,10])
 
 print(be_exc_sol.root)
 """
-print('E_X: %d eV' % (1e3 * sys.get_E_n(0.5)))
+print('E_X: %d meV' % (1e3 * sys.get_E_n(0.5)))
 print('a_0: %f nm' % sys.a0)
 
 mu_e_lim = sys.exc_mu_val(be_exc + 0.5 * be_biexc)
@@ -77,8 +76,8 @@ def solve_eqst_data(T_vec, N_vec):
 N_n, N_T = 1 << 9, 1 << 9
 #N_n, N_T = 1 << 4, 1 << 4
 
-n_gamma_vec = logspace(-2.2, 1, N_n) / sys.a0**2
-T_vec = logspace(1.8, log10(10e2), N_T)
+n_gamma_vec = logspace(-2.2, log10(2), N_n) / sys.a0**2
+T_vec = logspace(log10(90), 3, N_T)
 color_image = zeros((N_T, N_n, 3))
 
 try:
@@ -153,12 +152,12 @@ def calc_data(enum_n, i, j):
 
 
 def calc_image(
-    data,
-    i,
-    j,
-    selection=(0, 1, 2),
-    max_data_values=1,
-    min_data_values=0,
+        data,
+        i,
+        j,
+        selection=(0, 1, 2),
+        max_data_values=1,
+        min_data_values=0,
 ):
     if total_density:
         result = data[i, j] / max_data_values
@@ -336,7 +335,7 @@ else:
             extend = 'neither'
         else:
             boundaries_list = linspace(0, 2, 256)
-            ticks = [0, 1, 2]
+            ticks = array([0, 1, 2], dtype=float)
             format = ['$%.2f$', '$%.0f$', '$%.0f$'][selector_list[0]]
             extend = 'max'
 
@@ -401,19 +400,35 @@ if (include_excitons or include_biexcitons) or draw_all_lines == 1:
 
 if degeneracy == 1 or draw_all_lines == 1:
     if include_excitons or draw_all_lines == 1:
+        # NOTE: actual temperature to include in the paper, the next redefinition
+        # is for the eta_X = 1 / 2 line.
         T_lim = be_biexc * 0.5 / sys.c_kB / log(1 - 1 / e)
         print('Limit temperature: %.0f K' % T_lim)
+        T_lim = be_biexc * 0.5 / sys.c_kB / log(1 - sqrt(1 / e))
 
         local_T_vec = linspace(T_lim, T_vec[-1], 1 << 14)
         sys_T_vec = [system_data(m_e, m_h, eps_r, T) for T in local_T_vec]
         beta_vec = array([1 / (sys_T.c_kB * sys_T.T) for sys_T in sys_T_vec])
 
         n_boundary_deg_vec = array([
-            (sys_T.density_exc(log(1 - 1 / e) / sys_T.beta, 0) +
-             2 * sys_T.density_exc2(log(1 - 1 / e) / sys_T.beta, 0, be_biexc))
-            * sys_T.a0**2 for sys_T in sys_T_vec
+            (sys_T.density_exc(log(1 - sqrt(1 / e)) / sys_T.beta, 0) +
+             2 * sys_T.density_exc2(
+                 log(1 - sqrt(1 / e)) / sys_T.beta, 0, be_biexc)) * sys_T.a0**2
+            for sys_T in sys_T_vec
         ])
 
+        if len(selector_list) == 1:
+            cb.ax.plot(
+                [0.3],
+                [ticks[abs(ticks - 0.5).argmin()]],
+                color=colors_deg[1],
+                marker='o',
+                markeredgecolor='w',
+                markeredgewidth=0.8,
+                markersize=8.,
+                linestyle='',
+            )
+        """
         ax[0].plot(
             [
                 n_boundary_deg_vec[isfinite(n_boundary_deg_vec)][0],
@@ -428,6 +443,7 @@ if degeneracy == 1 or draw_all_lines == 1:
             markersize=5.,
             linestyle='',
         )
+        """
 
         ax[0].plot(
             n_boundary_deg_vec[isfinite(n_boundary_deg_vec)],
@@ -452,6 +468,18 @@ if degeneracy == 1 or draw_all_lines == 1:
              2 * sys_T.density_exc2(0, 0, -log(1 - 1 / e) / sys_T.beta)) *
             sys_T.a0**2 for sys_T in sys_T_vec
         ])
+
+        if len(selector_list) == 1:
+            cb.ax.plot(
+                [0.9],
+                [ticks[abs(ticks - 1.0).argmin()]],
+                color=colors_deg[2],
+                marker='D',
+                markeredgecolor='w',
+                markeredgewidth=0.8,
+                markersize=8.,
+                linestyle='',
+            )
 
         ax[0].plot(
             n_boundary_deg_vec,
@@ -507,8 +535,8 @@ if include_excitons:
 
 if include_biexcitons:
     ax[0].plot(
-        [3],
-        [1e2],
+        [1.3],
+        [110],
         color='w',
         marker='$X_2$',
         markeredgecolor='k',

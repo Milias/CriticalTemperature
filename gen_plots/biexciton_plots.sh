@@ -3,7 +3,9 @@ scons -j 32
 
 plots_folder='plots/papers/biexciton1'
 final_folder='/storage/Reference/Work/University/PhD/OwnPapers/biexcitons1/figures'
-file_id='g1-G6zBRT0qYcnFlfl6k3A'
+#file_id='g1-G6zBRT0qYcnFlfl6k3A'
+#file_id='HBITYggKRuOdz3QjfzF65w'
+file_id='tgHpID7rSQ2ijHeclWlnMw'
 
 args_list=()
 

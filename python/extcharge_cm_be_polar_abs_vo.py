@@ -356,12 +356,18 @@ popt = load_data(
     extra_dict_params,
 )
 
-print(popt.tolist(), flush=True)
-
 pcov = extra_dict_params['pcov']
+perr = sqrt(diag(pcov))
 
-print(popt[28:32] * 1e3)
-print(sqrt(diag(pcov)[28:32]) * 1e3)
+for i, (p, p_err) in enumerate(zip(popt, perr)):
+    print('[%d] %.3f±%.4f' % (i, p, p_err))
+
+for i in range(8):
+    print('[%d] %.3f±%.4f' % (
+        i,
+        popt[i + 12] + popt[i + 20],
+        perr[i + 12] + perr[i + 20],
+    ))
 
 savetxt(
     'extra/extcharge/export_abs/vo_popt.csv',
@@ -403,7 +409,8 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/ExternalCharge/%s.pdf' %
-    ('cm_be_polar_abs_vo_%ds' % (len(states_hh_vec[0]) + len(states_lh_vec[0]))),
+    ('cm_be_polar_abs_vo_%ds' %
+     (len(states_hh_vec[0]) + len(states_lh_vec[0]))),
     transparent=True,
 )
 
