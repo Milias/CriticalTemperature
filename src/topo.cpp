@@ -1,6 +1,489 @@
 #include "topo.h"
 #include "topo_utils.h"
 
+arma::cx_mat44 topo_ham_3d(
+    double kx, double ky, double kz, const system_data_v2& sys) {
+    arma::cx_mat44 hamilt0(arma::fill::none);
+
+    const double k2{kx * kx + ky * ky};
+    const double kz2{kz * kz};
+    const std::complex<double> kp(kx, ky);
+    const std::complex<double> km(kx, -ky);
+
+    hamilt0(0, 0) = sys.params.C - (sys.params.B2 - sys.params.D2) * k2 +
+                    (-sys.params.B1 + sys.params.D1) * kz2 + sys.params.M;
+    hamilt0(1, 0) = sys.params.A1 * kz;
+    hamilt0(2, 0) = 0;
+    hamilt0(3, 0) = sys.params.A2 * km;
+
+    hamilt0(0, 1) = sys.params.A1 * kz;
+    hamilt0(1, 1) = sys.params.C + (sys.params.B2 + sys.params.D2) * k2 +
+                    (sys.params.B1 + sys.params.D1) * kz2 - sys.params.M;
+    hamilt0(2, 1) = sys.params.A2 * km;
+    hamilt0(3, 1) = 0;
+
+    hamilt0(0, 2) = 0;
+    hamilt0(1, 2) = sys.params.A2 * kp;
+    hamilt0(2, 2) = sys.params.C - (sys.params.B2 - sys.params.D2) * k2 +
+                    (-sys.params.B1 + sys.params.D1) * kz2 + sys.params.M;
+    hamilt0(3, 2) = -sys.params.A1 * kz;
+
+    hamilt0(0, 3) = sys.params.A2 * kp;
+    hamilt0(1, 3) = 0;
+    hamilt0(2, 3) = -sys.params.A1 * kz;
+    hamilt0(3, 3) = sys.params.C + (sys.params.B2 + sys.params.D2) * k2 +
+                    (sys.params.B1 + sys.params.D1) * kz2 - sys.params.M;
+
+    return hamilt0;
+}
+
+template <uint32_t n = 4>
+arma::vec::fixed<n> topo_eigenval_3d(
+    double k, double kz, const system_data_v2& sys) {
+    arma::vec::fixed<n> vals(arma::fill::none);
+
+    const double k2{k * k}, kz2{kz * kz};
+
+    vals(0) =
+        sys.params.C + sys.params.D2 * k2 + sys.params.D1 * kz2 -
+        std::sqrt(
+            std::pow(sys.params.A2, 2) * k2 +
+            std::pow(sys.params.A1, 2) * kz2 +
+            std::pow(
+                sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2));
+    vals(1) =
+        sys.params.C + sys.params.D2 * k2 + sys.params.D1 * kz2 +
+        std::sqrt(
+            std::pow(sys.params.A2, 2) * k2 +
+            std::pow(sys.params.A1, 2) * kz2 +
+            std::pow(
+                sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2));
+
+    if constexpr (n == 4) {
+        vals(2) = vals(1);
+        vals(3) = vals(1);
+        vals(1) = vals(0);
+    }
+
+    return vals;
+}
+
+template <uint32_t n = 4>
+arma::vec::fixed<n> topo_eigenval_2d(double k, const system_data_v2& sys) {
+    arma::vec::fixed<n> vals(arma::fill::none);
+
+    const double k2{k * k};
+
+    vals(0) = sys.params.C + sys.params.D2 * k2 -
+              std::sqrt(
+                  std::pow(sys.params.A2, 2) * k2 +
+                  std::pow(sys.params.B2 * k2 - sys.params.M, 2));
+    vals(1) = sys.params.C + sys.params.D2 * k2 +
+              std::sqrt(
+                  std::pow(sys.params.A2, 2) * k2 +
+                  std::pow(sys.params.B2 * k2 - sys.params.M, 2));
+
+    if constexpr (n == 4) {
+        vals(2) = vals(1);
+        vals(3) = vals(1);
+        vals(1) = vals(0);
+    }
+
+    return vals;
+}
+
+arma::cx_mat44 topo_eigenvec_3d(
+    double kx, double ky, double kz, const system_data_v2& sys) {
+    arma::cx_mat44 vecs(arma::fill::none);
+
+    const double k2{kx * kx + ky * ky};
+    const double kz2{kz * kz};
+    const std::complex<double> kp(kx, ky);
+    const std::complex<double> km(kx, -ky);
+
+    vecs(0, 0) =
+        -(sys.params.B2 * k2 + sys.params.B1 * kz2 +
+          std::sqrt(
+              std::pow(sys.params.A2, 2) * k2 +
+              std::pow(sys.params.A1, 2) * kz2 +
+              std::pow(
+                  sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M,
+                  2)) -
+          sys.params.M) /
+        (sys.params.A2 * kp);
+    vecs(1, 0) = sys.params.A1 * kz / (sys.params.A2 * kp);
+    vecs(2, 0) = 0;
+    vecs(3, 0) = 1;
+
+    vecs(0, 1) = sys.params.A1 * kz / (sys.params.A2 * kp);
+    vecs(1, 1) =
+        (sys.params.B2 * k2 + sys.params.B1 * kz2 -
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) -
+         sys.params.M) /
+        (sys.params.A2 * kp);
+    vecs(2, 1) = 1;
+    vecs(3, 1) = 0;
+
+    vecs(0, 2) =
+        (-sys.params.B2 * k2 - sys.params.B1 * kz2 +
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) +
+         sys.params.M) /
+        (sys.params.A2 * kp);
+    vecs(1, 2) = sys.params.A1 * kz / (sys.params.A2 * kp);
+    vecs(2, 2) = 0;
+    vecs(3, 2) = 1;
+
+    vecs(0, 3) = sys.params.A1 * kz / (sys.params.A2 * kp);
+    vecs(1, 3) =
+        (sys.params.B2 * k2 + sys.params.B1 * kz2 +
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) -
+         sys.params.M) /
+        (sys.params.A2 * kp);
+    vecs(2, 3) = 1;
+    vecs(3, 3) = 0;
+
+    return vecs;
+}
+
+arma::cx_mat44 topo_eigenvec_2d(
+    double kx, double ky, const system_data_v2& sys) {
+    arma::cx_mat44 vecs(arma::fill::none);
+
+    const double k2{kx * kx + ky * ky};
+    const std::complex<double> kp(kx, ky);
+    const std::complex<double> km(kx, -ky);
+
+    vecs(0, 0) = -(sys.params.B2 * k2 +
+                   std::sqrt(
+                       std::pow(sys.params.A2, 2) * k2 +
+                       std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                   sys.params.M) /
+                 (sys.params.A2 * kp);
+    vecs(1, 0) = 0;
+    vecs(2, 0) = 0;
+    vecs(3, 0) = 1;
+
+    vecs(0, 1) = 0;
+    vecs(1, 1) = (sys.params.B2 * k2 -
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                  sys.params.M) /
+                 (sys.params.A2 * kp);
+    vecs(2, 1) = 1;
+    vecs(3, 1) = 0;
+
+    vecs(0, 2) = (-sys.params.B2 * k2 +
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) +
+                  sys.params.M) /
+                 (sys.params.A2 * kp);
+    vecs(1, 2) = 0;
+    vecs(2, 2) = 0;
+    vecs(3, 2) = 1;
+
+    vecs(0, 3) = 0;
+    vecs(1, 3) = (sys.params.B2 * k2 +
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                  sys.params.M) /
+                 (sys.params.A2 * kp);
+    vecs(2, 3) = 1;
+    vecs(3, 3) = 0;
+
+    return vecs;
+}
+
+arma::cx_mat44 topo_orthU_3d(
+    double kx, double ky, double kz, const system_data_v2& sys) {
+    /*
+    return arma::orth(topo_eigenvec_3d(kx, ky, kz, sys)).eval().clean(1e-14);
+    */
+
+    // arma::cx_mat44 vecs(arma::fill::none);
+
+    /*
+    const double k2{kx * kx + ky * ky};
+    const double kz2{kz * kz};
+    const std::complex<double> kp(kx, ky);
+    const std::complex<double> km(kx, -ky);
+
+    if ((k2 + kz2) < 1e-14) {
+        vecs.eye();
+        return vecs;
+    }
+
+    const double orth_norm_inv1{
+        std::sqrt(
+            (std::pow(sys.params.A2, 2) * k2) /
+            (std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 +
+                     std::sqrt(
+                         std::pow(sys.params.A2, 2) * k2 +
+                         std::pow(sys.params.A1, 2) * kz2 +
+                         std::pow(
+                             sys.params.B2 * k2 + sys.params.B1 * kz2 -
+                                 sys.params.M,
+                             2)) -
+                     sys.params.M,
+                 2))),
+    };
+
+    const double orth_norm_inv2{
+        std::sqrt(
+            (std::pow(sys.params.A2, 2) * k2) /
+            (std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 -sys.params.B2 * k2 - sys.params.B1 * kz2 +
+                     std::sqrt(
+                         std::pow(sys.params.A2, 2) * k2 +
+                         std::pow(sys.params.A1, 2) * kz2 +
+                         std::pow(
+                             sys.params.B2 * k2 + sys.params.B1 * kz2 -
+                                 sys.params.M,
+                             2)) +
+                     sys.params.M,
+                 2))),
+    };
+
+    vecs(0, 0) =
+        -(sys.params.B2 * k2 + sys.params.B1 * kz2 +
+          std::sqrt(
+              std::pow(sys.params.A2, 2) * k2 +
+              std::pow(sys.params.A1, 2) * kz2 +
+              std::pow(
+                  sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M,
+                  2)) -
+          sys.params.M) /
+        (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(1, 0) = sys.params.A1 * kz / (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(2, 0) = 0;
+    vecs(3, 0) = orth_norm_inv1;
+
+    vecs(0, 2) = sys.params.A1 * kz / (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(1, 2) =
+        (sys.params.B2 * k2 + sys.params.B1 * kz2 -
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) -
+         sys.params.M) /
+        (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(2, 2) = orth_norm_inv2;
+    vecs(3, 2) = 0;
+
+    vecs(0, 3) =
+        (-sys.params.B2 * k2 - sys.params.B1 * kz2 +
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) +
+         sys.params.M) /
+        (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(1, 3) = sys.params.A1 * kz / (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(2, 3) = 0;
+    vecs(3, 3) = orth_norm_inv2;
+
+    vecs(0, 1) = sys.params.A1 * kz / (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(1, 1) =
+        (sys.params.B2 * k2 + sys.params.B1 * kz2 +
+         std::sqrt(
+             std::pow(sys.params.A2, 2) * k2 +
+             std::pow(sys.params.A1, 2) * kz2 +
+             std::pow(
+                 sys.params.B2 * k2 + sys.params.B1 * kz2 - sys.params.M, 2)) -
+         sys.params.M) /
+        (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(2, 1) = orth_norm_inv1;
+    vecs(3, 1) = 0;
+    */
+
+    arma::cx_mat44 mat{topo_eigenvec_3d(kx, ky, kz, sys)};
+    arma::cx_mat44 vecs(arma::fill::none);
+
+    vecs.unsafe_col(0) = mat.unsafe_col(0) / arma::norm(mat.unsafe_col(0));
+    for (uint32_t i = 1; i < 4; i++) {
+        vecs.unsafe_col(i) = mat.unsafe_col(i);
+        for (uint32_t j = 0; j < i; j++) {
+            vecs.unsafe_col(i) -=
+                (arma::cdot(vecs.unsafe_col(j), vecs.unsafe_col(i)) /
+                 arma::cdot(vecs.unsafe_col(j), vecs.unsafe_col(j))) *
+                vecs.unsafe_col(j);
+        }
+        vecs.unsafe_col(i) = arma::normalise(vecs.unsafe_col(i));
+    }
+
+    return vecs;
+}
+
+arma::cx_mat44 topo_orthU_2d(double kx, double ky, const system_data_v2& sys) {
+    arma::cx_mat44 vecs(arma::fill::none);
+
+    const double k2{kx * kx + ky * ky};
+    const std::complex<double> kp(kx, ky);
+    const std::complex<double> km(kx, -ky);
+
+    if (k2 < 1e-14) {
+        vecs.eye();
+        return vecs;
+    }
+
+    const double orth_norm_inv1{
+        1.0 / (M_SQRT2 *
+               std::sqrt(
+                   1.0 +
+                   1.0 / (std::sqrt(
+                              std::pow(sys.params.A2, 2) * k2 +
+                              std::pow(sys.params.M - sys.params.B2 * k2, 2)) /
+                              (sys.params.B2 * k2 - sys.params.M) -
+                          1.0))),
+    };
+
+    const double orth_norm_inv2{
+        1.0 / (M_SQRT2 *
+               std::sqrt(
+                   1.0 -
+                   1.0 / (std::sqrt(
+                              std::pow(sys.params.A2, 2) * k2 +
+                              std::pow(sys.params.M - sys.params.B2 * k2, 2)) /
+                              (sys.params.B2 * k2 - sys.params.M) +
+                          1.0))),
+    };
+
+    vecs(0, 0) = -(sys.params.B2 * k2 +
+                   std::sqrt(
+                       std::pow(sys.params.A2, 2) * k2 +
+                       std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                   sys.params.M) /
+                 (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(1, 0) = 0;
+    vecs(2, 0) = 0;
+    vecs(3, 0) = orth_norm_inv1;
+
+    vecs(0, 2) = 0;
+    vecs(1, 2) = (sys.params.B2 * k2 -
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                  sys.params.M) /
+                 (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(2, 2) = orth_norm_inv2;
+    vecs(3, 2) = 0;
+
+    vecs(0, 3) = (-sys.params.B2 * k2 +
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) +
+                  sys.params.M) /
+                 (sys.params.A2 * kp) * orth_norm_inv2;
+    vecs(1, 3) = 0;
+    vecs(2, 3) = 0;
+    vecs(3, 3) = orth_norm_inv2;
+
+    vecs(0, 1) = 0;
+    vecs(1, 1) = (sys.params.B2 * k2 +
+                  std::sqrt(
+                      std::pow(sys.params.A2, 2) * k2 +
+                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
+                  sys.params.M) /
+                 (sys.params.A2 * kp) * orth_norm_inv1;
+    vecs(2, 1) = orth_norm_inv1;
+    vecs(3, 1) = 0;
+
+    return vecs;
+}
+
+arma::cx_mat44 topo_vert_3d(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    return topo_orthU_3d(
+               0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], 0.5 * k0[2] + k[2], sys)
+               .t() *
+           topo_orthU_3d(
+               0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], 0.5 * k0[2] - k[2],
+               sys);
+}
+
+arma::cx_mat44 topo_vert_2d(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    return topo_orthU_2d(0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], sys).t() *
+           topo_orthU_2d(0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], sys);
+}
+
+std::vector<std::complex<double>> topo_ham_3d_v(
+    double kx, double ky, double kz, const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_ham_3d(kx, ky, kz, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
+std::vector<std::complex<double>> topo_orthU_3d_v(
+    double kx, double ky, double kz, const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_orthU_3d(kx, ky, kz, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
+std::vector<std::complex<double>> topo_orthU_2d_v(
+    double kx, double ky, const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_orthU_2d(kx, ky, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
+std::vector<double> topo_eigenval_3d_v(
+    double k, double kz, const system_data_v2& sys) {
+    arma::vec4 r(topo_eigenval_3d(k, kz, sys));
+
+    return std::vector<double>(r.begin(), r.end());
+}
+
+std::vector<double> topo_eigenval_2d_v(double k, const system_data_v2& sys) {
+    arma::vec4 r(topo_eigenval_2d(k, sys));
+
+    return std::vector<double>(r.begin(), r.end());
+}
+
+std::vector<std::complex<double>> topo_vert_3d_v(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_vert_3d(k0, k, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
+std::vector<std::complex<double>> topo_vert_2d_v(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_vert_2d(k0, k, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
 arma::vec topo_disp_p(const arma::vec& k_vec, const system_data_v2& sys) {
     return 0.5 * std::pow(sys.c_hbarc, 2) * arma::pow(k_vec, 2) /
            sys.d_params.m_p;

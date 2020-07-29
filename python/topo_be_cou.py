@@ -41,7 +41,7 @@ be_bnd = 0.4
 be_cou = topo_be_t_cou(N_k, sys, 0)
 print(be_cou)
 
-z_vec  = linspace(1e-3, be_bnd, 1 << 9)
+z_vec = linspace(1e-3, be_bnd, 1 << 9)
 det_vec = topo_det_t_cou_vec(z_vec, N_k, sys)
 
 n_x, n_y = 1, 1
