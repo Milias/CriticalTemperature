@@ -18,10 +18,10 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-k_val = array([0.04, 0.06])
-kz_val = 0.1
+k_val = array([0.08, 0.03])
+kz_val = 0.00
 #"""
-U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys)).reshape(4, 4)
+U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
 U_mat_d = U_mat.T.conjugate()
 eig_vals = diagflat(topo_eigenval_3d_v(sqrt(sum(k_val * k_val)), kz_val, sys))
 
@@ -33,11 +33,17 @@ print('U_mat_d * U_mat')
 print(U_mat_d.dot(U_mat))
 print()
 
-print((U_mat_d.dot(eig_vals).dot(U_mat)))
-print(array(topo_ham_3d_v(*k_val, kz_val, sys)).reshape(4, 4).T)
+print((U_mat_d.dot(eig_vals).dot(U_mat)).T)
+hamilt = array(topo_ham_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
+
+print(diag(eig_vals))
+print(hamilt)
+print(amax(abs(hamilt-(U_mat_d.dot(eig_vals).dot(U_mat)).T)))
+print(scipy.linalg.eigvals(hamilt))
+
 #"""
 
-th_val = 0.0 * pi
+th_val = 0.25 * pi
 k_vec = linspace(-0.35, 0.35, 1 << 8)
 result = zeros((k_vec.size, 4, 4), dtype=complex)
 

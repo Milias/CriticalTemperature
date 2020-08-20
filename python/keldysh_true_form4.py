@@ -45,8 +45,8 @@ m_e, m_h, T = 0.22, 0.41, 294  # K
 
 eps_vec = eps_sol / array([0.1])
 
-sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, eps_sol)
-sys_vec = [system_data(m_e, m_h, eps_sol, T, size_d, eps) for eps in eps_vec]
+sys_sol = system_data(m_e, m_h, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
+sys_vec = [system_data(m_e, m_h, eps_sol, T, size_d, 0, 0, 0, 0, eps) for eps in eps_vec]
 
 
 def integ_pot(pot_func, x, sys):
@@ -108,25 +108,6 @@ for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
     energy_norm = sys_sol.c_aEM * sys_sol.c_hbarc / sys.eps_mat / sys.size_d
 
     ax[0].semilogx(
-        x_vec,
-        ke_vec[:, n_eps] / energy_norm,
-        color=c,
-        linestyle='-',
-        linewidth=2.0,
-        label=r'$V^{RK}(r)$',
-        zorder=10,
-    )
-
-    ax[0].semilogx(
-        x_vec[x_vec < 0.09],
-        -size_d / x_vec[x_vec < 0.09],
-        color='b',
-        linestyle='-',
-        linewidth=0.8,
-        label=r'$V^{C}(r)$',
-    )
-
-    ax[0].semilogx(
         x_vec[x_vec > 0.11],
         hn_vec[x_vec > 0.11, n_eps],
         color='m',
@@ -138,6 +119,16 @@ for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
     )
 
     ax[0].semilogx(
+        x_vec,
+        ke_vec[:, n_eps] / energy_norm,
+        color=c,
+        linestyle='-',
+        linewidth=2.0,
+        label=r'$V^{RK}(r)$',
+        zorder=10,
+    )
+
+    ax[0].semilogx(
         x_vec[x_vec > 1.1],
         -size_d_eff(sys) / x_vec[x_vec > 1.1],
         color='g',
@@ -146,6 +137,15 @@ for (n_eps, sys), c in zip(enumerate(sys_vec), colors):
         dash_capstyle='round',
         linewidth=1.0,
         label=r'$V_{sol}^{C}(r)$',
+    )
+
+    ax[0].semilogx(
+        x_vec[x_vec < 0.09],
+        -size_d / x_vec[x_vec < 0.09],
+        color='b',
+        linestyle='-',
+        linewidth=0.8,
+        label=r'$V^{C}(r)$',
     )
 
 ax[0].text(
@@ -172,19 +172,23 @@ ax[0].text(
     fontsize=28,
 )
 
-ax[0].set_yticks([0])
-ax[0].yaxis.set_label_coords(-0.02, 0.5)
+#ax[0].set_yticks([0])
+#ax[0].yaxis.set_label_coords(-0.02, 0.5)
 
-ax[0].set_xticks([0.1, 1])
-ax[0].set_xticks([], minor=True)
-ax[0].set_xticklabels([r'$d$', r'$d^*$'])
-ax[0].xaxis.tick_top()
+#ax[0].xaxis.tick_top()
 
 ax[0].set_ylabel(r'$V(r)$')
-ax[0].set_xlabel(r'$r$')
+ax[0].set_xlabel(r'$r$ (nm)')
 
 ax[0].set_ylim(-25, 0)
 ax[0].set_xlim(x_vec[0], x_vec[-1])
+
+ax_top = ax[0].twiny()
+ax_top.set_xlim(x_vec[0], x_vec[-1])
+ax_top.set_xscale('log')
+ax_top.set_xticks([0.1, 1])
+ax_top.set_xticks([], minor=True)
+ax_top.set_xticklabels([r'$d$', r'$d^*$'])
 
 ax[0].legend(loc=0)
 

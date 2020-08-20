@@ -18,47 +18,39 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-k_val = array([0.11, 0.06])
-kz_val = 0.10
-#"""
-U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys)).reshape(4, 4)
-U_mat_d = U_mat.T.conjugate()
-eig_vals = diagflat(topo_eigenval_3d_v(sqrt(sum(k_val * k_val)), kz_val, sys))
+k_val = array([0.08, 0.03])
+kz_val = 0.00
 
-print('U_mat')
-print(U_mat)
-print('U_mat_d')
-print(U_mat_d)
-print('U_mat_d * U_mat')
-print(U_mat_d.dot(U_mat))
-print()
-
-print((U_mat_d.dot(eig_vals).dot(U_mat)))
-print(array(topo_ham_3d_v(*k_val, kz_val, sys)).reshape(4, 4).T)
-#"""
-
-th_val = 0.0 * pi
+th_val = 0.25 * pi
 k_vec = linspace(-0.35, 0.35, 1 << 8)
-result = zeros((k_vec.size, 4, 4), dtype=complex)
-
-disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in k_vec])
+result = zeros((k_vec.size, 16, 16), dtype=complex)
 
 for ii, k in enumerate(k_vec):
     result[ii] = array(
-        topo_orthU_3d_v(
-            k * cos(th_val),
-            k * sin(th_val),
-            kz_val,
+        topo_cou_3d_v(
+            [*k_val, kz_val],
+            [*(-k_val), -kz_val],
+            [k * cos(th_val), k * sin(th_val), 0.0],
             sys,
         ),
         order='F',
-    ).reshape(4, 4)
+    ).reshape(16, 16)
 
-n_x, n_y = 4, 4
+n_x, n_y = 16, 16
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-for n, (i, j) in enumerate(itertools.product(range(4), range(4))):
+band_labels = ('v', 'v\'', 'c', 'c\'')
+band_labels_pairs = tuple(itertools.product(band_labels, repeat=2))
+band_labels_all = []
+
+for p1 in band_labels_pairs:
+    for p2 in band_labels_pairs:
+        band_labels_all.append((*p1, *p2))
+
+print(band_labels_all)
+
+for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     plot_data = result[:, i, j]
 
     ax[n].plot(k_vec, real(plot_data), 'r-')
@@ -78,31 +70,19 @@ for n, (i, j) in enumerate(itertools.product(range(4), range(4))):
         linewidth=0.7,
     )
 
-    ax[n].plot(
-        k_vec,
-        disp_vec[:, i],
-        color='m',
-        linestyle='-',
-        linewidth=0.6,
+    ax[n].text(
+        k_vec[0],
+        -13,
+        '%s%s,%s%s' % band_labels_all[n],
+        fontsize=10,
     )
 
-    ax[n].plot(
-        k_vec,
-        disp_vec[:, j],
-        color='g',
-        linestyle='-',
-        linewidth=0.6,
-    )
-
-    if i < 3:
+    if i < 15:
         ax[n].set_xticklabels([])
     if j > 0:
         ax[n].set_yticklabels([])
-    """
-    if n > 0:
-        ax[n].set_ylim(*ax[0].get_ylim())
-    """
-    ax[n].set_ylim(-1.2, 1.2)
+
+    ax[n].set_ylim(-13, 13)
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
