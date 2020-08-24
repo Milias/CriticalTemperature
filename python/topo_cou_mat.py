@@ -21,7 +21,8 @@ sys = system_data_v2(params)
 k_val = array([0.08, 0.03])
 kz_val = 0.00
 
-th_val = 0.25 * pi
+#th_val = 0.0 * pi
+th_val = arctan2(k_val[0], k_val[1])
 k_vec = linspace(-0.35, 0.35, 1 << 8)
 result = zeros((k_vec.size, 16, 16), dtype=complex)
 
@@ -41,14 +42,16 @@ fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
 band_labels = ('v', 'v\'', 'c', 'c\'')
-band_labels_pairs = tuple(itertools.product(band_labels, repeat=2))
-band_labels_all = []
+band_labels_all = array(tuple(itertools.product(
+    band_labels,
+    repeat=4,
+))).reshape(4, 4, 4, 4, 4)
 
-for p1 in band_labels_pairs:
-    for p2 in band_labels_pairs:
-        band_labels_all.append((*p1, *p2))
+band_labels_all = band_labels_all.transpose(0, 2, 1, 3, 4).reshape(16, 16, 4)
 
 print(band_labels_all)
+
+plot_max = 20
 
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     plot_data = result[:, i, j]
@@ -72,8 +75,8 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
 
     ax[n].text(
         k_vec[0],
-        -13,
-        '%s%s,%s%s' % band_labels_all[n],
+        -plot_max,
+        '%s%s,%s%s' % tuple(band_labels_all[i, j]),
         fontsize=10,
     )
 
@@ -82,7 +85,7 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     if j > 0:
         ax[n].set_yticklabels([])
 
-    ax[n].set_ylim(-13, 13)
+    ax[n].set_ylim(-plot_max, plot_max)
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
