@@ -231,6 +231,7 @@ struct sys_params {
      */
     double eps_sol; // dimensionless
     double T;       // K
+    double size_d;  // nm
 
     /*
      * Topological hamiltonian parameters.

@@ -19,7 +19,7 @@ params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
 k_val = array([0.08, 0.03])
-kz_val = 0.00
+kz_val = 0.0
 #"""
 U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
 U_mat_d = U_mat.T.conjugate()
@@ -38,46 +38,64 @@ hamilt = array(topo_ham_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
 
 print(diag(eig_vals))
 print(hamilt)
-print(amax(abs(hamilt-(U_mat_d.dot(eig_vals).dot(U_mat)).T)))
+print(amax(abs(hamilt - (U_mat_d.dot(eig_vals).dot(U_mat)).T)))
 print(scipy.linalg.eigvals(hamilt))
 
 #"""
 
 th_val = 0.25 * pi
-k_vec = linspace(-0.35, 0.35, 1 << 8)
+k_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
 result = zeros((k_vec.size, 4, 4), dtype=complex)
 
 disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in k_vec])
 #disp_vec = array([topo_eigenval_2d_v(k, sys) for k in k_vec])
 
+states_transf = array([
+    [1, 0, 0, 0],
+    [0, 0, 0, 1],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+])
+
+disp_arr = zeros((k_vec.size, 4, 4, 2))
+for i, j in itertools.product(range(4), repeat=2):
+    disp_arr[:, i, j, 0] = disp_vec[:, i]
+    disp_arr[:, i, j, 1] = disp_vec[:, j]
+
 for ii, k in enumerate(k_vec):
     result[ii] = array(
-        topo_vert_3d_v(
-            [*k_val, kz_val],
-            [k * cos(th_val), k * sin(th_val), 0.0],
+        topo_vert_2d_dv(
+            k_val,
+            [k * cos(th_val), k * sin(th_val)],
             sys,
         ),
         order='F',
     ).reshape(4, 4)
 
-n_x, n_y = 4, 4
+    for i in range(2):
+        disp_arr[ii, :, :, i] = dot(dot(
+            states_transf,
+            disp_arr[ii, :, :, i],
+        ), states_transf.T)
+
+#n_x, n_y = 4, 4
+n_x, n_y = 2, 2
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-for n, (i, j) in enumerate(itertools.product(range(4), range(4))):
-    """
-    if i == 1 and j == 2:
-        plot_data = -result[:, i, j]
-    elif i == 2 and j == 1:
-        plot_data = -result[:, i, j].conjugate()
-    elif i == 3 and j == 0:
-        plot_data = result[:, i, j].conjugate()
-    else:
-        plot_data = result[:, i, j]
+band_labels = ('v', 'v\'', 'c\'', 'c')
+band_idx_all = array(tuple(itertools.product(
+    range(4),
+    repeat=2,
+))).reshape(4, 4, 2)
 
-    if i > j:
-        plot_data = plot_data[::-1]
-    """
+for i in range(2):
+    band_idx_all[:, :, i] = dot(dot(
+        states_transf,
+        band_idx_all[:, :, i],
+    ), states_transf.T)
+
+for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     plot_data = result[:, i, j]
 
     ax[n].plot(k_vec, real(plot_data), 'r-')
@@ -99,7 +117,7 @@ for n, (i, j) in enumerate(itertools.product(range(4), range(4))):
 
     ax[n].plot(
         k_vec,
-        disp_vec[:, i],
+        disp_arr[:, i, j, 0],
         color='m',
         linestyle='-',
         linewidth=0.6,
@@ -107,13 +125,23 @@ for n, (i, j) in enumerate(itertools.product(range(4), range(4))):
 
     ax[n].plot(
         k_vec,
-        disp_vec[:, j],
+        disp_arr[:, i, j, 1],
         color='g',
         linestyle='-',
         linewidth=0.6,
     )
 
-    if i < 3:
+    ax[n].text(
+        k_vec[0],
+        -1.2,
+        '%s%s' % (
+            band_labels[band_idx_all[i, j, 0]],
+            band_labels[band_idx_all[i, j, 1]],
+        ),
+        fontsize=14,
+    )
+
+    if i < n_x - 1:
         ax[n].set_xticklabels([])
     if j > 0:
         ax[n].set_yticklabels([])

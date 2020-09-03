@@ -21,8 +21,17 @@ std::vector<std::complex<double>> topo_vert_2d_v(
     const std::vector<double>& k0,
     const std::vector<double>& k,
     const system_data_v2& sys);
+std::vector<std::complex<double>> topo_vert_2d_dv(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys);
 
 std::vector<std::complex<double>> topo_cou_3d_v(
+    const std::vector<double>& q1,
+    const std::vector<double>& q2,
+    const std::vector<double>& q,
+    const system_data_v2& sys);
+std::vector<std::complex<double>> topo_cou_2d_v(
     const std::vector<double>& q1,
     const std::vector<double>& q2,
     const std::vector<double>& q,

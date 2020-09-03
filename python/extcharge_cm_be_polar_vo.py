@@ -73,7 +73,6 @@ m_e, m_lh, m_hh, T = 0.27, 0.52, 0.45, 294  # K
 sys_hh = system_data(m_e, m_hh, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
 sys_lh = system_data(m_e, m_lh, eps_sol, T, size_d, 0, 0, 0, 0, eps_sol)
 
-
 file_id_params = 'rBYyUhVlQ327WuiwjHkVhQ'
 
 extra_dict_params = {}
@@ -95,11 +94,16 @@ print(popt_abs.tolist(), flush=True)
 
 max_state = 8
 
+
 def plot_PL(ii, sys_hh, sys_lh, popt, extra_dict):
     globals().update(extra_dict)
 
-    states_hh_vec = [states_sorted_os(max_state, Lx, Ly) for Lx, Ly in sizes_vec]
-    states_lh_vec = [states_sorted_os(max_state, Lx, Ly) for Lx, Ly in sizes_vec]
+    states_hh_vec = [
+        states_sorted_os(max_state, Lx, Ly) for Lx, Ly in sizes_vec
+    ]
+    states_lh_vec = [
+        states_sorted_os(max_state, Lx, Ly) for Lx, Ly in sizes_vec
+    ]
 
     gamma, sigma = popt[0], popt[1]
     peak_hh = array(popt[2:6])
@@ -133,7 +137,8 @@ def plot_PL(ii, sys_hh, sys_lh, popt, extra_dict):
 
     data_lh = array([
         exciton_vo_nomb_vec(
-            E_vec - (popt_abs[6 * N_samples + ii] + popt_abs[4 * N_samples + ii]),
+            E_vec -
+            (popt_abs[6 * N_samples + ii] + popt_abs[4 * N_samples + ii]),
             popt_abs[7 * N_samples],
             popt_abs[7 * N_samples + 3],
             nx,
@@ -193,7 +198,8 @@ def plot_PL(ii, sys_hh, sys_lh, popt, extra_dict):
 
     colors = [
         matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-        for h in linspace(0, 0.7, len(states_hh_vec[ii]) + len(states_hh_vec[ii]) + 2)
+        for h in linspace(0, 0.7,
+                          len(states_hh_vec[ii]) + len(states_hh_vec[ii]) + 2)
     ]
 
     for jj, (data_state, state) in enumerate(zip(data_hh, states_hh_vec[ii])):

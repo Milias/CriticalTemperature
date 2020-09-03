@@ -336,30 +336,67 @@ arma::cx_mat44 topo_vert_2d(
            topo_orthU_2d(0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], sys);
 }
 
+arma::cx_mat44 topo_vert_2d_d(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    arma::umat transf = {
+        {1, 0, 0, 0},
+        {0, 0, 0, 1},
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+    };
+
+    return transf *
+           topo_orthU_2d(0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], sys).t() *
+           topo_orthU_2d(0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], sys) *
+           transf.t();
+}
+
 arma::cx_mat topo_cou_3d(
     const std::vector<double>& q1,
     const std::vector<double>& q2,
     const std::vector<double>& q,
     const system_data_v2& sys) {
-    arma::cx_mat44 mat1{
-        topo_orthU_3d(
-            0.5 * q1[0] + q[0], 0.5 * q1[1] + q[1], 0.5 * q1[2] + q[2], sys)
-                .t() *
-            topo_orthU_3d(
-                0.5 * q1[0] - q[0], 0.5 * q1[1] - q[1], 0.5 * q1[2] - q[2],
-                sys),
+    arma::cx_mat44 mat1{topo_vert_3d(q1, q, sys)};
+    arma::cx_mat44 mat2{topo_vert_3d(q2, q, sys)};
+
+    return topo_green_cou(arma::norm(arma::vec(q)), sys) *
+           arma::kron(mat1, mat2);
+}
+
+arma::cx_mat topo_cou_2d(
+    const std::vector<double>& q1,
+    const std::vector<double>& q2,
+    const std::vector<double>& q,
+    const system_data_v2& sys) {
+    arma::cx_mat44 mat1{topo_vert_2d(q1, q, sys)};
+    arma::cx_mat44 mat2{topo_vert_2d(q2, q, sys)};
+
+    return topo_green_cou(arma::norm(arma::vec(q)), sys) *
+           arma::kron(mat1, mat2);
+}
+
+arma::cx_mat topo_cou_2d_d(
+    const std::vector<double>& q1,
+    const std::vector<double>& q2,
+    const std::vector<double>& q,
+    const system_data_v2& sys) {
+    arma::cx_mat44 mat1{topo_vert_2d_d(q1, q, sys)};
+    arma::cx_mat44 mat2{topo_vert_2d_d(q2, q, sys)};
+
+    arma::mat transf = {
+        {1, 0, 0, 0},
+        {0, 0, 1, 0},
+        {0, 1, 0, 0},
+        {0, 0, 0, 1},
     };
 
-    arma::cx_mat44 mat2{
-        topo_orthU_3d(
-            0.5 * q2[0] + q[0], 0.5 * q2[1] + q[1], 0.5 * q2[2] + q[2], sys)
-                .t() *
-            topo_orthU_3d(
-                0.5 * q2[0] - q[0], 0.5 * q2[1] - q[1], 0.5 * q2[2] - q[2],
-                sys),
-    };
+    arma::mat eye(2, 2, arma::fill::eye);
+    arma::mat cou_transf = arma::kron(eye, arma::kron(transf, eye));
 
-    return topo_green_cou(arma::norm(arma::vec(q)), sys) * arma::kron(mat1, mat2);
+    return topo_green_cou(arma::norm(arma::vec(q)), sys) * cou_transf *
+           arma::kron(mat1, mat2) * cou_transf.t();
 }
 
 std::vector<std::complex<double>> topo_ham_3d_v(
@@ -414,12 +451,31 @@ std::vector<std::complex<double>> topo_vert_2d_v(
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
 
+std::vector<std::complex<double>> topo_vert_2d_dv(
+    const std::vector<double>& k0,
+    const std::vector<double>& k,
+    const system_data_v2& sys) {
+    arma::cx_mat44 r(topo_vert_2d_d(k0, k, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
 std::vector<std::complex<double>> topo_cou_3d_v(
     const std::vector<double>& q1,
     const std::vector<double>& q2,
     const std::vector<double>& q,
     const system_data_v2& sys) {
     arma::cx_mat r(topo_cou_3d(q1, q2, q, sys));
+
+    return std::vector<std::complex<double>>(r.begin(), r.end());
+}
+
+std::vector<std::complex<double>> topo_cou_2d_v(
+    const std::vector<double>& q1,
+    const std::vector<double>& q2,
+    const std::vector<double>& q,
+    const system_data_v2& sys) {
+    arma::cx_mat r(topo_cou_2d_d(q1, q2, q, sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }

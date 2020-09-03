@@ -27,9 +27,10 @@ N_eps = 64
 N_ns = 5
 
 eps_mat_cou = 6.93623977987222
-eps_mat_qcke = 13.983616346186604
-"""
-sys_mat_cdse = system_data(m_e, m_h, eps_sol, T, size_d, eps_mat_qcke)
+#eps_mat_qcke = 13.983616346186604
+eps_mat_qcke = 23.5
+#"""
+sys_mat_cdse = system_data(m_e, m_h, eps_sol, T, size_d, 0, 0, 0, 0, eps_mat_qcke)
 
 be_mat_qcke_vec = array(
     time_func(
@@ -40,9 +41,9 @@ be_mat_qcke_vec = array(
         sys_mat_cdse,
         be_min,
     ))
-"""
-
 #"""
+
+"""
 be_mat_qcke_vec = array([
     -0.19299999987750235,
     -0.09614861524056979,
@@ -50,9 +51,13 @@ be_mat_qcke_vec = array([
     -0.03918135199515177,
     -0.027930693472945932,
 ])
-#"""
+"""
+
+print(be_mat_qcke_vec[1:] - be_mat_qcke_vec[0])
 
 print(be_mat_qcke_vec.tolist())
+
+exit()
 
 eps_vec = logspace(log10(eps_sol), log10(20.0), N_eps)
 

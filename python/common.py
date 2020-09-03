@@ -157,6 +157,7 @@ register_pickle_custom(
     'm_lh',
     'm_hh',
     'eps_sol',
+    'size_d',
     'T',
     'M',
     'A1',
