@@ -6,10 +6,13 @@ struct topo_potential_s {
     double k2;
 
     const system_data_v2& sys;
+
+    uint8_t i = 0, j = 0;
 };
 
 template <
-    double (*potential_func)(const double[2], const system_data_v2&),
+    double (*potential_func)(
+        const double[2], const system_data_v2&, uint8_t, uint8_t),
     arma::vec (*dispersion_func)(const arma::vec&, const system_data_v2&)>
 struct topo_mat_s {
     using T = double;
@@ -48,7 +51,7 @@ struct topo_mat_s {
                     (1.0 - u0(j)) / u0(j),
                 };
 
-                T r = potential_func(kk, sys);
+                T r = potential_func(kk, sys, 0, 0);
 
                 mat_potcoef(i, j) = r;
                 mat_potcoef(j, i) = r;

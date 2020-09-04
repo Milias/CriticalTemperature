@@ -9,20 +9,6 @@ plt.rcParams.update({
 
 fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
 
-
-def compute_cou_mat(result, q_vec, q_ang, k_vec, sys):
-    for ii, q in enumerate(q_vec):
-        result[ii] = array(
-            topo_cou_2d_v(
-                k_vec,
-                -k_vec,
-                [q * cos(q_ang), q * sin(q_ang)],
-                sys,
-            ),
-            order='F',
-        ).reshape(16, 16)
-
-
 states_transf = array([
     [1, 0, 0, 0],
     [0, 0, 0, 1],
@@ -52,24 +38,35 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_th = 9
+N_k = 1 << 8
+k1_vec = linspace(1 / N_k, 1, N_k)
+k2_vec = linspace(1 / N_k, 1, N_k)
 
-q_ang_vec = linspace(0, 2, N_th) * pi
-k_vec = array([0.05, 0])
-q_vec = linspace(-0.35, 0.35, 1 << 10)
+result = zeros((4, 4, k1_vec.size, k2_vec.size), dtype=complex)
 
-result = zeros((N_th, q_vec.size, 16, 16), dtype=complex)
+for i, j in itertools.product(range(4), repeat=2):
+    print((i, j), flush=True)
 
-for ii, q_ang in enumerate(q_ang_vec):
-    compute_cou_mat(
-        result[ii],
-        q_vec,
-        arctan2(k_vec[1], k_vec[0]) + q_ang,
-        k_vec,
-        sys,
-    )
+    result[i, j] = array(
+        time_func(
+            topo_eff_cou_2d_mat,
+            k1_vec,
+            k2_vec,
+            i,
+            j,
+            sys,
+        )).reshape(N_k, N_k)
 
-#n_x, n_y = 16, 16
+    print("", flush=True)
+
+print(amax(real(result)))
+print(amin(real(result)))
+print(average(real(result)))
+
+print(amax(imag(result)))
+print(amin(imag(result)))
+print(average(imag(result)))
+
 n_x, n_y = 4, 4
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
@@ -92,55 +89,33 @@ for i in range(4):
         band_idx_all[:, :, i],
     ), cou_transf.T)
 
-plot_max = 20
-
-colors = [
-    matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-    for h in linspace(0, 0.7, N_th)
-]
+plot_max = 2
 
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
-    for ii in range(N_th):
-        ax[n].plot(
-            q_vec,
-            real(result[ii, :, i, j]),
-            linestyle='-',
-            linewidth=0.9,
-            color=colors[ii],
-            label=r'$\theta: %.2f\pi$' % (q_ang_vec[ii] / pi),
-        )
-        ax[n].plot(
-            q_vec,
-            imag(result[ii, :, i, j]),
-            linestyle='--',
-            linewidth=0.9,
-            color=colors[ii],
-        )
-
-    ax[n].set_xlim(q_vec[0], q_vec[-1])
-    ax[n].axhline(
-        y=0,
-        color='k',
-        linestyle='--',
-        linewidth=0.7,
-    )
-    ax[n].axvline(
-        x=0,
-        color='k',
-        linestyle='--',
-        linewidth=0.7,
+    ax[n].imshow(
+        clip(real(result[i, j]), -plot_max, plot_max),
+        cmap=cm.cividis,
+        aspect='auto',
+        extent=(1 / N_k, 1, 1 / N_k, 1),
+        interpolation='none',
+        vmin=-plot_max,
+        vmax=plot_max,
+        origin='lower',
     )
 
-    ax[n].text(
-        q_vec[0],
-        -plot_max,
-        r'$%s%s \rightarrow %s%s$' % (
+    ax[n].plot(
+        [0.5],
+        [0.95],
+        color='w',
+        marker=r'$%s%s \rightarrow %s%s$' % (
             band_labels[band_idx_all[i, j, 1]],
             band_labels[band_idx_all[i, j, 3]],
             band_labels[band_idx_all[i, j, 0]],
             band_labels[band_idx_all[i, j, 2]],
         ),
-        fontsize=14,
+        markeredgecolor='k',
+        markeredgewidth=0.2,
+        markersize=100,
     )
 
     if i < n_x - 1:
@@ -148,12 +123,6 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     if j > 0:
         ax[n].set_yticklabels([])
 
-    ax[n].set_ylim(-plot_max, plot_max)
-
-ax[0].legend(
-    loc='upper left',
-    prop={'size': 9},
-)
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
 

@@ -10,8 +10,8 @@ plt.rcParams.update({
 fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
 
 
-def compute_cou_mat(result, q_vec, q_ang, k_vec, sys):
-    for ii, q in enumerate(q_vec):
+def compute_cou_mat(result, q, q_ang_vec, k_vec, sys):
+    for ii, q_ang in enumerate(q_ang_vec):
         result[ii] = array(
             topo_cou_2d_v(
                 k_vec,
@@ -52,19 +52,19 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_th = 9
+N_q = 9
 
-q_ang_vec = linspace(0, 2, N_th) * pi
+q_vec = linspace(-0.1, 0.1, N_q)
 k_vec = array([0.05, 0])
-q_vec = linspace(-0.35, 0.35, 1 << 10)
+q_ang_vec = linspace(0, 2, 1 << 9) * pi
 
-result = zeros((N_th, q_vec.size, 16, 16), dtype=complex)
+result = zeros((N_q, q_ang_vec.size, 16, 16), dtype=complex)
 
-for ii, q_ang in enumerate(q_ang_vec):
+for ii, q in enumerate(q_vec):
     compute_cou_mat(
         result[ii],
-        q_vec,
-        arctan2(k_vec[1], k_vec[0]) + q_ang,
+        q,
+        arctan2(k_vec[1], k_vec[0]) + q_ang_vec,
         k_vec,
         sys,
     )
@@ -92,48 +92,48 @@ for i in range(4):
         band_idx_all[:, :, i],
     ), cou_transf.T)
 
-plot_max = 20
+plot_max = 15
 
 colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-    for h in linspace(0, 0.7, N_th)
+    for h in linspace(0, 0.7, N_q)
 ]
 
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
-    for ii in range(N_th):
+    for ii in range(N_q):
         ax[n].plot(
-            q_vec,
+            q_ang_vec,
             real(result[ii, :, i, j]),
             linestyle='-',
             linewidth=0.9,
             color=colors[ii],
-            label=r'$\theta: %.2f\pi$' % (q_ang_vec[ii] / pi),
+            label=r'$q: %.2f$' % q_vec[ii],
         )
         ax[n].plot(
-            q_vec,
+            q_ang_vec,
             imag(result[ii, :, i, j]),
             linestyle='--',
             linewidth=0.9,
             color=colors[ii],
         )
 
-    ax[n].set_xlim(q_vec[0], q_vec[-1])
+    ax[n].set_xlim(q_ang_vec[0], q_ang_vec[-1])
     ax[n].axhline(
         y=0,
         color='k',
-        linestyle='--',
+        linestyle='-',
         linewidth=0.7,
     )
     ax[n].axvline(
-        x=0,
+        x=pi,
         color='k',
-        linestyle='--',
+        linestyle=':',
         linewidth=0.7,
     )
 
     ax[n].text(
-        q_vec[0],
-        -plot_max,
+        q_ang_vec[0],
+        -plot_max * 0.97,
         r'$%s%s \rightarrow %s%s$' % (
             band_labels[band_idx_all[i, j, 1]],
             band_labels[band_idx_all[i, j, 3]],

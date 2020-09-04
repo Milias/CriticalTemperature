@@ -18,7 +18,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-k_val = array([0.08, 0.03])
+k_val = array([0.00, 0.03])
 kz_val = 0.0
 #"""
 U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
@@ -43,7 +43,7 @@ print(scipy.linalg.eigvals(hamilt))
 
 #"""
 
-th_val = 0.25 * pi
+th_val = arctan2(k_val[1], k_val[0]) + 0.0 * pi
 k_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
 result = zeros((k_vec.size, 4, 4), dtype=complex)
 

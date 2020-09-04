@@ -332,14 +332,6 @@ arma::cx_mat44 topo_vert_2d(
     const std::vector<double>& k0,
     const std::vector<double>& k,
     const system_data_v2& sys) {
-    return topo_orthU_2d(0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], sys).t() *
-           topo_orthU_2d(0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], sys);
-}
-
-arma::cx_mat44 topo_vert_2d_d(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
-    const system_data_v2& sys) {
     arma::umat transf = {
         {1, 0, 0, 0},
         {0, 0, 0, 1},
@@ -372,18 +364,6 @@ arma::cx_mat topo_cou_2d(
     const system_data_v2& sys) {
     arma::cx_mat44 mat1{topo_vert_2d(q1, q, sys)};
     arma::cx_mat44 mat2{topo_vert_2d(q2, q, sys)};
-
-    return topo_green_cou(arma::norm(arma::vec(q)), sys) *
-           arma::kron(mat1, mat2);
-}
-
-arma::cx_mat topo_cou_2d_d(
-    const std::vector<double>& q1,
-    const std::vector<double>& q2,
-    const std::vector<double>& q,
-    const system_data_v2& sys) {
-    arma::cx_mat44 mat1{topo_vert_2d_d(q1, q, sys)};
-    arma::cx_mat44 mat2{topo_vert_2d_d(q2, q, sys)};
 
     arma::mat transf = {
         {1, 0, 0, 0},
@@ -451,15 +431,6 @@ std::vector<std::complex<double>> topo_vert_2d_v(
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
 
-std::vector<std::complex<double>> topo_vert_2d_dv(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
-    const system_data_v2& sys) {
-    arma::cx_mat44 r(topo_vert_2d_d(k0, k, sys));
-
-    return std::vector<std::complex<double>>(r.begin(), r.end());
-}
-
 std::vector<std::complex<double>> topo_cou_3d_v(
     const std::vector<double>& q1,
     const std::vector<double>& q2,
@@ -475,7 +446,7 @@ std::vector<std::complex<double>> topo_cou_2d_v(
     const std::vector<double>& q2,
     const std::vector<double>& q,
     const system_data_v2& sys) {
-    arma::cx_mat r(topo_cou_2d_d(q1, q2, q, sys));
+    arma::cx_mat r(topo_cou_2d(q1, q2, q, sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
@@ -531,19 +502,43 @@ double topo_potential_f(double th, topo_potential_s* s) {
     return green_func(k, s->sys);
 }
 
-template <double (*green_func)(double, const system_data_v2&)>
-double topo_potential_t(const double kk[2], const system_data_v2& sys) {
+template <uint8_t return_part = 0>
+double topo_pot_eff_cou_2d_f(double th, topo_potential_s* s) {
+    double k{
+        std::sqrt(
+            s->k1 * s->k1 + s->k2 * s->k2 - 2 * s->k1 * s->k2 * std::cos(th)),
+    };
+
+    if (k < 1e-5) {
+        k = 1e-5;
+    }
+
+    std::vector<double> k1{{s->k1, 0}},
+        k2{{s->k2 * std::cos(th), s->k2 * std::sin(th)}},
+        q{{k * std::cos(th), k * std::sin(th)}};
+
+    if constexpr (return_part == 0) {
+        return topo_cou_2d(k1, k2, q, s->sys)(s->i, s->j).real();
+    } else if constexpr (return_part == 1) {
+        return topo_cou_2d(k1, k2, q, s->sys)(s->i, s->j).imag();
+    }
+}
+
+template <double (*pot_func)(double, topo_potential_s*)>
+double topo_potential_t(
+    const double kk[2],
+    const system_data_v2& sys,
+    uint8_t i = 0,
+    uint8_t j = 0) {
     constexpr uint32_t n_int{1};
     double result[n_int] = {0}, error[n_int] = {0};
-    double k2{kk[1]};
 
-    topo_potential_s s{kk[0], k2, sys};
+    topo_potential_s s{kk[0], kk[1], sys, i, j};
 
     gsl_function integrands[n_int];
 
-    integrands[0].function =
-        &templated_f<topo_potential_s, topo_potential_f<green_func>>;
-    integrands[0].params = &s;
+    integrands[0].function = &templated_f<topo_potential_s, pot_func>;
+    integrands[0].params   = &s;
 
     constexpr uint32_t local_ws_size{(1 << 7)};
     constexpr double local_eps{1e-8};
@@ -552,16 +547,17 @@ double topo_potential_t(const double kk[2], const system_data_v2& sys) {
         gsl_integration_workspace_alloc(local_ws_size);
 
     gsl_integration_qag(
-        integrands, M_PI, 0, local_eps, 0, local_ws_size, GSL_INTEG_GAUSS31,
-        ws, result, error);
+        integrands, 2 * M_PI, 0, local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
 
     gsl_integration_workspace_free(ws);
 
-    return result[0] * M_1_PI;
+    return result[0] * M_1_PI * 0.5;
 }
 
 template <
-    double (*potential_func)(const double[2], const system_data_v2&),
+    double (*potential_func)(
+        const double[2], const system_data_v2&, uint8_t, uint8_t),
     arma::vec (*dispersion_func)(const arma::vec&, const system_data_v2&),
     bool force_positive = true>
 double topo_det_f(double z, topo_mat_s<potential_func, dispersion_func>* s) {
@@ -574,7 +570,8 @@ double topo_det_f(double z, topo_mat_s<potential_func, dispersion_func>* s) {
 }
 
 template <
-    double (*potential_func)(const double[2], const system_data_v2&),
+    double (*potential_func)(
+        const double[2], const system_data_v2&, uint8_t, uint8_t),
     arma::vec (*dispersion_func)(const arma::vec&, const system_data_v2&),
     bool use_brackets = false>
 double topo_det_zero_t(
@@ -684,7 +681,8 @@ std::vector<double> topo_det_p_cou_vec(
     const system_data_v2& sys) {
     constexpr auto green_func      = topo_green_cou;
     constexpr auto dispersion_func = topo_disp_p;
-    constexpr auto potential_func  = topo_potential_t<green_func>;
+    constexpr auto potential_func =
+        topo_potential_t<topo_potential_f<green_func>>;
 
     constexpr auto det_func =
         topo_det_f<potential_func, dispersion_func, false>;
@@ -710,7 +708,8 @@ std::vector<double> topo_det_t_cou_vec(
     const system_data_v2& sys) {
     constexpr auto green_func      = topo_green_cou;
     constexpr auto dispersion_func = topo_disp_t;
-    constexpr auto potential_func  = topo_potential_t<green_func>;
+    constexpr auto potential_func =
+        topo_potential_t<topo_potential_f<green_func>>;
 
     constexpr auto det_func =
         topo_det_f<potential_func, dispersion_func, false>;
@@ -733,7 +732,8 @@ std::vector<double> topo_det_t_cou_vec(
 double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     constexpr auto green_func      = topo_green_cou;
     constexpr auto dispersion_func = topo_disp_p;
-    constexpr auto potential_func  = topo_potential_t<green_func>;
+    constexpr auto potential_func =
+        topo_potential_t<topo_potential_f<green_func>>;
 
     constexpr auto det_zero = topo_det_zero_t<potential_func, dispersion_func>;
 
@@ -745,11 +745,40 @@ double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
 double topo_be_t_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     constexpr auto green_func      = topo_green_cou;
     constexpr auto dispersion_func = topo_disp_t;
-    constexpr auto potential_func  = topo_potential_t<green_func>;
+    constexpr auto potential_func =
+        topo_potential_t<topo_potential_f<green_func>>;
 
     constexpr auto det_zero = topo_det_zero_t<potential_func, dispersion_func>;
 
     topo_mat_s<potential_func, dispersion_func> mat_s(N_k, sys);
 
     return det_zero(mat_s, be_bnd);
+}
+
+std::vector<std::complex<double>> topo_eff_cou_2d_mat(
+    const std::vector<double>& k1,
+    const std::vector<double>& k2,
+    uint8_t mat_i,
+    uint8_t mat_j,
+    const system_data_v2& sys) {
+    constexpr auto potential_func_re =
+        topo_potential_t<topo_pot_eff_cou_2d_f<0>>;
+    constexpr auto potential_func_im =
+        topo_potential_t<topo_pot_eff_cou_2d_f<1>>;
+
+    arma::mat re(k1.size(), k2.size());
+    arma::mat im(k1.size(), k2.size());
+
+#pragma omp parallel for collapse(2)
+    for (uint32_t i = 0; i < k1.size(); i++) {
+        for (uint32_t j = 0; j < k2.size(); j++) {
+            const double kk[2] = {k1[i], k2[j]};
+
+            re(i, j) = potential_func_re(kk, sys, mat_i, mat_j);
+            //im(i, j) = potential_func_im(kk, sys, mat_i, mat_j);
+        }
+    }
+
+    arma::cx_mat r(re, im);
+    return std::vector<std::complex<double>>(r.begin(), r.end());
 }
