@@ -14,13 +14,13 @@ import sys as pysys
 import os
 from ctypes import *
 import multiprocessing
+import functools
 
 import yaml
 
 from numpy import *
 import cmath
 
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.collections import LineCollection, PatchCollection
 from matplotlib.colors import LogNorm, SymLogNorm, ListedColormap, BoundaryNorm

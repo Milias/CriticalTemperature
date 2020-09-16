@@ -1,0 +1,119 @@
+fit_vars:
+    fdepl:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+
+    fse:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+
+    alpha:
+        unit: ''
+        p0: 0.05
+        bounds: [ 0.0, 1.0 ]
+
+    Epump:
+        unit: 'eV'
+        p0: 2.419
+        bounds: [ 2.4, 2.6 ]
+
+    hhhhMag:
+        unit: ''
+        p0: 0.005
+        bounds: [ 0.0, 1.0 ]
+
+    hhlhMag:
+        unit: ''
+        p0: 0.005
+        bounds: [ 0.0, 1.0 ]
+
+    hhhhLoc:
+        unit: 'eV'
+        p0: 2.38
+        bounds: [ 2.3, 2.4 ]
+
+    hhlhLoc:
+        unit: 'eV'
+        p0: 2.48
+        bounds: [ 2.46, 2.6 ]
+
+    hhhhSig:
+        unit: 'eV'
+        p0: 0.02
+        bounds: [ 0.0, 0.04 ]
+
+    hhlhSig:
+        unit: 'eV'
+        p0: 0.02
+        bounds: [ 0.0, 0.04 ]
+
+alpha_fit:
+    tau0:
+        unit: 'ps'
+        p0: 0.1
+        bounds: [ 0.0, inf ]
+    tau1:
+        unit: 'ps'
+        p0: 10.0
+        bounds: [ 0.0, inf ]
+    tau2:
+        unit: 'ps'
+        p0: 10.0
+        bounds: [ 0.0, inf ]
+
+    t0:
+        unit: 'ps'
+        p0: 0.1
+        bounds: [ 0.0, inf ]
+    t1:
+        unit: 'ps'
+        p0: 1.0
+        bounds: [ 0.0, inf ]
+    t2:
+        unit: 'ps'
+        p0: 10.0
+        bounds: [ 0.0, inf ]
+
+    v0:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+    v1:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+    v2:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+
+
+alpha_fit_v2:
+    tau0:
+        unit: 'ps'
+        p0: 0.1
+        bounds: [ 0.0, inf ]
+    tau1:
+        unit: 'ps'
+        p0: 10.0
+        bounds: [ 0.0, inf ]
+    tau2:
+        unit: 'ps'
+        p0: 100.0
+        bounds: [ 0.0, inf ]
+
+    v0:
+        unit: 'ps'
+        p0: 0.1
+        bounds: [ 0.0, inf ]
+    v1:
+        unit: 'ps'
+        p0: 10.0
+        bounds: [ 0.0, inf ]
+    v2:
+        unit: 'ps'
+        p0: 100.0
+        bounds: [ 0.0, inf ]
+

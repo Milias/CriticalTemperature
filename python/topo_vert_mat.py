@@ -7,7 +7,7 @@ plt.rcParams.update({
     'text.usetex': True,
 })
 
-fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
+fig_size = tuple(array([6.8, 5.3]))
 
 with open('config/topo_sys.yaml') as f:
     print('Loading "%s".' % f.name)
@@ -43,7 +43,7 @@ print(scipy.linalg.eigvals(hamilt))
 
 #"""
 
-th_val = arctan2(k_val[1], k_val[0]) + 0.0 * pi
+th_val = arctan2(k_val[1], k_val[0]) + (pi - 0.25 * pi)
 k_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
 result = zeros((k_vec.size, 4, 4), dtype=complex)
 
@@ -64,7 +64,7 @@ for i, j in itertools.product(range(4), repeat=2):
 
 for ii, k in enumerate(k_vec):
     result[ii] = array(
-        topo_vert_2d_dv(
+        topo_vert_2d_v(
             k_val,
             [k * cos(th_val), k * sin(th_val)],
             sys,
@@ -132,9 +132,9 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].text(
-        k_vec[0],
-        -1.2,
-        '%s%s' % (
+        k_vec[0] * 0.98,
+        -1.2 * 0.98,
+        r'$%s%s$' % (
             band_labels[band_idx_all[i, j, 0]],
             band_labels[band_idx_all[i, j, 1]],
         ),
@@ -156,7 +156,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
     transparent=True,
 )
 

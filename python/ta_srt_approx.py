@@ -1,6 +1,11 @@
 from common import *
 
 
+def load_popt(popt, global_dict, var_list):
+    for p, var in zip(popt, var_list):
+        global_dict[var] = p
+
+
 def load_raw_PL_data(path, eV_max):
     raw = loadtxt(path)
     raw[:, 0] = raw[::-1, 0]
@@ -10,6 +15,21 @@ def load_raw_PL_data(path, eV_max):
     peak_eV = xdata_eV[arg_max]
 
     xdata_eV_arg = abs(xdata_eV - peak_eV) < eV_max
+
+    return array([
+        xdata_eV[xdata_eV_arg],
+        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
+    ]).T
+
+
+def load_raw_Abs_data(path, eV_min, eV_max):
+    raw = loadtxt(path)
+    arg_max = raw[:, 1].argmax()
+    xdata_eV = raw[:, 0]
+    peak_eV = xdata_eV[arg_max]
+
+    xdata_eV_arg = ((xdata_eV - peak_eV) > -eV_min) * (
+        (xdata_eV - peak_eV) < eV_max)
 
     return array([
         xdata_eV[xdata_eV_arg],
@@ -57,6 +77,16 @@ loaded_data = [
         load_raw_PL_data('extra/data/extcharge/PL-%s.txt' % label, E_max_data))
     for label in labels_vec
 ]
+
+E_min_abs_data, E_max_abs_data = 0.1, 0.65
+
+loaded_abs_data = array([
+    load_raw_Abs_data(
+        'extra/data/extcharge/Abs_%s.txt' % label,
+        E_min_abs_data,
+        E_max_abs_data,
+    ) for label in labels_vec
+])
 
 peak_eV_vec = [d[d[:, 1].argmax(), 0] for d in loaded_data]
 
@@ -154,11 +184,44 @@ def compute_PL(E_vec, popt, ii, sys, extra_dict):
     return sum_data, data_hh, data_lh
 
 
-def model(ta_fit_abs_data, E_vec):
+def srt_dist(t, E, tau, f_dist_eq, f_dist_zero, params_eq, params_zero):
+    if t < 0:
+        return f_dist_zero(E, *params_zero)
+
+    else:
+        return f_dist_eq(E, *params_eq) * (1 - exp(-t / tau)) + f_dist_zero(
+            E, *params_zero) * exp(-t / tau)
+
+
+def f_dist_eq(E, beta, E_max):
+    return exp(-beta * (E - E_max))
+
+
+def f_dist_zero(E, mu, sigma):
+    return stats.norm.pdf(E, loc=mu, scale=sigma)
+
+
+fit_vars_list = [
+    'fdepl',
+    'fse',
+    'tau',
+]
+
+
+def model(ta_fit_abs_data, E_vec, srt_time):
+    E_max = ta_fit_abs_data[ta_fit_abs_data[:, -1].argmax(), 0]
+
+    print(
+        'time: %.3f ps, E_max: %.3f eV\n' % (srt_time, E_max),
+        flush=True,
+    )
+
     ta_fit_abs_interp = interp1d(
         ta_fit_abs_data[:, 0],
-        ta_fit_abs_data[:, 5],
+        ta_fit_abs_data[:, -1],
     )
+    abs_data = ta_fit_abs_interp(E_vec)
+    """
     ta_fit_PL_data, _, _ = compute_PL(
         E_vec,
         popt_PL,
@@ -166,32 +229,35 @@ def model(ta_fit_abs_data, E_vec):
         sys,
         extra_dict_params_PL,
     )
-
-    abs_data = ta_fit_abs_interp(E_vec)
-    E_max = ta_fit_abs_data[ta_fit_abs_data[:, 5].argmax(), 0]
-
+    """
     def model_fun(xdata, *popt, return_all=False):
-        fdepl = popt[0]
-        fse = popt[1]
-        """
-        print(time.strftime('%X'))
-        print('fdepl: %.2f, fse: %.2f' % (fdepl, fse))
-        print('\n', flush=True)
-        """
+        load_popt(popt, globals(), fit_vars_list)
+
+        dist_data = srt_dist(
+            srt_time,
+            E_vec,
+            tau,
+            f_dist_eq,
+            f_dist_zero,
+            (sys.d_params.beta, E_max),
+            (E_max, 0.033179 / (2 * sqrt(2 * log(2)))),
+        )
 
         if return_all:
             return (
-                abs_data * (1 - fdepl - fse * exp(-sys.d_params.beta *
-                                                  (E_vec - E_max))),
-                abs_data * (fdepl),
-                abs_data * (fse * exp(-sys.d_params.beta * (E_vec - E_max))),
+                abs_data * (1 - fdepl - fse * dist_data),
+                abs_data * fdepl,
+                #abs_data * fse * dist_data,
+                fse * dist_data,
             )
         else:
-            return abs_data * (1 - fdepl - fse * exp(-sys.d_params.beta *
-                                                     (E_vec - E_max)))
+            return abs_data * (1 - fdepl - fse * dist_data)
 
     return model_fun
 
+
+#To HH: 2.4188 eV (512.646 nm), to LH: 480 nm (1240.0/480 eV), to Cont: 400 nm (1240/400 eV)
+#Sigma = 33.179 meV
 
 with open('config/topo_sys.yaml') as f:
     print('Loading "%s".' % f.name)
@@ -211,6 +277,7 @@ for i in range(n_files):
         ta_data_list.append(loadtxt(f))
 
 ta_data = array(ta_data_list)
+ta_data = ta_data[:, ::-1, :]
 
 with open('extra/data/ta_analysis/HH/times_BS066_HHEx_1.0mW.txt') as f:
     ta_times = loadtxt(f)[:, 1]
@@ -221,34 +288,59 @@ with open('extra/extcharge/export_PL/BS066_vo_hh.csv') as f:
 with open('extra/extcharge/export_abs/BS066_vo_sum.csv') as f:
     ta_fit_abs_data = loadtxt(f, delimiter=',')
 
+p0_values = (0.1, 0.1, 1.0)
+bounds = ((0, 0, 0), (1, 1, float('inf')))
+
+
+def full_fit_at_time_idx(time_idx, ta_data, ta_fit_abs_data):
+    time_value = ta_times[time_idx]
+
+    eV_min = max(ta_data[time_idx, 0, 0], ta_fit_abs_data[0, 0])
+    eV_max = min(ta_data[time_idx, -1, 0], ta_fit_abs_data[-1, 0])
+
+    print('Range: [%.4f, %.4f] eV' % (eV_min, eV_max))
+
+    E_vec = linspace(eV_min, eV_max, 1 << 8)
+
+    ta_data_mask = (ta_data[time_idx, :, 0] > eV_min) * (ta_data[time_idx, :,
+                                                                 0] < eV_max)
+
+    model_func = model(
+        #ta_fit_abs_data,
+        loaded_abs_data[2],
+        ta_data[time_idx, ta_data_mask, 0],
+        time_value,
+    )
+
+    popt, pcov = time_func(
+        curve_fit,
+        model_func,
+        ta_data[time_idx, ta_data_mask, 0],
+        ta_data[time_idx, ta_data_mask, 1],
+        p0=p0_values,
+        bounds=bounds,
+        method='trf',
+    )
+
+    load_popt(popt, globals(), fit_vars_list)
+
+    print(time.strftime('%X'))
+    print(', '.join([
+        '%s: %s %s' % (v, '%.4f', u)
+        for v, u in zip(fit_vars_list, ['', '', 'ps'])
+    ]) % tuple(popt))
+    print('\n', flush=True)
+
+    return E_vec, popt, pcov
+
+
 time_idx = -1
-
-p0_values = (0.1, 0.1)
-bounds = ((0, 0), (1, 1))
-
-eV_min, eV_max = ta_fit_abs_data[0, 0], ta_data[time_idx, 0, 0]
-E_vec = linspace(eV_min, eV_max, 1 << 8)
-
-ta_data = ta_data[:, ::-1, :]
-ta_data_mask = (ta_data[time_idx, :, 0] > eV_min) * (ta_data[time_idx, :, 0] <
-                                                     eV_max)
-
-model_func = model(ta_fit_abs_data, ta_data[time_idx, ta_data_mask, 0])
-
-popt, pcov = time_func(
-    curve_fit,
-    model_func,
-    ta_data[time_idx, ta_data_mask, 0],
-    ta_data[time_idx, ta_data_mask, 1],
-    p0=p0_values,
-    bounds=bounds,
-    method='trf',
+time_value = ta_times[time_idx]
+E_vec, popt, pcov = full_fit_at_time_idx(
+    time_idx,
+    ta_data,
+    loaded_abs_data[2],
 )
-
-fdepl, fse = popt
-print(time.strftime('%X'))
-print('fdepl: %.4f, fse: %.4f' % (fdepl, fse))
-print('\n', flush=True)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
@@ -259,7 +351,12 @@ colors = [
     for h in linspace(0, 0.7, n_files)
 ]
 
-vis_fit, vis_depl, vis_se = model(ta_fit_abs_data, E_vec)(
+vis_fit, vis_depl, vis_se = model(
+    #ta_fit_abs_data,
+    loaded_abs_data[2],
+    E_vec,
+    time_value,
+)(
     E_vec,
     *popt,
     return_all=True,
@@ -275,7 +372,7 @@ ax[0].plot(
 ax[0].plot(
     E_vec,
     vis_depl,
-    color='g',
+    color='m',
     label='Depletion',
 )
 
@@ -287,8 +384,10 @@ ax[0].plot(
 )
 
 ax[0].plot(
-    ta_fit_abs_data[:, 0],
-    ta_fit_abs_data[:, 5],
+    #ta_fit_abs_data[:, 0],
+    #ta_fit_abs_data[:, -1],
+    loaded_abs_data[2][:, 0],
+    loaded_abs_data[2][:, -1],
     color='k',
     linestyle='--',
     linewidth=0.9,
@@ -300,10 +399,10 @@ ax[0].plot(
     ta_data[time_idx, :, 1],
     colors[time_idx],
     linewidth=0.8,
-    label='%.2f ps' % ta_times[time_idx],
+    label='%.2f ps' % time_value,
 )
 
-ax[0].set_xlim(eV_min, eV_max)
+ax[0].set_xlim(E_vec[0], E_vec[-1])
 ax[0].set_ylim(0, 1.1)
 
 ax[0].legend(

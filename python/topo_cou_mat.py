@@ -92,7 +92,7 @@ for i in range(4):
         band_idx_all[:, :, i],
     ), cou_transf.T)
 
-plot_max = 20
+plot_max = 14
 
 colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -132,8 +132,8 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].text(
-        q_vec[0],
-        -plot_max,
+        q_vec[0] * 0.98,
+        -plot_max * 0.98,
         r'$%s%s \rightarrow %s%s$' % (
             band_labels[band_idx_all[i, j, 1]],
             band_labels[band_idx_all[i, j, 3]],
