@@ -1,43 +1,6 @@
 from common import *
 import matplotlib.pyplot as plt
 
-
-def load_popt(popt, global_dict, var_list):
-    for p, var in zip(popt, var_list):
-        global_dict[var] = p
-
-
-def load_raw_PL_data(path, eV_max):
-    raw = loadtxt(path)
-    raw[:, 0] = raw[::-1, 0]
-    raw[:, 1] = raw[::-1, 1]
-    arg_max = raw[:, 1].argmax()
-    xdata_eV = 1240.0 / raw[:, 0]
-    peak_eV = xdata_eV[arg_max]
-
-    xdata_eV_arg = abs(xdata_eV - peak_eV) < eV_max
-
-    return array([
-        xdata_eV[xdata_eV_arg],
-        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
-    ]).T
-
-
-def load_raw_Abs_data(path, eV_min, eV_max):
-    raw = loadtxt(path)
-    arg_max = raw[:, 1].argmax()
-    xdata_eV = raw[:, 0]
-    peak_eV = xdata_eV[arg_max]
-
-    xdata_eV_arg = ((xdata_eV - peak_eV) > -eV_min) * (
-        (xdata_eV - peak_eV) < eV_max)
-
-    return array([
-        xdata_eV[xdata_eV_arg],
-        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
-    ]).T
-
-
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
     'font.family': 'serif',
@@ -124,18 +87,6 @@ bounds = array([
 ]).T
 
 
-def adj_r_squared(data, model, n_params=len(fit_vars_list)):
-    data_avg = average(data)
-    return 1 - sum((model - data)**2) / sum(
-        (data - data_avg)**2) * (data.size - n_params - 1) / (data.size - 1)
-
-
-def aic_criterion(data, model, n_params=len(fit_vars_list)):
-    rss = sum((model - data)**2)
-    sigma2 = rss / data.size
-    return (rss + 2 * n_params * sigma2) / (data.size * sigma2)
-
-
 def model(ta_fit_abs_data, E_vec, srt_time):
     E_max = ta_fit_abs_data[ta_fit_abs_data[:, -1].argmax(), 0]
 
@@ -159,16 +110,16 @@ def model(ta_fit_abs_data, E_vec, srt_time):
             (Epump, 0.033179 / (2 * sqrt(2 * log(2)))),
         )
 
-        hhhh = hhhhMag * stats.norm.pdf(
+        hhhh = hhhh_mag * stats.norm.pdf(
             E_vec,
-            loc=hhhhLoc,
-            scale=hhhhSig,
+            loc=hhhh_loc,
+            scale=hhhh_sig,
         )
 
-        hhlh = hhlhMag * stats.norm.pdf(
+        hhlh = hhlh_mag * stats.norm.pdf(
             E_vec,
-            loc=hhlhLoc,
-            scale=hhlhSig,
+            loc=hhlh_loc,
+            scale=hhlh_sig,
         )
 
         return abs_data * (1 - fdepl - fse * dist_data) + hhhh + hhlh
@@ -335,7 +286,7 @@ for n in range(len(ax)):
             linewidth=1.6,
             color='m',
             label=(r'$%s$ (%s)' if fit_var_units[n] != '' else r'$%s$%s') %
-            (fit_vars_list[n], fit_var_units[n]),
+            (fit_vars_list[n].replace('_', '\_'), fit_var_units[n]),
         )
         """
         ax[n].fill_between(

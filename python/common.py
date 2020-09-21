@@ -133,6 +133,54 @@ def initialize_struct(struct, attr_dict):
     return s
 
 
+def load_popt(popt, global_dict, var_list):
+    for p, var in zip(popt, var_list):
+        global_dict[var] = p
+
+
+def load_raw_PL_data(path, eV_max):
+    raw = loadtxt(path)
+    raw[:, 0] = raw[::-1, 0]
+    raw[:, 1] = raw[::-1, 1]
+    arg_max = raw[:, 1].argmax()
+    xdata_eV = 1240.0 / raw[:, 0]
+    peak_eV = xdata_eV[arg_max]
+
+    xdata_eV_arg = abs(xdata_eV - peak_eV) < eV_max
+
+    return array([
+        xdata_eV[xdata_eV_arg],
+        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
+    ]).T
+
+
+def load_raw_Abs_data(path, eV_min, eV_max):
+    raw = loadtxt(path)
+    arg_max = raw[:, 1].argmax()
+    xdata_eV = raw[:, 0]
+    peak_eV = xdata_eV[arg_max]
+
+    xdata_eV_arg = ((xdata_eV - peak_eV) > -eV_min) * (
+        (xdata_eV - peak_eV) < eV_max)
+
+    return array([
+        xdata_eV[xdata_eV_arg],
+        raw[xdata_eV_arg, 1] / amax(raw[xdata_eV_arg, 1]),
+    ]).T
+
+
+def adj_r_squared(data, model, n_params=1):
+    data_avg = average(data)
+    return 1 - sum((model - data)**2) / sum(
+        (data - data_avg)**2) * (data.size - n_params - 1) / (data.size - 1)
+
+
+def aic_criterion(data, model, n_params=1):
+    rss = sum((model - data)**2)
+    sigma2 = rss / data.size
+    return (rss + 2 * n_params * sigma2) / (data.size * sigma2)
+
+
 ## Define how to pickle system_data objects
 
 register_pickle_func(Uint32Vector, tuple)

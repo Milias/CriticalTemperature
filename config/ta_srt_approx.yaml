@@ -1,53 +1,185 @@
+raw_data:
+    n_files:
+        HH: [ 0, 259 ]
+        LH: [ 0, 259 ]
+        cont: [ 1, 259 ]
+
+    folder: extra/data/ta_analysis/
+    sample_label: BS066
+
+    ta_data:
+        HH: "%s_HHEx_1.0mW_%d.txt"
+        LH: "%s_LHEx_1.4mW_%d.txt"
+        cont: "%s_cont.Ex_1.5mW_%d.txt"
+
+    time_data:
+        HH: "times_%s_HHEx_1.0mW.txt"
+        LH: "times_%s_LHEx_1.4mW.txt"
+        cont: "times_%s_cont.Ex_1.5mW.txt"
+
+    pump_sigma:
+        HH: 0.014089824005878092
+        LH: 0.014089824005878092
+        cont: 0.014089824005878092
+
+abs_data:
+    folder: extra/extcharge/export_abs/
+    file: "%s_vo_sum.csv"
+
+settings:
+    N_E: 256
+    plot_cases: [ HH, LH, cont ]
+
 fit_vars:
-    fdepl:
+    fse:
         unit: ''
         p0: 0.1
         bounds: [ 0.0, 1.0 ]
 
-    fse:
+    fdepl:
         unit: ''
         p0: 0.1
         bounds: [ 0.0, 1.0 ]
 
     alpha:
         unit: ''
-        p0: 0.05
+        p0: 0.01
         bounds: [ 0.0, 1.0 ]
 
-    Epump:
+    pump_mu:
         unit: 'eV'
-        p0: 2.419
-        bounds: [ 2.4, 2.6 ]
+        p0:
+            HH: 2.4188
+            LH: 2.5833
+            cont: 3.1
+        bounds:
+            HH: [ 2.4, 2.45 ]
+            LH: [ 2.58, 2.7 ]
+            cont: [ 3.05, 3.3 ]
 
-    hhhhMag:
+    hhhh_mag:
         unit: ''
         p0: 0.005
         bounds: [ 0.0, 1.0 ]
 
-    hhlhMag:
+    hhlh_mag:
         unit: ''
         p0: 0.005
         bounds: [ 0.0, 1.0 ]
 
-    hhhhLoc:
+    hhhh_loc:
         unit: 'eV'
         p0: 2.38
         bounds: [ 2.3, 2.4 ]
 
-    hhlhLoc:
+    hhlh_loc:
         unit: 'eV'
-        p0: 2.48
-        bounds: [ 2.46, 2.6 ]
+        p0: 2.5
+        bounds: [ 2.45, 2.55 ]
 
-    hhhhSig:
+    hhhh_sig:
         unit: 'eV'
         p0: 0.02
-        bounds: [ 0.0, 0.04 ]
+        bounds: [ 0.01, 0.03 ]
 
-    hhlhSig:
+    hhlh_sig:
         unit: 'eV'
         p0: 0.02
-        bounds: [ 0.0, 0.04 ]
+        bounds: [ 0.01, 0.03 ]
+
+fit_vars_model:
+    fse:
+        unit: ''
+        p0: 0.01
+        bounds: [ 0.0, 1.0 ]
+
+    fdepl:
+        unit: ''
+        p0: 0.01
+        bounds: [ 0.0, 1.0 ]
+
+    alpha:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+
+    pump_mu:
+        unit: 'eV'
+        p0:
+            HH: 2.4188
+            LH: 2.5833
+            cont: 3.1
+        bounds:
+            HH: [ 2.4, 2.45 ]
+            LH: [ 2.4, 2.7 ]
+            cont: [ 3.05, 3.3 ]
+
+    abs_shift:
+        unit: 'eV'
+        p0: 0.0
+        bounds: [ 0.0, 0.015 ]
+
+fit_vars_model_biexc:
+    fse:
+        unit: ''
+        p0: 0.01
+        bounds: [ 0.0, 1.0 ]
+
+    fdepl:
+        unit: ''
+        p0: 0.01
+        bounds: [ 0.0, 1.0 ]
+
+    alpha:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 1.0 ]
+
+    pump_mu:
+        unit: 'eV'
+        p0:
+            HH: 2.4188
+            LH: 2.5833
+            cont: 3.1
+        bounds:
+            HH: [ 2.4, 2.45 ]
+            LH: [ 2.58, 2.7 ]
+            cont: [ 3.05, 3.3 ]
+
+    abs_shift:
+        unit: 'eV'
+        p0: 0.0
+        bounds: [ 0.0, 0.015 ]
+
+    hhhh_mag:
+        unit: ''
+        p0: 0.002
+        bounds: [ 0.0, 0.004 ]
+
+    hhlh_mag:
+        unit: ''
+        p0: 0.002
+        bounds: [ 0.0, 0.004 ]
+
+    hhhh_loc:
+        unit: 'eV'
+        p0: 2.38
+        bounds: [ 2.33, 2.4 ]
+
+    hhlh_loc:
+        unit: 'eV'
+        p0: 2.5
+        bounds: [ 2.45, 2.55 ]
+
+    hhhh_sig:
+        unit: 'eV'
+        p0: 0.01
+        bounds: [ 0.005, 0.02 ]
+
+    hhlh_sig:
+        unit: 'eV'
+        p0: 0.01
+        bounds: [ 0.005, 0.02 ]
 
 alpha_fit:
     tau0:
