@@ -502,7 +502,10 @@ double topo_potential_f(double th, topo_potential_s* s) {
     return green_func(k, s->sys);
 }
 
-template <uint8_t return_part = 0>
+template <
+    uint8_t return_part = 0,
+    uint8_t template_i  = 0xff,
+    uint8_t template_j  = 0xff>
 double topo_pot_eff_cou_2d_f(double th, topo_potential_s* s) {
     double k{
         std::sqrt(
@@ -513,15 +516,69 @@ double topo_pot_eff_cou_2d_f(double th, topo_potential_s* s) {
         k = 1e-5;
     }
 
-    std::vector<double> k1{{s->k1, 0}},
-        k2{{s->k2 * std::cos(th), s->k2 * std::sin(th)}},
-        q{{k * std::cos(th), k * std::sin(th)}};
+    std::vector<double> q1{{s->k1, 0}}, q2{{-s->k1, 0}},
+        q{{-k * std::cos(th), -k * std::sin(th)}};
 
     if constexpr (return_part == 0) {
-        return topo_cou_2d(k1, k2, q, s->sys)(s->i, s->j).real();
+        if constexpr (template_i == 0xff || template_j == 0xff) {
+            return topo_cou_2d(q1, q2, q, s->sys)(s->i, s->j).real();
+        } else {
+            return topo_cou_2d(q1, q2, q, s->sys)(template_i, template_j)
+                .real();
+        }
     } else if constexpr (return_part == 1) {
-        return topo_cou_2d(k1, k2, q, s->sys)(s->i, s->j).imag();
+        if constexpr (template_i == 0xff || template_j == 0xff) {
+            return topo_cou_2d(q1, q2, q, s->sys)(s->i, s->j).imag();
+        } else {
+            return topo_cou_2d(q1, q2, q, s->sys)(template_i, template_j)
+                .imag();
+        }
     }
+}
+
+struct topo_pot_eff_cou_2d_mix_s {
+    const system_data_v2& sys;
+    double alpha;
+
+    arma::vec4 mix_vec;
+
+    topo_potential_s* s;
+
+    topo_pot_eff_cou_2d_mix_s(
+        const system_data_v2& sys, double alpha, topo_potential_s* s) :
+        sys(sys), alpha(alpha), s(s) {
+        mix_vec(0) = 0;
+        mix_vec(1) = alpha;
+        mix_vec(2) = 1 - alpha;
+        mix_vec(3) = 0;
+    }
+
+    double operator()(double th) {
+        double k{
+            std::sqrt(
+                s->k1 * s->k1 + s->k2 * s->k2 -
+                2 * s->k1 * s->k2 * std::cos(th)),
+        };
+
+        if (k < 1e-5) {
+            k = 1e-5;
+        }
+
+        std::vector<double> q1{{s->k1, 0}}, q2{{-s->k1, 0}},
+            q{{-k * std::cos(th), -k * std::sin(th)}};
+
+        return (mix_vec.as_row() *
+                arma::real(topo_cou_2d(q1, q2, q, s->sys).submat(0, 0, 3, 3)) *
+                mix_vec)
+            .eval()(0, 0);
+    }
+};
+
+template <typename topo_s>
+double functor_call(double x, void* params) {
+    topo_s* s{static_cast<topo_s*>(params)};
+
+    return s(x);
 }
 
 template <double (*pot_func)(double, topo_potential_s*)>
@@ -729,6 +786,32 @@ std::vector<double> topo_det_t_cou_vec(
     return r;
 }
 
+std::vector<double> topo_det_t_eff_cou_cvcv_vec(
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    const system_data_v2& sys) {
+    constexpr auto dispersion_func = topo_disp_t;
+    constexpr auto potential_func =
+        topo_potential_t<topo_pot_eff_cou_2d_f<0, 1, 1>>;
+
+    constexpr auto det_func =
+        topo_det_f<potential_func, dispersion_func, false>;
+
+    topo_mat_s<potential_func, dispersion_func> mat_s(N_k, sys);
+
+    mat_s.fill_mat_potcoef();
+    mat_s.fill_mat_elem();
+
+    std::vector<double> r(z_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < z_vec.size(); i++) {
+        r[i] = det_func(z_vec[i], &mat_s);
+    }
+
+    return r;
+}
+
 double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     constexpr auto green_func      = topo_green_cou;
     constexpr auto dispersion_func = topo_disp_p;
@@ -755,7 +838,7 @@ double topo_be_t_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     return det_zero(mat_s, be_bnd);
 }
 
-std::vector<std::complex<double>> topo_eff_cou_2d_mat(
+std::vector<double> topo_eff_cou_2d_mat(
     const std::vector<double>& k1,
     const std::vector<double>& k2,
     uint8_t mat_i,
@@ -763,22 +846,30 @@ std::vector<std::complex<double>> topo_eff_cou_2d_mat(
     const system_data_v2& sys) {
     constexpr auto potential_func_re =
         topo_potential_t<topo_pot_eff_cou_2d_f<0>>;
-    constexpr auto potential_func_im =
-        topo_potential_t<topo_pot_eff_cou_2d_f<1>>;
 
-    arma::mat re(k1.size(), k2.size());
-    arma::mat im(k1.size(), k2.size());
+    arma::mat r(k1.size(), k2.size());
 
 #pragma omp parallel for collapse(2)
     for (uint32_t i = 0; i < k1.size(); i++) {
         for (uint32_t j = 0; j < k2.size(); j++) {
             const double kk[2] = {k1[i], k2[j]};
 
-            re(i, j) = potential_func_re(kk, sys, mat_i, mat_j);
-            //im(i, j) = potential_func_im(kk, sys, mat_i, mat_j);
+            r(i, j) = potential_func_re(kk, sys, mat_i, mat_j);
         }
     }
 
-    arma::cx_mat r(re, im);
-    return std::vector<std::complex<double>>(r.begin(), r.end());
+    return std::vector<double>(r.begin(), r.end());
+}
+
+double topo_be_t_eff_cou_cvcv(
+    uint32_t N_k, const system_data_v2& sys, double be_bnd) {
+    constexpr auto dispersion_func = topo_disp_t;
+    constexpr auto potential_func =
+        topo_potential_t<topo_pot_eff_cou_2d_f<0, 1, 1>>;
+
+    constexpr auto det_zero = topo_det_zero_t<potential_func, dispersion_func>;
+
+    topo_mat_s<potential_func, dispersion_func> mat_s(N_k, sys);
+
+    return det_zero(mat_s, be_bnd);
 }

@@ -1,4 +1,5 @@
 from common import *
+import matplotlib.pyplot as plt
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -38,7 +39,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 8
+N_k = 1 << 9
 k1_vec = linspace(1 / N_k, 1, N_k)
 k2_vec = linspace(1 / N_k, 1, N_k)
 
@@ -128,7 +129,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
     transparent=True,
 )
 
