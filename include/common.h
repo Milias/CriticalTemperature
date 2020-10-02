@@ -145,6 +145,13 @@ T sum_result(T* values) {
     }
 }
 
+template <typename T>
+double functor_call(double x, void* params) {
+    T* s{static_cast<T*>(params)};
+
+    return (*s)(x);
+}
+
 template <typename T, double (*F)(double, T*)>
 double templated_f(double int_var, void* params) {
     T* s{static_cast<T*>(params)};

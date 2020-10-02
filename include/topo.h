@@ -36,21 +36,27 @@ std::vector<std::complex<double>> topo_cou_2d_v(
 std::vector<double> topo_det_p_cou_vec(
     const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
 
-std::vector<double> topo_det_t_cou_vec(
-    const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
-
-std::vector<double> topo_det_t_eff_cou_cvcv_vec(
-    const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
-
-double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd);
-double topo_be_t_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd);
-
-std::vector<double> topo_eff_cou_2d_mat(
-    const std::vector<double>& k1,
-    const std::vector<double>& k2,
-    uint8_t i,
-    uint8_t j,
+std::vector<double> topo_det_t_eff_cou_vec(
+    double alpha,
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
     const system_data_v2& sys);
 
-double topo_be_t_eff_cou_cvcv(
-    uint32_t N_k, const system_data_v2& sys, double be_bnd);
+double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd);
+
+std::vector<double> topo_cou_mat(uint32_t N_k, const system_data_v2& sys);
+
+std::vector<double> topo_eff_cou_ij_mat(
+    uint8_t i, uint8_t j, uint32_t N_k, const system_data_v2& sys);
+
+std::vector<double> topo_eff_cou_mat(
+    double alpha, uint32_t N_k, const system_data_v2& sys);
+
+double topo_be_t_eff_cou(
+    double alpha, uint32_t N_k, const system_data_v2& sys, double be_bnd);
+
+std::vector<double> topo_be_t_eff_cou_vec(
+    const std::vector<double>& alpha_vec,
+    uint32_t N_k,
+    const system_data_v2& sys,
+    double be_bnd);

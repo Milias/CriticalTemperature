@@ -1,24 +1,14 @@
 #pragma once
 #include "common.h"
 
-struct topo_potential_s {
-    double k1;
-    double k2;
-
-    const system_data_v2& sys;
-
-    uint8_t i = 0, j = 0;
-};
-
 template <
-    double (*potential_func)(
-        const double[2], const system_data_v2&, uint8_t, uint8_t),
+    typename topo_functor,
     arma::vec (*dispersion_func)(const arma::vec&, const system_data_v2&)>
 struct topo_mat_s {
     using T = double;
 
     const uint32_t N_k;
-    const system_data_v2& sys;
+    topo_functor pot_s;
 
     arma::Row<T> row_G0;
     arma::Mat<T> mat_potcoef;
@@ -29,13 +19,39 @@ struct topo_mat_s {
     double du0;
     double du1;
 
+    double pot_integral(const double kk[2]) {
+        constexpr uint32_t n_int{1};
+        double result[n_int] = {0}, error[n_int] = {0};
+
+        topo_functor n_pot_s{pot_s.set_momentum(kk)};
+
+        gsl_function integrands[n_int];
+
+        integrands[0].function = &functor_call<topo_functor>;
+        integrands[0].params   = &n_pot_s;
+
+        constexpr uint32_t local_ws_size{(1 << 7)};
+        constexpr double local_eps{1e-8};
+
+        gsl_integration_workspace* ws =
+            gsl_integration_workspace_alloc(local_ws_size);
+
+        gsl_integration_qag(
+            integrands, 2 * M_PI, 0, local_eps, 0, local_ws_size,
+            GSL_INTEG_GAUSS31, ws, result, error);
+
+        gsl_integration_workspace_free(ws);
+
+        return result[0] * M_1_PI * 0.5;
+    }
+
     void fill_row_G0() {
         /*
          * Computes the contribution from the free Hamiltonian,
          * with the given dispersion relation.
          */
         arma::vec k_v{(1.0 - u0) / u0};
-        row_G0 = -dispersion_func(k_v, sys).t().eval();
+        row_G0 = -dispersion_func(k_v, pot_s.sys).t().eval();
     }
 
     void fill_mat_potcoef() {
@@ -51,7 +67,7 @@ struct topo_mat_s {
                     (1.0 - u0(j)) / u0(j),
                 };
 
-                T r = potential_func(kk, sys, 0, 0);
+                T r = pot_integral(kk);
 
                 mat_potcoef(i, j) = r;
                 mat_potcoef(j, i) = r;
@@ -93,10 +109,10 @@ struct topo_mat_s {
         mat_potcoef += mat_elem.each_row() % row_z_G0;
     }
 
-    topo_mat_s<potential_func, dispersion_func>(
-        uint32_t N_k, const system_data_v2& sys) :
+    topo_mat_s<topo_functor, dispersion_func>(
+        uint32_t N_k, topo_functor pot_s) :
         N_k(N_k),
-        sys(sys),
+        pot_s(pot_s),
         row_G0(arma::Row<T>(N_k)),
         mat_potcoef(arma::Mat<T>(N_k, N_k)),
         mat_elem(arma::Mat<T>(N_k, N_k)),

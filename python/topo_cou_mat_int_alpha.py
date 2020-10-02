@@ -40,58 +40,44 @@ params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
 N_k = 1 << 9
-k1_vec = linspace(0, 1, N_k)
-k2_vec = linspace(0, 1, N_k)
+N_alpha = 9
+k_vec = linspace(0, 1, N_k)
+alpha_vec = linspace(0, 1, N_alpha)
+result = zeros((2, N_k, N_k), dtype=complex)
+plot_result = zeros((N_alpha, N_k, N_k), dtype=complex)
 
-result = zeros((4, 4, N_k, N_k), dtype=complex)
-
-for i, j in itertools.product(range(4), repeat=2):
-    print((i, j), flush=True)
-    result[i, j] = array(time_func(
-        topo_eff_cou_ij_mat,
-        i,
-        j,
+for ii, alpha in enumerate([0, 1]):
+    print('[%d/%d] ⍺: %.3f' % (ii + 1, result.shape[0], alpha), flush=True)
+    result[ii] = array(time_func(
+        topo_eff_cou_mat,
+        alpha,
         N_k,
         sys,
     )).reshape(N_k, N_k)[::-1, ::-1]
 
     print("", flush=True)
 
-print(amax(real(result)))
-print(amin(real(result)))
-print(average(real(result)))
 
-print(amax(imag(result)))
-print(amin(imag(result)))
-print(average(imag(result)))
+def plot_result_func(alpha):
+    return result[0] * (1 - alpha) + result[1] * alpha
 
-n_x, n_y = 4, 4
+
+pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+plot_result[:] = time_func(pool.map, plot_result_func, alpha_vec)
+
+n_x, n_y = 3, 3
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-band_labels = ('v', 'v\'', 'c\'', 'c')
-states_transf_16 = kron(states_transf, states_transf)
-band_idx_all = array(tuple(itertools.product(
-    range(4),
-    repeat=4,
-))).reshape(4, 4, 4, 4, 4)
-band_idx_all = band_idx_all.transpose(0, 2, 1, 3, 4).reshape(16, 16, 4)
+if len(ax) != N_alpha:
+    print('N_alpha != len(ax)')
+    exit()
 
-for i in range(4):
-    band_idx_all[:, :, i] = dot(dot(
-        states_transf_16,
-        band_idx_all[:, :, i],
-    ), states_transf_16.T)
-    band_idx_all[:, :, i] = dot(dot(
-        cou_transf,
-        band_idx_all[:, :, i],
-    ), cou_transf.T)
+plot_max = 15
 
-plot_max = 2
-
-for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
+for n in range(N_alpha):
     ax[n].imshow(
-        clip(real(result[i, j]), -plot_max, plot_max),
+        clip(real(plot_result[n]), -plot_max, plot_max),
         cmap=cm.cividis,
         aspect='auto',
         extent=(1 / N_k, 1, 1 / N_k, 1),
@@ -105,21 +91,14 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
         [0.5],
         [0.95],
         color='w',
-        marker=r'$%s%s \rightarrow %s%s$' % (
-            band_labels[band_idx_all[i, j, 1]],
-            band_labels[band_idx_all[i, j, 3]],
-            band_labels[band_idx_all[i, j, 0]],
-            band_labels[band_idx_all[i, j, 2]],
-        ),
+        marker=r'$\alpha$: $%.3f$' % alpha_vec[n],
         markeredgecolor='k',
         markeredgewidth=0.2,
         markersize=100,
     )
 
-    if i < n_x - 1:
-        ax[n].set_xticklabels([])
-    if j > 0:
-        ax[n].set_yticklabels([])
+    ax[n].set_xticklabels([])
+    ax[n].set_yticklabels([])
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
