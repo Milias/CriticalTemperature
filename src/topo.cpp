@@ -317,22 +317,25 @@ arma::cx_mat44 topo_orthU_2d(double kx, double ky, const system_data_v2& sys) {
 }
 
 arma::cx_mat44 topo_vert_3d(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
+    const arma::vec3& Q,
+    const arma::vec3& k1,
+    const arma::vec3& k2,
     const system_data_v2& sys) {
     return topo_orthU_3d(
-               0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], 0.5 * k0[2] + k[2], sys)
+               0.5 * (Q[0] + k2[0]), 0.5 * (Q[1] + k2[1]),
+               0.5 * (Q[2] + k2[2]), sys)
                .t() *
            topo_orthU_3d(
-               0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], 0.5 * k0[2] - k[2],
-               sys);
+               0.5 * (Q[0] + k1[0]), 0.5 * (Q[1] + k1[1]),
+               0.5 * (Q[2] + k1[2]), sys);
 }
 
 arma::cx_mat44 topo_vert_2d(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
+    const arma::vec2& Q,
+    const arma::vec2& k1,
+    const arma::vec2& k2,
     const system_data_v2& sys) {
-    arma::umat transf = {
+    const arma::umat transf = {
         {1, 0, 0, 0},
         {0, 0, 0, 1},
         {0, 1, 0, 0},
@@ -340,32 +343,31 @@ arma::cx_mat44 topo_vert_2d(
     };
 
     return transf *
-           topo_orthU_2d(0.5 * k0[0] + k[0], 0.5 * k0[1] + k[1], sys).t() *
-           topo_orthU_2d(0.5 * k0[0] - k[0], 0.5 * k0[1] - k[1], sys) *
+           topo_orthU_2d(0.5 * (Q[0] + k1[0]), 0.5 * (Q[1] + k1[1]), sys).t() *
+           topo_orthU_2d(0.5 * (Q[0] + k2[0]), 0.5 * (Q[1] + k2[1]), sys) *
            transf.t();
 }
 
 arma::cx_mat topo_cou_3d(
-    const std::vector<double>& q1,
-    const std::vector<double>& q2,
-    const std::vector<double>& q,
+    const arma::vec3& Q,
+    const arma::vec3& k1,
+    const arma::vec3& k2,
     const system_data_v2& sys) {
-    arma::cx_mat44 mat1{topo_vert_3d(q1, q, sys)};
-    arma::cx_mat44 mat2{topo_vert_3d(q2, q, sys)};
+    arma::cx_mat44 mat1{topo_vert_3d(Q, k1, k2, sys)};
+    arma::cx_mat44 mat2{topo_vert_3d(Q, -k1, -k2, sys)};
 
-    return topo_green_cou(arma::norm(arma::vec(q)), sys) *
-           arma::kron(mat1, mat2);
+    return topo_green_cou(arma::norm(k2 - k1), sys) * arma::kron(mat1, mat2);
 }
 
 arma::cx_mat topo_cou_2d(
-    const std::vector<double>& q1,
-    const std::vector<double>& q2,
-    const std::vector<double>& q,
+    const arma::vec2& Q,
+    const arma::vec2& k1,
+    const arma::vec2& k2,
     const system_data_v2& sys) {
-    arma::cx_mat44 mat1{topo_vert_2d(q1, q, sys)};
-    arma::cx_mat44 mat2{topo_vert_2d(q2, q, sys)};
+    arma::cx_mat44 mat1{topo_vert_2d(Q, k1, k2, sys)};
+    arma::cx_mat44 mat2{topo_vert_2d(Q, -k1, -k2, sys)};
 
-    arma::mat transf = {
+    const arma::mat transf = {
         {1, 0, 0, 0},
         {0, 0, 1, 0},
         {0, 1, 0, 0},
@@ -375,7 +377,7 @@ arma::cx_mat topo_cou_2d(
     arma::mat eye(2, 2, arma::fill::eye);
     arma::mat cou_transf = arma::kron(eye, arma::kron(transf, eye));
 
-    return topo_green_cou(arma::norm(arma::vec(q)), sys) * cou_transf *
+    return topo_green_cou(arma::norm(k2 - k1), sys) * cou_transf *
            arma::kron(mat1, mat2) * cou_transf.t();
 }
 
@@ -414,39 +416,45 @@ std::vector<double> topo_eigenval_2d_v(double k, const system_data_v2& sys) {
 }
 
 std::vector<std::complex<double>> topo_vert_3d_v(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
+    const std::vector<double>& Q,
+    const std::vector<double>& k1,
+    const std::vector<double>& k2,
     const system_data_v2& sys) {
-    arma::cx_mat44 r(topo_vert_3d(k0, k, sys));
+    arma::cx_mat44 r(
+        topo_vert_3d(arma::vec(Q), arma::vec(k1), arma::vec(k2), sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
 
 std::vector<std::complex<double>> topo_vert_2d_v(
-    const std::vector<double>& k0,
-    const std::vector<double>& k,
+    const std::vector<double>& Q,
+    const std::vector<double>& k1,
+    const std::vector<double>& k2,
     const system_data_v2& sys) {
-    arma::cx_mat44 r(topo_vert_2d(k0, k, sys));
+    arma::cx_mat44 r(
+        topo_vert_2d(arma::vec(Q), arma::vec(k1), arma::vec(k2), sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
 
 std::vector<std::complex<double>> topo_cou_3d_v(
-    const std::vector<double>& q1,
-    const std::vector<double>& q2,
-    const std::vector<double>& q,
+    const std::vector<double>& Q,
+    const std::vector<double>& k1,
+    const std::vector<double>& k2,
     const system_data_v2& sys) {
-    arma::cx_mat r(topo_cou_3d(q1, q2, q, sys));
+    arma::cx_mat r(
+        topo_cou_3d(arma::vec(Q), arma::vec(k1), arma::vec(k2), sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
 
 std::vector<std::complex<double>> topo_cou_2d_v(
-    const std::vector<double>& q1,
-    const std::vector<double>& q2,
-    const std::vector<double>& q,
+    const std::vector<double>& Q,
+    const std::vector<double>& k1,
+    const std::vector<double>& k2,
     const system_data_v2& sys) {
-    arma::cx_mat r(topo_cou_2d(q1, q2, q, sys));
+    arma::cx_mat r(
+        topo_cou_2d(arma::vec(Q), arma::vec(k1), arma::vec(k2), sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
@@ -519,13 +527,21 @@ struct topo_pot_cou_f {
 
 struct topo_pot_eff_cou_2d_ij_f {
     const system_data_v2& sys;
+    arma::vec Q_vec;
     uint8_t i, j;
     double k1, k2;
 
     topo_pot_eff_cou_2d_ij_f(const topo_pot_eff_cou_2d_ij_f&) = default;
 
+    topo_pot_eff_cou_2d_ij_f(
+        const system_data_v2& sys,
+        const arma::vec& Q_vec,
+        uint8_t i,
+        uint8_t j) :
+        sys(sys), Q_vec(Q_vec), i(i), j(j) {}
+
     topo_pot_eff_cou_2d_ij_f(const system_data_v2& sys, uint8_t i, uint8_t j) :
-        sys(sys), i(i), j(j) {}
+        sys(sys), Q_vec(arma::zeros(2)), i(i), j(j) {}
 
     topo_pot_eff_cou_2d_ij_f set_momentum(const double kk[2]) {
         topo_pot_eff_cou_2d_ij_f new_s{topo_pot_eff_cou_2d_ij_f(*this)};
@@ -537,30 +553,27 @@ struct topo_pot_eff_cou_2d_ij_f {
     }
 
     double operator()(double th) {
-        double k{
-            std::sqrt(k1 * k1 + k2 * k2 - 2 * k1 * k2 * std::cos(th)),
-        };
+        arma::vec2 k1_vec = {k1, 0.0};
+        arma::vec2 k2_vec = {k2 * std::cos(th), k2 * std::sin(th)};
 
-        if (k < 1e-5) {
-            k = 1e-5;
-        }
-
-        std::vector<double> q1{{k1, 0}}, q2{{-k1, 0}},
-            q{{-k * std::cos(th), -k * std::sin(th)}};
-
-        return 2 * M_PI * topo_cou_2d(q1, q2, q, sys)(i, j).real();
+        return 2 * M_PI * topo_cou_2d(Q_vec, k1_vec, k2_vec, sys)(i, j).real();
     }
 };
 
 struct topo_pot_eff_cou_2d_f {
     const system_data_v2& sys;
+    arma::vec Q_vec;
     double alpha;
     double k1, k2;
 
     topo_pot_eff_cou_2d_f(const topo_pot_eff_cou_2d_f&) = default;
 
+    topo_pot_eff_cou_2d_f(
+        const system_data_v2& sys, const arma::vec& Q_vec, double alpha) :
+        sys(sys), Q_vec(Q_vec), alpha(alpha) {}
+
     topo_pot_eff_cou_2d_f(const system_data_v2& sys, double alpha) :
-        sys(sys), alpha(alpha) {}
+        sys(sys), Q_vec(arma::zeros(2)), alpha(alpha) {}
 
     topo_pot_eff_cou_2d_f set_momentum(const double kk[2]) {
         topo_pot_eff_cou_2d_f new_s{topo_pot_eff_cou_2d_f(*this)};
@@ -572,24 +585,15 @@ struct topo_pot_eff_cou_2d_f {
     }
 
     double operator()(double th) {
-        double k{
-            std::sqrt(k1 * k1 + k2 * k2 - 2 * k1 * k2 * std::cos(th)),
-        };
-
-        if (k < 1e-5) {
-            k = 1e-5;
-        }
-
-        std::vector<double> q1{{k1, 0}}, q2{{-k1, 0}},
-            q{{-k * std::cos(th), -k * std::sin(th)}};
+        arma::vec2 k1_vec = {k1, 0.0};
+        arma::vec2 k2_vec = {k2 * std::cos(th), k2 * std::sin(th)};
 
         arma::mat22 result{
-            arma::real(topo_cou_2d(q1, q2, q, sys).submat(1, 1, 2, 2)),
+            arma::real(
+                topo_cou_2d(Q_vec, k1_vec, k2_vec, sys).submat(1, 1, 2, 2)),
         };
 
-        return 2 * M_PI *
-               ((result(0, 0) + result(1, 1)) * (1 - alpha) +
-                alpha * (result(0, 1) + result(1, 0)));
+        return 4 * M_PI * (result(1, 1) - alpha * result(0, 1));
     }
 };
 
@@ -603,7 +607,11 @@ double topo_det_f(double z, topo_mat_s<topo_functor, dispersion_func>* s) {
     }
 
     s->update_mat_potcoef(z);
-    return arma::det(s->mat_potcoef);
+
+    double val, sign, valint;
+    arma::log_det(val, sign, s->mat_potcoef);
+
+    return sign * std::exp(val + std::log(1e20));
 }
 
 template <
@@ -616,7 +624,7 @@ double topo_det_zero_t(
      * be_bnd: upper bound for the binding energy -> positive value!
      */
 
-    constexpr double local_eps{1e-12}, be_min{10e-3};
+    constexpr double local_eps{1e-10}, be_min{0.2};
     double z, z_min{std::log(be_min)}, z_max{std::log(std::abs(be_bnd))},
         z0{std::log(be_bnd)};
     // double z, z_min{be_min}, z_max{std::abs(be_bnd)}, z0{be_bnd};
@@ -626,10 +634,14 @@ double topo_det_zero_t(
 
     if constexpr (use_brackets) {
         gsl_function funct;
+        /*
         funct.function = &median_f<
             void,
             templated_f<topo_mat_s<topo_functor, dispersion_func>, topo_det_f>,
             7>;
+        */
+        funct.function = &templated_f<
+            topo_mat_s<topo_functor, dispersion_func>, topo_det_f>;
         funct.params = &s;
 
         double f_min{funct.function(z_min, funct.params)};
@@ -699,13 +711,13 @@ double topo_det_zero_t(
             z0     = z;
             status = gsl_root_fdfsolver_iterate(solver);
             z      = gsl_root_fdfsolver_root(solver);
-            status =
-                gsl_root_test_residual(funct.f(z, funct.params), local_eps);
+
+            double fval{funct.f(z, funct.params)};
+
+            status = gsl_root_test_residual(fval, local_eps);
 
             /*
-            printf(
-                "[%s]: <%d> f: (%e), z: (%f)\n", __func__, iter,
-                funct.f(z, funct.params), z);
+            printf("[%s]: <%d> f: (%e), z: (%f)\n", __func__, iter, fval, z);
             */
         }
 
@@ -760,6 +772,37 @@ std::vector<double> topo_det_t_eff_cou_vec(
 #pragma omp parallel for
     for (uint32_t i = 0; i < z_vec.size(); i++) {
         r[i] = det_func(z_vec[i], &mat_s);
+        /*
+        double int_part;
+        r[i] = (z_vec[i] > 0 ? 1.0 : -1.0) *
+               std::log(1 + std::exp(std::modf(z_vec[i], &int_part)));
+        */
+    }
+
+    return r;
+}
+
+std::vector<double> topo_det_t_eff_cou_Q_vec(
+    const std::vector<double>& Q_vec,
+    double alpha,
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    const system_data_v2& sys) {
+    constexpr auto dispersion_func = topo_disp_t;
+    using pot_functor              = topo_pot_eff_cou_2d_f;
+    constexpr auto det_func = topo_det_f<pot_functor, dispersion_func, false>;
+
+    pot_functor pot_s(sys, arma::vec(Q_vec), alpha);
+    topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
+
+    mat_s.fill_mat_potcoef();
+    mat_s.fill_mat_elem();
+
+    std::vector<double> r(z_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < z_vec.size(); i++) {
+        r[i] = det_func(z_vec[i], &mat_s);
     }
 
     return r;
@@ -784,6 +827,39 @@ double topo_be_t_eff_cou(
     constexpr auto det_zero = topo_det_zero_t<pot_functor, dispersion_func>;
 
     pot_functor pot_s(sys, alpha);
+    topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
+
+    return det_zero(mat_s, be_bnd);
+}
+
+double topo_be_t_eff_cou_Q(
+    const std::vector<double>& Q_vec,
+    double alpha,
+    uint32_t N_k,
+    const system_data_v2& sys,
+    double be_bnd) {
+    constexpr auto dispersion_func = topo_disp_t;
+    using pot_functor              = topo_pot_eff_cou_2d_f;
+    constexpr auto det_zero = topo_det_zero_t<pot_functor, dispersion_func>;
+
+    pot_functor pot_s(sys, arma::vec(Q_vec), alpha);
+    topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
+
+    return det_zero(mat_s, be_bnd);
+}
+
+double topo_be_b_t_eff_cou_Q(
+    const std::vector<double>& Q_vec,
+    double alpha,
+    uint32_t N_k,
+    const system_data_v2& sys,
+    double be_bnd) {
+    constexpr auto dispersion_func = topo_disp_t;
+    using pot_functor              = topo_pot_eff_cou_2d_f;
+    constexpr auto det_zero =
+        topo_det_zero_t<pot_functor, dispersion_func, true>;
+
+    pot_functor pot_s(sys, arma::vec(Q_vec), alpha);
     topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
 
     return det_zero(mat_s, be_bnd);
@@ -820,6 +896,39 @@ std::vector<double> topo_eff_cou_mat(
     using pot_functor              = topo_pot_eff_cou_2d_f;
 
     pot_functor pot_s(sys, alpha);
+    topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
+    mat_s.fill_mat_potcoef();
+
+    return std::vector<double>(
+        mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
+}
+
+std::vector<double> topo_eff_cou_Q_ij_mat(
+    const std::vector<double>& Q_vec,
+    uint8_t mat_i,
+    uint8_t mat_j,
+    uint32_t N_k,
+    const system_data_v2& sys) {
+    constexpr auto dispersion_func = topo_disp_t;
+    using pot_functor              = topo_pot_eff_cou_2d_ij_f;
+
+    pot_functor pot_s(sys, arma::vec(Q_vec), mat_i, mat_j);
+    topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
+    mat_s.fill_mat_potcoef();
+
+    return std::vector<double>(
+        mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
+}
+
+std::vector<double> topo_eff_cou_Q_mat(
+    const std::vector<double>& Q_vec,
+    double alpha,
+    uint32_t N_k,
+    const system_data_v2& sys) {
+    constexpr auto dispersion_func = topo_disp_t;
+    using pot_functor              = topo_pot_eff_cou_2d_f;
+
+    pot_functor pot_s(sys, arma::vec(Q_vec), alpha);
     topo_mat_s<pot_functor, dispersion_func> mat_s(N_k, pot_s);
     mat_s.fill_mat_potcoef();
 

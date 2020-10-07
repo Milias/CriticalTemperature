@@ -1,4 +1,5 @@
 from common import *
+import matplotlib.pyplot as plt
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -18,37 +19,15 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-k_val = array([0.00, 0.03])
+k_val = array([0.05, 0.0])
 kz_val = 0.0
-#"""
-U_mat = array(topo_orthU_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
-U_mat_d = U_mat.T.conjugate()
-eig_vals = diagflat(topo_eigenval_3d_v(sqrt(sum(k_val * k_val)), kz_val, sys))
 
-print('U_mat')
-print(U_mat)
-print('U_mat_d')
-print(U_mat_d)
-print('U_mat_d * U_mat')
-print(U_mat_d.dot(U_mat))
-print()
+th_val = 0.5 * pi
+q_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
+result = zeros((q_vec.size, 4, 4), dtype=complex)
 
-print((U_mat_d.dot(eig_vals).dot(U_mat)).T)
-hamilt = array(topo_ham_3d_v(*k_val, kz_val, sys), order='F').reshape(4, 4)
-
-print(diag(eig_vals))
-print(hamilt)
-print(amax(abs(hamilt - (U_mat_d.dot(eig_vals).dot(U_mat)).T)))
-print(scipy.linalg.eigvals(hamilt))
-
-#"""
-
-th_val = arctan2(k_val[1], k_val[0]) + (pi - 0.25 * pi)
-k_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
-result = zeros((k_vec.size, 4, 4), dtype=complex)
-
-disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in k_vec])
-#disp_vec = array([topo_eigenval_2d_v(k, sys) for k in k_vec])
+disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in q_vec])
+#disp_vec = array([topo_eigenval_2d_v(k, sys) for k in q_vec])
 
 states_transf = array([
     [1, 0, 0, 0],
@@ -57,26 +36,28 @@ states_transf = array([
     [0, 0, 1, 0],
 ])
 
-disp_arr = zeros((k_vec.size, 4, 4, 2))
+disp_arr = zeros((q_vec.size, 4, 4, 2))
 for i, j in itertools.product(range(4), repeat=2):
     disp_arr[:, i, j, 0] = disp_vec[:, i]
     disp_arr[:, i, j, 1] = disp_vec[:, j]
 
-for ii, k in enumerate(k_vec):
+for ii, q in enumerate(q_vec):
     result[ii] = array(
         topo_vert_2d_v(
+            [0.1, 0.0],
             k_val,
-            [k * cos(th_val), k * sin(th_val)],
+            [k_val[0] + q * cos(th_val), k_val[1] + q * sin(th_val)],
             sys,
         ),
         order='F',
     ).reshape(4, 4)
 
     for i in range(2):
-        disp_arr[ii, :, :, i] = dot(dot(
-            states_transf,
-            disp_arr[ii, :, :, i],
-        ), states_transf.T)
+        disp_arr[ii, :, :,
+                 i] = dot(dot(
+                     states_transf,
+                     disp_arr[ii, :, :, i],
+                 ), states_transf.T)
 
 #n_x, n_y = 4, 4
 n_x, n_y = 2, 2
@@ -98,10 +79,10 @@ for i in range(2):
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     plot_data = result[:, i, j]
 
-    ax[n].plot(k_vec, real(plot_data), 'r-')
-    ax[n].plot(k_vec, imag(plot_data), 'b-')
+    ax[n].plot(q_vec, real(plot_data), 'r-')
+    ax[n].plot(q_vec, imag(plot_data), 'b-')
 
-    ax[n].set_xlim(k_vec[0], k_vec[-1])
+    ax[n].set_xlim(q_vec[0], q_vec[-1])
     ax[n].axhline(
         y=0,
         color='k',
@@ -116,7 +97,7 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].plot(
-        k_vec,
+        q_vec,
         disp_arr[:, i, j, 0],
         color='m',
         linestyle='-',
@@ -124,7 +105,7 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].plot(
-        k_vec,
+        q_vec,
         disp_arr[:, i, j, 1],
         color='g',
         linestyle='-',
@@ -132,7 +113,7 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].text(
-        k_vec[0] * 0.98,
+        q_vec[0] * 0.98,
         -1.2 * 0.98,
         r'$%s%s$' % (
             band_labels[band_idx_all[i, j, 0]],
@@ -156,7 +137,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
     transparent=True,
 )
 

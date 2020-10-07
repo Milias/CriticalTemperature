@@ -39,9 +39,8 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 9
-k1_vec = linspace(0, 1, N_k)
-k2_vec = linspace(0, 1, N_k)
+N_k = 1 << 8
+k_vec = linspace(0, 1, N_k)
 
 result = zeros((4, 4, N_k, N_k), dtype=complex)
 
@@ -91,10 +90,10 @@ plot_max = 2
 
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     ax[n].imshow(
-        clip(real(result[i, j]), -plot_max, plot_max),
+        real(result[i, j]),
         cmap=cm.cividis,
         aspect='auto',
-        extent=(1 / N_k, 1, 1 / N_k, 1),
+        extent=(0, 1, 0, 1),
         interpolation='none',
         vmin=-plot_max,
         vmax=plot_max,
@@ -116,17 +115,15 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
         markersize=100,
     )
 
-    if i < n_x - 1:
-        ax[n].set_xticklabels([])
-    if j > 0:
-        ax[n].set_yticklabels([])
+    ax[n].set_xticklabels([])
+    ax[n].set_yticklabels([])
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
     transparent=True,
 )
 

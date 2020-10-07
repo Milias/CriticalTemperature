@@ -15,9 +15,9 @@ def compute_cou_mat(result, q_vec, q_ang, k_vec, sys):
     for ii, q in enumerate(q_vec):
         result[ii] = array(
             topo_cou_2d_v(
+                [0.0, 0.0],
+                k_vec + array([q * cos(q_ang), q * sin(q_ang)]),
                 k_vec,
-                -k_vec,
-                [q * cos(q_ang), q * sin(q_ang)],
                 sys,
             ),
             order='F',
@@ -56,7 +56,7 @@ sys = system_data_v2(params)
 N_th = 9
 
 q_ang_vec = linspace(0, 2, N_th) * pi
-k_vec = array([0.05, 0])
+k_vec = array([0.05, 0.0])
 q_vec = linspace(-0.35, 0.35, 1 << 10)
 
 result = zeros((N_th, q_vec.size, 16, 16), dtype=complex)
@@ -65,7 +65,7 @@ for ii, q_ang in enumerate(q_ang_vec):
     compute_cou_mat(
         result[ii],
         q_vec,
-        arctan2(k_vec[1], k_vec[0]) + q_ang,
+        q_ang,
         k_vec,
         sys,
     )
@@ -160,7 +160,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
     transparent=True,
 )
 

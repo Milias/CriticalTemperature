@@ -39,14 +39,14 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 9
+N_k = 1 << 8
 N_alpha = 9
 k_vec = linspace(0, 1, N_k)
-alpha_vec = linspace(0, 1, N_alpha)
-result = zeros((2, N_k, N_k), dtype=complex)
+alpha_vec = linspace(-1, 1, N_alpha)
+result = zeros((1, N_k, N_k), dtype=complex)
 plot_result = zeros((N_alpha, N_k, N_k), dtype=complex)
 
-for ii, alpha in enumerate([0, 1]):
+for ii, alpha in enumerate([1]):
     print('[%d/%d] ⍺: %.3f' % (ii + 1, result.shape[0], alpha), flush=True)
     result[ii] = array(time_func(
         topo_eff_cou_mat,
@@ -59,7 +59,7 @@ for ii, alpha in enumerate([0, 1]):
 
 
 def plot_result_func(alpha):
-    return result[0] * (1 - alpha) + result[1] * alpha
+    return result[0] * alpha
 
 
 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
@@ -105,7 +105,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
     transparent=True,
 )
 

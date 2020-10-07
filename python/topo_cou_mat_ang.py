@@ -1,4 +1,5 @@
 from common import *
+import matplotlib.pyplot as plt
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -14,9 +15,9 @@ def compute_cou_mat(result, q, q_ang_vec, k_vec, sys):
     for ii, q_ang in enumerate(q_ang_vec):
         result[ii] = array(
             topo_cou_2d_v(
-                k_vec,
+                [0.00, 0.0],
                 -k_vec,
-                [q * cos(q_ang), q * sin(q_ang)],
+                k_vec + array([q * cos(q_ang), q * sin(q_ang)]),
                 sys,
             ),
             order='F',
@@ -64,7 +65,7 @@ for ii, q in enumerate(q_vec):
     compute_cou_mat(
         result[ii],
         q,
-        arctan2(k_vec[1], k_vec[0]) + q_ang_vec,
+        q_ang_vec,
         k_vec,
         sys,
     )
@@ -159,7 +160,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v6'),
     transparent=True,
 )
 

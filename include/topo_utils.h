@@ -91,6 +91,7 @@ struct topo_mat_s {
                 };
 
                 mat_elem(i, k) =
+                    //du0 * k_v[1] / std::pow(t_v[1], 2) * mat_potcoef(i, k);
                     du0 * k_v[1] / std::pow(t_v[1], 2) * mat_potcoef(i, k);
             }
         }

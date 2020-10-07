@@ -32,43 +32,30 @@ def find_eps_sol(N_k, sys, be_cou, be_bnd):
     ).root
 
 
-"""
-eps_sol = find_eps_sol(N_k, sys, 193e-3, 1)
-print(eps_sol)
-"""
+Q_vec = (-0.1, 0.0)
 
-be_bnd = 5e-1
+be_bnd = 0.25
 
-alpha_vec = linspace(0, 1, 1 << 6)
-be_vec = array(topo_be_t_eff_cou_vec(alpha_vec, N_k, sys, be_bnd))
+N_N_k = 1 << 3
+N_k_vec = array(logspace(2.1, 3.8, N_N_k), dtype=int)
+
+be_cou = zeros((N_N_k))
+
+for n, N_k in enumerate(N_k_vec):
+    be_cou[n] = topo_be_t_eff_cou_Q(Q_vec, 1.0, int(N_k), sys, be_bnd)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-colors = [
-    matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-    for h in linspace(0, 0.7, 1)
-]
-
-ax[0].plot(
-    alpha_vec,
-    be_vec * 1e3,
-    color=colors[0],
-    linestyle='-',
-)
-
-ax[0].set_xlim(alpha_vec[0], alpha_vec[-1])
-ax[0].set_ylim(0, None)
-ax[0].set_xlabel(r'$\alpha$')
-ax[0].set_ylabel(r'$E_X$ (meV)')
+ax[0].plot(N_k_vec, be_cou, 'r.')
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
     transparent=True,
 )
 

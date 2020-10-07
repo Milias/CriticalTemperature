@@ -37,20 +37,23 @@ eps_sol = find_eps_sol(N_k, sys, 193e-3, 1)
 print(eps_sol)
 """
 
+Q_vec = (-0.01, 0.0)
+
 be_bnd = 0.4
 
-be_cou = topo_be_t_cou(N_k, sys, 0)
-print(be_cou)
+be_cou = topo_be_t_eff_cou_Q(Q_vec, 1.0, N_k, sys, be_bnd)
+print(be_cou, flush=True)
 
-z_vec = linspace(1e-3, be_bnd, 1 << 9)
-det_vec = topo_det_t_cou_vec(z_vec, N_k, sys)
+z_vec = linspace(0.2, 0.4, 1 << 8)
+det_vec = topo_det_t_eff_cou_Q_vec(Q_vec, 1.0, z_vec, N_k, sys)
+#print(det_vec, flush=True)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
 ax[0].plot(z_vec, det_vec, 'r.')
-ax[0].set_ylim(-3e-2, 1e-1)
+ax[0].set_ylim(-1, 1)
 
 ax[0].axvline(
     x=be_cou,
@@ -69,7 +72,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v1'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
     transparent=True,
 )
 
