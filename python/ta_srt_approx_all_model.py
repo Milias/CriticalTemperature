@@ -5,7 +5,7 @@ def srt_dist(E, fse, alpha, f_eq, f_zero):
     eq_data = f_eq(E)
     zero_data = f_zero(E)
 
-    return eq_data * fse + zero_data * alpha
+    return eq_data * (1 - alpha) + zero_data * alpha
 
 
 def f_dist_eq(E, beta, shift):
@@ -16,8 +16,11 @@ def f_dist_zero(E, mu, sigma):
     return stats.norm.pdf(E, loc=mu, scale=sigma)
 
 
+fit_vars_label = 'fit_vars_model_biexc'
+
+
 def TA_model(abs_data, ta_srt_dict, pump_case):
-    var_list = list(ta_srt_dict['fit_vars_model'].keys())
+    var_list = list(ta_srt_dict[fit_vars_label].keys())
 
     pump_sigma = ta_srt_dict['raw_data']['pump_sigma'][pump_case]
 
@@ -77,9 +80,33 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
 
         se_hh_data = hh_interp * dist_data
         se_lh_data = lh_interp * dist_data
+
+        se_sum_data = se_hh_data + se_lh_data
+
+        se_hh_data /= amax(se_sum_data)
+        se_lh_data /= amax(se_sum_data)
+        se_sum_data /= amax(se_sum_data)
+
+        se_hh_data *= fse
+        se_lh_data *= fse
+        se_sum_data *= fse
+
         depl_data = fdepl * (cont_hh_interp + cont_lh_interp)
 
-        result = abs_interp - depl_data - se_hh_data - se_lh_data
+        hhhh = hhhh_mag * stats.norm.pdf(
+            xdata - abs_shift,
+            loc=hhhh_loc - abs_shift,
+            scale=hhhh_sig,
+        )
+
+        hhlh = hhlh_mag * stats.norm.pdf(
+            xdata - abs_shift,
+            loc=hhlh_loc - abs_shift,
+            scale=hhlh_sig,
+        )
+
+        result = abs_interp - depl_data - se_sum_data + hhhh + hhlh
+        clip(result, 0, 1)
 
         if return_dict:
             return {
@@ -88,8 +115,8 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
                 'se_hh': se_hh_data,
                 'se_lh': se_lh_data,
                 'abs': abs_interp,
-                'hhlh': zeros_like(result),
-                'hhhh': zeros_like(result),
+                'hhlh': hhlh,
+                'hhhh': hhhh,
             }
         else:
             return result
@@ -113,17 +140,17 @@ def TA_fit(time_idx, ta_data, abs_data, ta_srt_dict, pump_case):
     )
 
     p0_values = tuple([
-        ta_srt_dict['fit_vars_model'][var]['p0'] if isinstance(
-            ta_srt_dict['fit_vars_model'][var]['p0'], float) else
-        ta_srt_dict['fit_vars_model'][var]['p0'][pump_case]
-        for var in ta_srt_dict['fit_vars_model']
+        ta_srt_dict[fit_vars_label][var]['p0'] if isinstance(
+            ta_srt_dict[fit_vars_label][var]['p0'], float) else
+        ta_srt_dict[fit_vars_label][var]['p0'][pump_case]
+        for var in ta_srt_dict[fit_vars_label]
     ])
 
     bounds = array([
-        tuple(ta_srt_dict['fit_vars_model'][var]['bounds']) if isinstance(
-            ta_srt_dict['fit_vars_model'][var]['bounds'], list) else tuple(
-                ta_srt_dict['fit_vars_model'][var]['bounds'][pump_case])
-        for var in ta_srt_dict['fit_vars_model']
+        tuple(ta_srt_dict[fit_vars_label][var]['bounds']) if isinstance(
+            ta_srt_dict[fit_vars_label][var]['bounds'], list) else tuple(
+                ta_srt_dict[fit_vars_label][var]['bounds'][pump_case])
+        for var in ta_srt_dict[fit_vars_label]
     ]).T
 
     popt, pcov = curve_fit(
@@ -177,7 +204,7 @@ def plot_fit(
         pump_case,
     )
 
-    load_popt(popt, globals(), ta_srt_dict['fit_vars_model'].keys())
+    load_popt(popt, globals(), ta_srt_dict[fit_vars_label].keys())
 
     vis_dict = TA_model(
         abs_data,
@@ -262,18 +289,6 @@ def plot_fit(
         linewidth=0.8,
         label='%.2f ps' % time_value,
     )
-    """
-    r'hhhh: (%.3f, %.3f eV, %.1f meV)' % (
-        hhhh_mag * 1e3,
-        hhhh_loc,
-        hhhh_sig * 1e3,
-    ),
-    r'hhlh: (%.3f, %.3f eV, %.1f meV)' % (
-        hhlh_mag * 1e3,
-        hhlh_loc,
-        hhlh_sig * 1e3,
-    ),
-    """
 
     ax[0].text(
         2.3525,
@@ -284,6 +299,16 @@ def plot_fit(
             r'alpha: %.5f' % alpha,
             r'abs_shift: %.2f meV' % (abs_shift * 1e3),
             r'pump_mu: %.4f eV' % pump_mu,
+            r'hhhh: (%.3f, %.3f eV, %.1f meV)' % (
+                hhhh_mag * 1e3,
+                hhhh_loc,
+                hhhh_sig * 1e3,
+            ),
+            r'hhlh: (%.3f, %.3f eV, %.1f meV)' % (
+                hhlh_mag * 1e3,
+                hhlh_loc,
+                hhlh_sig * 1e3,
+            ),
             '',
             'Adj R^2: %.5f' % adj_r_squared(**fit_data),
         ]),

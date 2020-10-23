@@ -1,9 +1,7 @@
 #pragma once
 #include "common.h"
 
-template <
-    typename topo_functor,
-    arma::vec (*dispersion_func)(const arma::vec&, const system_data_v2&)>
+template <typename topo_functor>
 struct topo_mat_s {
     using T = double;
 
@@ -51,7 +49,7 @@ struct topo_mat_s {
          * with the given dispersion relation.
          */
         arma::vec k_v{(1.0 - u0) / u0};
-        row_G0 = -dispersion_func(k_v, pot_s.sys).t().eval();
+        row_G0 = -pot_s.dispersion(k_v).t().eval();
     }
 
     void fill_mat_potcoef() {
@@ -91,7 +89,6 @@ struct topo_mat_s {
                 };
 
                 mat_elem(i, k) =
-                    //du0 * k_v[1] / std::pow(t_v[1], 2) * mat_potcoef(i, k);
                     du0 * k_v[1] / std::pow(t_v[1], 2) * mat_potcoef(i, k);
             }
         }
@@ -110,8 +107,7 @@ struct topo_mat_s {
         mat_potcoef += mat_elem.each_row() % row_z_G0;
     }
 
-    topo_mat_s<topo_functor, dispersion_func>(
-        uint32_t N_k, topo_functor pot_s) :
+    topo_mat_s<topo_functor>(uint32_t N_k, topo_functor pot_s) :
         N_k(N_k),
         pot_s(pot_s),
         row_G0(arma::Row<T>(N_k)),
@@ -124,3 +120,9 @@ struct topo_mat_s {
     }
 };
 
+struct topo_disp_t_th_s {
+    double k;
+    double Q;
+
+    const system_data_v2& sys;
+};

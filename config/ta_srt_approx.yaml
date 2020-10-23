@@ -133,7 +133,7 @@ fit_vars_model_biexc:
     alpha:
         unit: ''
         p0: 0.1
-        bounds: [ 0.0, 1.0 ]
+        bounds: [ 0.0, 0.1 ]
 
     pump_mu:
         unit: 'eV'
@@ -149,17 +149,17 @@ fit_vars_model_biexc:
     abs_shift:
         unit: 'eV'
         p0: 0.0
-        bounds: [ 0.0, 0.015 ]
+        bounds: [ -0.015, 0.015 ]
 
     hhhh_mag:
         unit: ''
         p0: 0.002
-        bounds: [ 0.0, 0.004 ]
+        bounds: [ 0.0, 0.008 ]
 
     hhlh_mag:
         unit: ''
         p0: 0.002
-        bounds: [ 0.0, 0.004 ]
+        bounds: [ 0.0, 0.008 ]
 
     hhhh_loc:
         unit: 'eV'
@@ -174,12 +174,12 @@ fit_vars_model_biexc:
     hhhh_sig:
         unit: 'eV'
         p0: 0.01
-        bounds: [ 0.005, 0.02 ]
+        bounds: [ 0.005, 0.03 ]
 
     hhlh_sig:
         unit: 'eV'
         p0: 0.01
-        bounds: [ 0.005, 0.02 ]
+        bounds: [ 0.005, 0.03 ]
 
 alpha_fit:
     tau0:

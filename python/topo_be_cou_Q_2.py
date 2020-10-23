@@ -34,49 +34,29 @@ def find_eps_sol(N_k, sys, be_cou, be_bnd):
 
 be_bnd = 1.0
 
-file_version = 'v5'
+file_version = 'v1'
 
-if file_version == 'v2':
+if file_version == 'v1':
     N_Q = 1 << 6
-    N_Q_th = 1 << 6
-    Q_vec = linspace(0, 0.5, N_Q)
-    Q_th_vec = linspace(0, 2, N_Q_th) * pi
+    Q_vec = linspace(0, 0.2, N_Q)
 
-    plot_min, plot_max = 0.2e3, 0.7e3
-    n_ticks = 11
-elif file_version == 'v3':
-    N_Q = 1 << 7
-    N_Q_th = 1 << 7
-    Q_vec = linspace(0, 0.15, N_Q)
-    Q_th_vec = linspace(0, 2, N_Q_th) * pi
-
-    plot_min, plot_max = 0.2e3, 0.7e3
-    n_ticks = 11
-elif file_version == 'v4':
-    N_Q = 1 << 6
-    N_Q_th = (1 << 6) + 1
-    Q_vec = linspace(0, 0.15, N_Q)
-    Q_th_vec = linspace(0, 1, N_Q_th) * pi
-
-    plot_min, plot_max = 0.2e3, 0.7e3
-    n_ticks = 11
-elif file_version == 'v5':
-    N_Q = 1 << 7
-    N_Q_th = (1 << 7) + 1
-    Q_vec = linspace(0, 1.0, N_Q)
-    Q_th_vec = linspace(0, 1, N_Q_th) * pi
-
-    plot_min, plot_max = 0.2e3, 1.0e3
-    n_ticks = 9
-
-be_arr = zeros((N_Q, N_Q_th))
+be_arr = zeros((N_Q))
 
 
-def compute_be(be_cou_func, under_threshold=float('inf')):
-    if be_arr[0, 0] <= under_threshold:
-        be_arr[0, :] = time_func(
+def compute_be(be_cou_func):
+    for i in range(N_Q):
+        print(
+            '[%d/%d] Computing %.5f' % (
+                n + 1,
+                N_Q,
+                Q_vec[i],
+            ),
+            flush=True,
+        )
+
+        be_arr[i] = time_func(
             be_cou_func,
-            (0.0, 0.0),
+            Q_vec[i],
             1.0,
             N_k,
             sys,
@@ -91,46 +71,7 @@ def compute_be(be_cou_func, under_threshold=float('inf')):
             be_arr,
         )
 
-    for n, (i,
-            j) in enumerate(itertools.product(
-                range(1, N_Q),
-                range(N_Q_th),
-            )):
-        if be_arr[i, j] <= under_threshold or isnan(be_arr[i, j]):
-            print(
-                '[%d/%d] Computing (%.5f, %.5f)' % (
-                    n + 1,
-                    (N_Q - 1) * N_Q_th,
-                    *tuple(Q_vec[i] * array([
-                        cos(Q_th_vec[j]),
-                        sin(Q_th_vec[j]),
-                    ])),
-                ),
-                flush=True,
-            )
-
-            if be_arr[i, j] > 0:
-                print('old: %.2f meV' % (be_arr[i, j] * 1e3))
-
-            be_arr[i, j] = time_func(
-                be_cou_func,
-                Q_vec[i] *
-                array([cos(Q_th_vec[j]), sin(Q_th_vec[j])]),
-                1.0,
-                N_k,
-                sys,
-                be_bnd,
-            )
-
-            save(
-                'extra/data/topo/%s_data_%s' % (
-                    os.path.splitext(os.path.basename(__file__))[0],
-                    file_version,
-                ),
-                be_arr,
-            )
-
-            print('new: %.2f meV' % (be_arr[i, j] * 1e3))
+        print('be: %.2f meV' % (be_arr[i, j] * 1e3))
 
 
 under_threshold = 0.0
@@ -157,32 +98,10 @@ n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-cm = cm.inferno
-
-if Q_th_vec[-1] < 2 * pi:
-    Q, Ph = meshgrid(
-        linspace(0, Q_vec[-1], N_Q + 1),
-        linspace(0, 2, 2 * N_Q_th) * pi,
-        indexing='ij',
-    )
-    X, Y = Q * cos(Ph), Q * sin(Ph)
-
-    be_arr_old = be_arr[:]
-    be_arr = zeros((N_Q, 2 * N_Q_th - 1))
-    be_arr[:, :N_Q_th] = be_arr_old[:]
-    be_arr[:, N_Q_th:] = be_arr_old[:, -2::-1]
-else:
-    Q, Ph = meshgrid(
-        linspace(0, Q_vec[-1], N_Q + 1),
-        linspace(0, 2, N_Q_th) * pi,
-        indexing='ij',
-    )
-    X, Y = Q * cos(Ph), Q * sin(Ph)
-
 be_arr_mask = be_arr > 0.1
 be_positive_arr = be_arr[be_arr_mask]
 
-ax[0].pcolormesh(
+ax[0].plot(
     X,
     Y,
     ma.masked_where(be_arr == 0, be_arr * 1e3),

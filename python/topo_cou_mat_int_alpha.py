@@ -39,7 +39,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 8
+N_k = 1 << 7
 N_alpha = 9
 k_vec = linspace(0, 1, N_k)
 alpha_vec = linspace(-1, 1, N_alpha)

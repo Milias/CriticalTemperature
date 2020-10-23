@@ -39,7 +39,9 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 8
+Q_val = 0.1
+
+N_k = 1 << 6
 k_vec = linspace(0, 1, N_k)
 
 result = zeros((4, 4, N_k, N_k), dtype=complex)
@@ -47,7 +49,8 @@ result = zeros((4, 4, N_k, N_k), dtype=complex)
 for i, j in itertools.product(range(4), repeat=2):
     print((i, j), flush=True)
     result[i, j] = array(time_func(
-        topo_eff_cou_ij_mat,
+        topo_eff_cou_Q_ij_mat,
+        Q_val,
         i,
         j,
         N_k,
