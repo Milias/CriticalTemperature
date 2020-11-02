@@ -19,15 +19,14 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-Q_val = 0.15
+Q_val = 0
 
-N_k = 1 << 6
+#N_k = 1 << 6
 uQ_val = 1 - 1 / (1 + Q_val)
 
 result = array(time_func(
     topo_eff_cou_Q_mat,
     Q_val,
-    1.0,
     N_k,
     sys,
 )).reshape(N_k, N_k)[::-1, ::-1]
@@ -70,7 +69,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v2'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
     transparent=True,
 )
 

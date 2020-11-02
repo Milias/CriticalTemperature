@@ -38,6 +38,8 @@
 #include <thread>
 #include <typeinfo>
 #include <utility>
+#include <string>
+#include <filesystem>
 
 //#include <optim/optim.hpp>
 #include <armadillo>

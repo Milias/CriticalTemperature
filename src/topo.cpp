@@ -428,8 +428,7 @@ std::vector<std::complex<double>> topo_vert_2d_v(
     const std::vector<double>& k1,
     const std::vector<double>& k2,
     const system_data_v2& sys) {
-    arma::cx_mat44 r(
-        topo_vert_2d(arma::vec(Q), arma::vec(k1), sys));
+    arma::cx_mat44 r(topo_vert_2d(arma::vec(Q), arma::vec(k1), sys));
 
     return std::vector<std::complex<double>>(r.begin(), r.end());
 }
@@ -519,6 +518,7 @@ double topo_disp_t_2d_th_f(double th, topo_disp_t_th_s* s) {
 struct topo_pot_cou_f {
     const system_data_v2& sys;
     double k1, k2;
+    double Q = 0;
 
     topo_pot_cou_f(const topo_pot_cou_f&) = default;
     topo_pot_cou_f(const system_data_v2& sys) : sys(sys) {}
@@ -627,7 +627,7 @@ struct topo_pot_eff_cou_2d_ij_f {
 
             gsl_integration_workspace_free(ws);
 
-            result_vec[i] = result[0] * M_1_PI * 0.5;
+            result_vec[i] = -result[0] * M_1_PI * 0.5;
         }
 
         return result_vec;
@@ -657,7 +657,7 @@ struct topo_pot_eff_cou_2d_ij_f {
 
         gsl_integration_workspace_free(ws);
 
-        return result[0] * 0.5 * M_1_PI;
+        return -result[0] * 0.5 * M_1_PI;
     }
 };
 
@@ -687,23 +687,21 @@ struct topo_th_int_t {
                            .submat(1, 1, 2, 2)),
         };
 
-        return 2 * (result(1, 1) - pot.alpha * result(0, 1));
+        return 2 * (result(1, 1) - result(0, 1));
     }
 };
 
 struct topo_pot_eff_cou_2d_f {
     const system_data_v2& sys;
     double Q;
-    double alpha;
     double k1, k2;
 
     topo_pot_eff_cou_2d_f(const topo_pot_eff_cou_2d_f&) = default;
 
-    topo_pot_eff_cou_2d_f(const system_data_v2& sys, double Q, double alpha) :
-        sys(sys), Q(Q), alpha(alpha) {}
+    topo_pot_eff_cou_2d_f(const system_data_v2& sys, double Q) :
+        sys(sys), Q(Q) {}
 
-    topo_pot_eff_cou_2d_f(const system_data_v2& sys, double alpha) :
-        sys(sys), Q(0.0), alpha(alpha) {}
+    topo_pot_eff_cou_2d_f(const system_data_v2& sys) : sys(sys), Q(0.0) {}
 
     topo_pot_eff_cou_2d_f set_momentum(const double kk[2]) {
         topo_pot_eff_cou_2d_f new_s{topo_pot_eff_cou_2d_f(*this)};
@@ -742,7 +740,7 @@ struct topo_pot_eff_cou_2d_f {
 
             gsl_integration_workspace_free(ws);
 
-            result_vec[i] = result[0] * M_1_PI * 0.5;
+            result_vec[i] = -result[0] * M_1_PI * 0.5;
         }
 
         return result_vec;
@@ -772,14 +770,14 @@ struct topo_pot_eff_cou_2d_f {
 
         gsl_integration_workspace_free(ws);
 
-        return result[0] * 0.5 * M_1_PI;
+        return -result[0] * 0.5 * M_1_PI;
     }
 };
 
 template <
     typename topo_functor,
     bool force_positive = true,
-    bool only_sign      = false>
+    bool only_sign      = true>
 double topo_det_f(double z, topo_mat_s<topo_functor>* s) {
     if constexpr (force_positive) {
         z = std::exp(z);
@@ -946,14 +944,13 @@ std::vector<double> topo_det_p_cou_vec(
 }
 
 std::vector<double> topo_det_t_eff_cou_vec(
-    double alpha,
     const std::vector<double>& z_vec,
     uint32_t N_k,
     const system_data_v2& sys) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
     constexpr auto det_func = topo_det_f<pot_functor, false>;
 
-    pot_functor pot_s(sys, alpha);
+    pot_functor pot_s(sys);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     mat_s.fill_mat_potcoef();
@@ -964,11 +961,6 @@ std::vector<double> topo_det_t_eff_cou_vec(
 #pragma omp parallel for
     for (uint32_t i = 0; i < z_vec.size(); i++) {
         r[i] = det_func(z_vec[i], &mat_s);
-        /*
-        double int_part;
-        r[i] = (z_vec[i] > 0 ? 1.0 : -1.0) *
-               std::log(1 + std::exp(std::modf(z_vec[i], &int_part)));
-        */
     }
 
     return r;
@@ -976,14 +968,13 @@ std::vector<double> topo_det_t_eff_cou_vec(
 
 std::vector<double> topo_det_t_eff_cou_Q_vec(
     double Q,
-    double alpha,
     const std::vector<double>& z_vec,
     uint32_t N_k,
     const system_data_v2& sys) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
     constexpr auto det_func = topo_det_f<pot_functor, false>;
 
-    pot_functor pot_s(sys, Q, alpha);
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     mat_s.fill_mat_potcoef();
@@ -1010,41 +1001,33 @@ double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
 }
 
 double topo_be_t_eff_cou(
-    double alpha, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
+    uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
     constexpr auto det_zero = topo_det_zero_t<pot_functor>;
 
-    pot_functor pot_s(sys, alpha);
+    pot_functor pot_s(sys);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     return det_zero(mat_s, be_bnd);
 }
 
 double topo_be_t_eff_cou_Q(
-    double Q,
-    double alpha,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd) {
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
     constexpr auto det_zero = topo_det_zero_t<pot_functor>;
 
-    pot_functor pot_s(sys, Q, alpha);
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     return det_zero(mat_s, be_bnd);
 }
 
 double topo_be_b_t_eff_cou_Q(
-    double Q,
-    double alpha,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd) {
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
     constexpr auto det_zero = topo_det_zero_t<pot_functor, true>;
 
-    pot_functor pot_s(sys, Q, alpha);
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     return det_zero(mat_s, be_bnd);
@@ -1073,11 +1056,10 @@ std::vector<double> topo_eff_cou_ij_mat(
         mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
 }
 
-std::vector<double> topo_eff_cou_mat(
-    double alpha, uint32_t N_k, const system_data_v2& sys) {
+std::vector<double> topo_eff_cou_mat(uint32_t N_k, const system_data_v2& sys) {
     using pot_functor = topo_pot_eff_cou_2d_f;
 
-    pot_functor pot_s(sys, alpha);
+    pot_functor pot_s(sys);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
     mat_s.fill_mat_potcoef();
 
@@ -1102,34 +1084,13 @@ std::vector<double> topo_eff_cou_Q_ij_mat(
 }
 
 std::vector<double> topo_eff_cou_Q_mat(
-    double Q, double alpha, uint32_t N_k, const system_data_v2& sys) {
+    double Q, uint32_t N_k, const system_data_v2& sys) {
     using pot_functor = topo_pot_eff_cou_2d_f;
 
-    pot_functor pot_s(sys, Q, alpha);
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
     mat_s.fill_mat_potcoef();
 
     return std::vector<double>(
         mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
-}
-
-std::vector<double> topo_be_t_eff_cou_vec(
-    const std::vector<double>& alpha_vec,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd) {
-    using pot_functor       = topo_pot_eff_cou_2d_f;
-    constexpr auto det_zero = topo_det_zero_t<pot_functor>;
-
-    std::vector<double> r(alpha_vec.size());
-
-#pragma omp parallel for
-    for (uint32_t i = 0; i < alpha_vec.size(); i++) {
-        pot_functor pot_s(sys, alpha_vec[i]);
-        topo_mat_s<pot_functor> mat_s(N_k, pot_s);
-
-        r[i] = det_zero(mat_s, be_bnd);
-    }
-
-    return r;
 }

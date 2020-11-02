@@ -16,4 +16,4 @@ params:
     D2: 19.6
 
 globals:
-    N_k: 256
+    N_k: 384

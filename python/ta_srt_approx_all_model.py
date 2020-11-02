@@ -19,20 +19,29 @@ def f_dist_zero(E, mu, sigma):
 fit_vars_label = 'fit_vars_model_biexc'
 
 
-def TA_model(abs_data, ta_srt_dict, pump_case):
+def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
     var_list = list(ta_srt_dict[fit_vars_label].keys())
 
     pump_sigma = ta_srt_dict['raw_data']['pump_sigma'][pump_case]
+    pump_mu = ta_srt_dict['raw_data']['pump_mu'][pump_case]
 
     def model_fun(xdata, *popt, return_dict=False):
         load_popt(popt, globals(), var_list)
-
+        """
         abs_interp = interp1d(
             abs_data[:, 0],
             abs_data[:, -1],
             bounds_error=False,
             fill_value=0.0,
-        )(xdata - abs_shift)
+        )(xdata)
+        """
+
+        abs_interp = interp1d(
+            steady_data[:, 0],
+            steady_data[:, -1],
+            bounds_error=False,
+            fill_value=0.0,
+        )(xdata)
 
         hh_interp = interp1d(
             abs_data[:, 0],
@@ -53,14 +62,14 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
             abs_data[:, 3],
             bounds_error=False,
             fill_value=0.0,
-        )(xdata - abs_shift)
+        )(xdata)
 
         cont_lh_interp = interp1d(
             abs_data[:, 0],
             abs_data[:, 4],
             bounds_error=False,
             fill_value=0.0,
-        )(xdata - abs_shift)
+        )(xdata)
 
         dist_data = srt_dist(
             xdata,
@@ -73,7 +82,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
             ),
             functools.partial(
                 f_dist_zero,
-                mu=pump_mu - abs_shift,
+                mu=pump_mu,
                 sigma=pump_sigma,
             ),
         )
@@ -93,20 +102,25 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
 
         depl_data = fdepl * (cont_hh_interp + cont_lh_interp)
 
-        hhhh = hhhh_mag * stats.norm.pdf(
-            xdata - abs_shift,
-            loc=hhhh_loc - abs_shift,
-            scale=hhhh_sig,
-        )
+        try:
+            hhhh = hhhh_mag * stats.norm.pdf(
+                xdata,
+                loc=hhhh_loc,
+                scale=hhhh_sig,
+            )
+        except:
+            hhhh = zeros_like(xdata)
 
-        hhlh = hhlh_mag * stats.norm.pdf(
-            xdata - abs_shift,
-            loc=hhlh_loc - abs_shift,
-            scale=hhlh_sig,
-        )
+        try:
+            hhlh = hhlh_mag * stats.norm.pdf(
+                xdata,
+                loc=hhlh_loc,
+                scale=hhlh_sig,
+            )
+        except:
+            hhlh = zeros_like(xdata)
 
-        result = abs_interp - depl_data - se_sum_data + hhhh + hhlh
-        clip(result, 0, 1)
+        result = clip(abs_interp - depl_data - se_sum_data + hhhh + hhlh, 0, 1)
 
         if return_dict:
             return {
@@ -125,8 +139,6 @@ def TA_model(abs_data, ta_srt_dict, pump_case):
 
 
 def TA_fit(time_idx, ta_data, abs_data, ta_srt_dict, pump_case):
-    #eV_min = max(ta_data[time_idx, 0, 0], abs_data[0, 0])
-    #eV_max = min(ta_data[time_idx, -1, 0], abs_data[-1, 0])
     eV_min, eV_max = 2.35, 2.65
     E_vec = linspace(eV_min, eV_max, ta_srt_dict['settings']['N_E'])
 
@@ -137,6 +149,7 @@ def TA_fit(time_idx, ta_data, abs_data, ta_srt_dict, pump_case):
         abs_data,
         ta_srt_dict,
         pump_case,
+        ta_data[0, :],
     )
 
     p0_values = tuple([
@@ -153,15 +166,20 @@ def TA_fit(time_idx, ta_data, abs_data, ta_srt_dict, pump_case):
         for var in ta_srt_dict[fit_vars_label]
     ]).T
 
-    popt, pcov = curve_fit(
-        TA_model_func,
-        ta_data[time_idx, ta_data_mask, 0],
-        ta_data[time_idx, ta_data_mask, 1],
-        p0=p0_values,
-        bounds=bounds,
-        method='trf',
-        maxfev=5000,
-    )
+    try:
+        popt, pcov = curve_fit(
+            TA_model_func,
+            ta_data[time_idx, ta_data_mask, 0],
+            ta_data[time_idx, ta_data_mask, 1],
+            p0=p0_values,
+            bounds=bounds,
+            method='trf',
+            maxfev=5000,
+        )
+    except Exception as e:
+        print('[Error] %s' % e)
+        popt = array(p0_values)
+        pcov = zeros((popt.size, popt.size))
 
     data = {
         'model': TA_model_func(ta_data[time_idx, ta_data_mask, 0], *popt),
@@ -210,6 +228,7 @@ def plot_fit(
         abs_data,
         ta_srt_dict,
         pump_case,
+        ta_data[0, :],
     )(
         E_vec,
         *popt,
@@ -290,28 +309,48 @@ def plot_fit(
         label='%.2f ps' % time_value,
     )
 
+    text_list = [
+        r'fse: %.5f' % fse,
+        r'depl: %.5f' % fdepl,
+    ]
+
+    try:
+        text_list.append(r'alpha: %.5f' % alpha)
+    except:
+        pass
+
+    text_list.extend([
+        r'abs_shift: %.2f meV' % (abs_shift * 1e3),
+        #r'pump_mu: %.4f eV' % pump_mu,
+    ])
+
+    try:
+        text_list.append(r'hhhh: (%.3f, %.3f eV, %.1f meV)' % (
+            hhhh_mag * 1e3,
+            hhhh_loc,
+            hhhh_sig * 1e3,
+        ))
+    except:
+        pass
+
+    try:
+        text_list.append(r'hhlh: (%.3f, %.3f eV, %.1f meV)' % (
+            hhlh_mag * 1e3,
+            hhlh_loc,
+            hhlh_sig * 1e3,
+        ))
+    except:
+        pass
+
+    text_list.extend([
+        '',
+        'Adj R^2: %.5f' % adj_r_squared(**fit_data),
+    ])
+
     ax[0].text(
         2.3525,
         0.81,
-        '\n'.join([
-            r'fse: %.5f' % fse,
-            r'depl: %.5f' % fdepl,
-            r'alpha: %.5f' % alpha,
-            r'abs_shift: %.2f meV' % (abs_shift * 1e3),
-            r'pump_mu: %.4f eV' % pump_mu,
-            r'hhhh: (%.3f, %.3f eV, %.1f meV)' % (
-                hhhh_mag * 1e3,
-                hhhh_loc,
-                hhhh_sig * 1e3,
-            ),
-            r'hhlh: (%.3f, %.3f eV, %.1f meV)' % (
-                hhlh_mag * 1e3,
-                hhlh_loc,
-                hhlh_sig * 1e3,
-            ),
-            '',
-            'Adj R^2: %.5f' % adj_r_squared(**fit_data),
-        ]),
+        '\n'.join(text_list),
         fontsize=7,
     )
 
@@ -328,20 +367,27 @@ def plot_fit(
     fig.tight_layout()
     fig.subplots_adjust(wspace=0, hspace=0)
 
-    fig_filename = '/storage/Reference/Work/University/PhD/TA_Analysis/plots_all_%s_%s/%s_%03d.png' % (
+    fig_folder = '/storage/Reference/Work/University/PhD/TA_Analysis/plots_all_%s_%s_%s/' % (
         os.path.splitext(os.path.basename(__file__))[0],
         pump_case,
         'v1',
-        time_idx,
     )
 
+    fig_filename = '%03d.png' % time_idx
+
     try:
-        os.remove(fig_filename)
+        if not os.path.exists(fig_folder):
+            os.mkdir(fig_folder)
+    except FileNotFoundError as e:
+        pass
+
+    try:
+        os.remove(fig_folder + fig_filename)
     except FileNotFoundError as e:
         pass
 
     fig.savefig(
-        fig_filename,
+        fig_folder + fig_filename,
         #transparent = True,
         dpi=300,
     )
@@ -361,9 +407,6 @@ sys = system_data_v2(params)
 with open('config/ta_srt_approx.yaml') as f:
     print('Loading "%s".' % f.name)
     ta_srt_dict = yaml.load(f, Loader=yaml.CLoader)
-
-E_max_data = 0.15
-E_min_abs_data, E_max_abs_data = 0.1, 0.65
 
 abs_data = loadtxt(
     ta_srt_dict['abs_data']['folder'] +
@@ -410,16 +453,6 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
               ta_srt_dict['raw_data']['time_data'][pump_case] %
               (ta_srt_dict['raw_data']['sample_label'], )) as f:
         ta_times = loadtxt(f)[:, 1]
-
-    try:
-        os.mkdir(
-            '/storage/Reference/Work/University/PhD/TA_Analysis/plots_all_%s_%s'
-            % (
-                os.path.splitext(os.path.basename(__file__))[0],
-                pump_case,
-            ))
-    except FileExistsError as e:
-        pass
 
     try:
         time_func(

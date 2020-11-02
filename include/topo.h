@@ -39,14 +39,10 @@ std::vector<double> topo_det_p_cou_vec(
     const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
 
 std::vector<double> topo_det_t_eff_cou_vec(
-    double alpha,
-    const std::vector<double>& z_vec,
-    uint32_t N_k,
-    const system_data_v2& sys);
+    const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
 
 std::vector<double> topo_det_t_eff_cou_Q_vec(
     double Q,
-    double alpha,
     const std::vector<double>& z_vec,
     uint32_t N_k,
     const system_data_v2& sys);
@@ -58,8 +54,7 @@ std::vector<double> topo_cou_mat(uint32_t N_k, const system_data_v2& sys);
 std::vector<double> topo_eff_cou_ij_mat(
     uint8_t i, uint8_t j, uint32_t N_k, const system_data_v2& sys);
 
-std::vector<double> topo_eff_cou_mat(
-    double alpha, uint32_t N_k, const system_data_v2& sys);
+std::vector<double> topo_eff_cou_mat(uint32_t N_k, const system_data_v2& sys);
 
 std::vector<double> topo_eff_cou_Q_ij_mat(
     double Q,
@@ -69,27 +64,13 @@ std::vector<double> topo_eff_cou_Q_ij_mat(
     const system_data_v2& sys);
 
 std::vector<double> topo_eff_cou_Q_mat(
-    double Q, double alpha, uint32_t N_k, const system_data_v2& sys);
+    double Q, uint32_t N_k, const system_data_v2& sys);
 
 double topo_be_t_eff_cou(
-    double alpha, uint32_t N_k, const system_data_v2& sys, double be_bnd);
+    uint32_t N_k, const system_data_v2& sys, double be_bnd);
 
 double topo_be_t_eff_cou_Q(
-    double Q,
-    double alpha,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd);
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd);
 
 double topo_be_b_t_eff_cou_Q(
-    double Q,
-    double alpha,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd);
-
-std::vector<double> topo_be_t_eff_cou_vec(
-    const std::vector<double>& alpha_vec,
-    uint32_t N_k,
-    const system_data_v2& sys,
-    double be_bnd);
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd);

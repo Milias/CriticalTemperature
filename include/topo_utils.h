@@ -53,23 +53,33 @@ struct topo_mat_s {
     }
 
     void fill_mat_potcoef() {
-        /*
-         * Evaluates the matrix elements corresponding to the
-         * interaction potential.
-         */
+        std::string filename = "extra/data/topo/potcoef/" +
+                               std::string(typeid(topo_functor).name()) + "_" +
+                               std::to_string(N_k) + "_" +
+                               std::to_string(pot_s.Q) + ".csv";
+        if (std::filesystem::exists(filename)) {
+            mat_potcoef.load(filename, arma::csv_ascii);
+        } else {
+            /*
+             * Evaluates the matrix elements corresponding to the
+             * interaction potential.
+             */
 #pragma omp parallel for
-        for (uint32_t i = 0; i < N_k; i++) {
-            for (uint32_t j = 0; j <= i; j++) {
-                const double kk[2] = {
-                    (1.0 - u0(i)) / u0(i),
-                    (1.0 - u0(j)) / u0(j),
-                };
+            for (uint32_t i = 0; i < N_k; i++) {
+                for (uint32_t j = 0; j <= i; j++) {
+                    const double kk[2] = {
+                        (1.0 - u0(i)) / u0(i),
+                        (1.0 - u0(j)) / u0(j),
+                    };
 
-                T r = pot_integral(kk);
+                    T r = pot_integral(kk);
 
-                mat_potcoef(i, j) = r;
-                mat_potcoef(j, i) = r;
+                    mat_potcoef(i, j) = r;
+                    mat_potcoef(j, i) = r;
+                }
             }
+
+            mat_potcoef.save(filename, arma::csv_ascii);
         }
     }
 
