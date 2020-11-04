@@ -38,14 +38,14 @@ print(eps_sol)
 """
 
 Q_vec = linspace(0, 0.2, 1 << 6)
-Q_vec = Q_vec[0]
+Q_vec = Q_vec[1]
 
-be_bnd = 2.0
+be_bnd = 1.0
 
 be_cou = topo_be_b_t_eff_cou_Q(Q_vec, N_k, sys, be_bnd)
 print(be_cou, flush=True)
 
-z_vec = linspace(0.0, 2.0, 1 << 8)
+z_vec = linspace(0.0, 0.1, 1 << 9)
 det_vec = topo_det_t_eff_cou_Q_vec(Q_vec, z_vec, N_k, sys)
 print(det_vec, flush=True)
 
@@ -54,7 +54,7 @@ fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
 ax[0].plot(z_vec, det_vec, 'r.')
-#ax[0].set_ylim(-1, 1)
+ax[0].set_ylim(-1e1, 1e1)
 
 ax[0].axvline(
     x=be_cou,

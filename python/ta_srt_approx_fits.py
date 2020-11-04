@@ -48,15 +48,6 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
 
     def model_fun(xdata, *popt, return_dict=False):
         load_popt(popt, globals(), var_list)
-        """
-        abs_interp = interp1d(
-            abs_data[:, 0],
-            abs_data[:, -1],
-            bounds_error=False,
-            fill_value=0.0,
-        )(xdata)
-        """
-
         abs_interp = interp1d(
             steady_data[:, 0],
             steady_data[:, -1],
@@ -141,8 +132,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         except:
             hhlh = zeros_like(xdata)
 
-        result = abs_interp - depl_data - se_sum_data + hhhh + hhlh
-        result = clip(result, 0, 1)
+        result = clip(abs_interp - depl_data - se_sum_data + hhhh + hhlh, 0, 1)
 
         if return_dict:
             return {
@@ -165,6 +155,7 @@ def TA_fit(time_idx,
            abs_data,
            ta_srt_dict,
            pump_case,
+           ta_times_zero,
            p0_values=None):
     eV_min, eV_max = 2.35, 2.65
     E_vec = linspace(eV_min, eV_max, ta_srt_dict['settings']['N_E'])
@@ -179,48 +170,63 @@ def TA_fit(time_idx,
         ta_data[0, :],
     )
 
-    if p0_values is None:
-        p0_values = tuple([
+    if time_idx > ta_times_zero:
+        if p0_values is None:
+            p0_values = array([
+                ta_srt_dict[fit_vars_label][var]['p0'] if isinstance(
+                    ta_srt_dict[fit_vars_label][var]['p0'], float) else
+                ta_srt_dict[fit_vars_label][var]['p0'][pump_case]
+                for var in ta_srt_dict[fit_vars_label]
+            ])
+        else:
+            n_avg_items = 2
+            idx_lims = (max(
+                time_idx - n_avg_items,
+                ta_times_zero,
+            ), min(
+                time_idx + n_avg_items,
+                len(p0_values) - 1,
+            ))
+
+            p0_values = sum(
+                array(p0_values[idx_lims[0]:idx_lims[1]]),
+                axis=0,
+            ) / len(p0_values[idx_lims[0]:idx_lims[1]])
+
+        bounds = array([
+            tuple(ta_srt_dict[fit_vars_label][var]['bounds']) if isinstance(
+                ta_srt_dict[fit_vars_label][var]['bounds'], list) else tuple(
+                    ta_srt_dict[fit_vars_label][var]['bounds'][pump_case])
+            for var in ta_srt_dict[fit_vars_label]
+        ]).T
+
+        if time_idx > ta_srt_dict['raw_data']['ta_times_zero'][pump_case]:
+            bounds[:, 2] = array([0.0, 0.000001])
+            p0_values[2] = 0.0
+
+        try:
+            popt, pcov = curve_fit(
+                TA_model_func,
+                ta_data[time_idx, ta_data_mask, 0],
+                ta_data[time_idx, ta_data_mask, 1],
+                p0=p0_values,
+                bounds=bounds,
+                method='trf',
+                maxfev=5000,
+            )
+        except Exception as e:
+            print('[Error] %s' % e)
+            popt = zeros(len(ta_srt_dict[fit_vars_label].keys()))
+            pcov = zeros((popt.size, popt.size))
+    else:
+        p0_values = array([
             ta_srt_dict[fit_vars_label][var]['p0'] if isinstance(
                 ta_srt_dict[fit_vars_label][var]['p0'], float) else
             ta_srt_dict[fit_vars_label][var]['p0'][pump_case]
             for var in ta_srt_dict[fit_vars_label]
         ])
-    else:
-        n_avg_items = 3
-        idx_lims = (max(
-            time_idx - n_avg_items,
-            0,
-        ), min(
-            time_idx + n_avg_items,
-            len(p0_values) - 1,
-        ))
 
-        p0_values = sum(
-            p0_values[idx_lims[0]:idx_lims[1]],
-            axis=0,
-        ) / len(p0_values[idx_lims[0]:idx_lims[1]])
-
-    bounds = array([
-        tuple(ta_srt_dict[fit_vars_label][var]['bounds']) if isinstance(
-            ta_srt_dict[fit_vars_label][var]['bounds'], list) else tuple(
-                ta_srt_dict[fit_vars_label][var]['bounds'][pump_case])
-        for var in ta_srt_dict[fit_vars_label]
-    ]).T
-
-    try:
-        popt, pcov = curve_fit(
-            TA_model_func,
-            ta_data[time_idx, ta_data_mask, 0],
-            ta_data[time_idx, ta_data_mask, 1],
-            p0=p0_values,
-            bounds=bounds,
-            method='trf',
-            maxfev=5000,
-        )
-    except Exception as e:
-        print('[Error] %s' % e)
-        popt = array(p0_values)
+        popt = p0_values
         pcov = zeros((popt.size, popt.size))
 
     data = {
@@ -261,6 +267,14 @@ stats_arr = [[]] * len(ta_srt_dict['settings']['plot_cases'])
 ta_data = [[]] * len(ta_srt_dict['settings']['plot_cases'])
 ta_times = [[]] * len(ta_srt_dict['settings']['plot_cases'])
 
+ta_diffs = [[]] * len(ta_srt_dict['settings']['plot_cases'])
+ta_times_zero = [[]] * len(ta_srt_dict['settings']['plot_cases'])
+
+try:
+    os.mkdir('/storage/Reference/Work/University/PhD/TA_Analysis/fit_data')
+except:
+    pass
+
 for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     print(
         '[%d/%d] Processing "%s" ...' % (
@@ -291,6 +305,16 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
             f)[ta_srt_dict['raw_data']['n_files'][pump_case][0]:
                ta_srt_dict['raw_data']['n_files'][pump_case][1], 1]
 
+    ta_diffs[ii] = [
+        sum((ta_data[ii][0, :, 1] - ta_data[ii][time_idx, :, 1])**2) for
+        time_idx in range(ta_srt_dict['raw_data']['n_files'][pump_case][1] -
+                          ta_srt_dict['raw_data']['n_files'][pump_case][0])
+    ]
+
+    q_val = quantile(ta_diffs[ii], 0.05, interpolation='lower')
+    ta_times_zero[ii] = flatnonzero(ta_diffs[ii] < q_val)[-1]
+    ta_times[ii] -= ta_times[ii][ta_times_zero[ii]]
+
     fit_results[ii] = time_func(
         pool.map,
         functools.partial(
@@ -299,6 +323,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
             abs_data=abs_data,
             ta_srt_dict=ta_srt_dict,
             pump_case=pump_case,
+            ta_times_zero=ta_times_zero[ii],
         ),
         range(ta_srt_dict['raw_data']['n_files'][pump_case][1] -
               ta_srt_dict['raw_data']['n_files'][pump_case][0]),
@@ -308,6 +333,14 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
     n_smooth_passes = 15
     for jj_smooth in range(n_smooth_passes):
+        print(
+            '[%d/%d] Smoothing pass' % (
+                jj_smooth + 1,
+                n_smooth_passes,
+            ),
+            flush=True,
+        )
+
         fit_results[ii] = time_func(
             pool.map,
             functools.partial(
@@ -316,6 +349,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
                 abs_data=abs_data,
                 ta_srt_dict=ta_srt_dict,
                 pump_case=pump_case,
+                ta_times_zero=ta_times_zero[ii],
                 p0_values=popt_arr[ii],
             ),
             range(ta_srt_dict['raw_data']['n_files'][pump_case][1] -
@@ -328,57 +362,29 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     perr_arr[ii] = array([sqrt(diag(r[3])) for r in fit_results[ii]])
     stats_arr[ii] = array([adj_r_squared(**r[1]) for r in fit_results[ii]])
 
-ta_times_zero = 42
-"""
-ta_times_last = ta_times.size
-time_slice = ta_times[ta_times_zero:ta_times_last]
-alpha_slice = popt_arr[ta_times_zero:ta_times_last, 2]
+    saved_data = zeros((
+        ta_times[ii].size,
+        popt_arr[ii][0, :].size + 2,
+    ))
 
-tau_p0_values = tuple([
-    ta_srt_dict['alpha_fit'][var]['p0']
-    for var in ta_srt_dict['alpha_fit']
-])
+    saved_data[:, 0] = ta_times[ii]
+    saved_data[:, 1:-1] = popt_arr[ii]
+    saved_data[:, -1] = stats_arr[ii]
 
-tau_bounds = array([
-    tuple(ta_srt_dict['alpha_fit'][var]['bounds'])
-    for var in ta_srt_dict['alpha_fit']
-]).T
-
-
-def tau_model_func(t, tau_vec, v_vec):
-    return [exp(-(t + v) / tau) for tau, v in zip(tau_vec, v_vec)]
-
-
-def tau_model(t, tau0, tau1, tau2, v0, v1, v2, split=False):
-    local_dict = locals()
-    n_vars = len(tuple(filter(lambda x: x[:3] == 'tau', local_dict.keys())))
-    data = tau_model_func(
-        t - t[0],
-        [local_dict['tau%d' % ii] for ii in range(n_vars)],
-        [local_dict['v%d' % ii] for ii in range(n_vars)],
+    savetxt(
+        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/%s_%s_%s.csv'
+        % (
+            os.path.splitext(os.path.basename(__file__))[0],
+            pump_case,
+            file_version,
+        ),
+        saved_data,
+        delimiter=',',
+        header='t (ps),%s,adj_r2' %
+        ','.join(list(ta_srt_dict[fit_vars_label].keys())),
     )
 
-    if split:
-        return data
-    else:
-        return sum(data, axis=0)
-
-
-try:
-    tau_popt, tau_pcov = curve_fit(
-        tau_model,
-        time_slice,
-        alpha_slice,
-        p0=tau_p0_values,
-        bounds=tau_bounds,
-        method='trf',
-    )
-except:
-    tau_popt = tau_p0_values
-    tau_pcov = zeros(2 * [len(tau_p0_values)])
-
-sorted_idx_list = sorted(range(3), key=lambda ii: tau_popt[ii])
-"""
+print(ta_times_zero)
 
 case_colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
@@ -403,55 +409,13 @@ for n in range(len(ax)):
                 label=r'%s' % pump_case,
             )
 
-            if amax(popt_arr[ii][ta_times_zero:, n]) < 1:
+            if amax(popt_arr[ii][ta_times_zero[ii]:, n]) < 1:
                 ax[n].axhline(
                     y=0,
                     color='k',
                     linewidth=0.7,
                     linestyle='--',
                 )
-                """
-                ax[n].set_ylim(
-                    None,
-                    1.1 * amax(popt_arr[ii][ta_times_zero:, n]),
-                )
-                """
-            """
-            if amax(popt_arr[ii][ta_times_zero:, n]) > 1e2:
-                ax[n].set_yscale('log')
-            """
-            """
-            if n == 2:
-                data = tau_model(
-                    time_slice,
-                    *tau_popt,
-                    split=True,
-                )
-                for ii in range(3):
-                    ax[n].plot(
-                        time_slice,
-                        data[sorted_idx_list[ii]],
-                        color=fit_colors[sorted_idx_list[ii]],
-                        linestyle='--',
-                        linewidth=1.4,
-                        label=(r'$\tau_{%%d}: %%.%df\pm%%.%df$ ps' %
-                               tuple(2 * [(2, 0, 0)[ii]])) % (
-                                   ii,
-                                   tau_popt[sorted_idx_list[ii]],
-                                   sqrt(diag(tau_pcov)[sorted_idx_list[ii]]),
-                               ),
-                    )
-
-                ax[n].plot(
-                    time_slice,
-                    sum(data, axis=0),
-                    color='k',
-                    linestyle='-',
-                    linewidth=2.0,
-                )
-
-                print(tau_popt)
-            """
         else:
             ax[n].plot(
                 ta_times[ii],
@@ -461,6 +425,12 @@ for n in range(len(ax)):
             )
 
             ax[n].set_yscale('log')
+
+        ax[n].axvline(
+            x=ta_times[ii][ta_srt_dict['raw_data']['ta_times_zero'][pump_case]],
+            color=case_colors[ii],
+            linewidth=0.7,
+        )
 
     if n < n_x * (n_y - 1):
         ax[n].xaxis.set_visible(False)
@@ -477,7 +447,7 @@ for n in range(len(ax)):
     ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
 
     ax[n].legend(
-        loc='upper left',
+        loc='upper right',
         prop={'size': 12},
         title=fit_vars_list[n if n < len(fit_vars_list) else -1].replace(
             '_',

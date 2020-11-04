@@ -740,7 +740,7 @@ struct topo_pot_eff_cou_2d_f {
 
             gsl_integration_workspace_free(ws);
 
-            result_vec[i] = -result[0] * M_1_PI * 0.5;
+            result_vec[i] = result[0] * M_1_PI * 0.5;
         }
 
         return result_vec;
@@ -777,7 +777,7 @@ struct topo_pot_eff_cou_2d_f {
 template <
     typename topo_functor,
     bool force_positive = true,
-    bool only_sign      = true>
+    bool only_sign      = false>
 double topo_det_f(double z, topo_mat_s<topo_functor>* s) {
     if constexpr (force_positive) {
         z = std::exp(z);
@@ -791,7 +791,7 @@ double topo_det_f(double z, topo_mat_s<topo_functor>* s) {
     if constexpr (only_sign) {
         return sign;
     } else {
-        return sign * std::exp(val + std::log(1e20));
+        return sign * std::exp(val);
     }
 }
 

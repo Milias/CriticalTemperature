@@ -27,6 +27,11 @@ raw_data:
         LH: 2.5833
         cont: 3.1
 
+    ta_times_zero:
+        HH: 41
+        LH: 35
+        cont: 47
+
 abs_data:
     folder: extra/extcharge/export_abs/
     file: "%s_vo_sum.csv"
@@ -71,25 +76,19 @@ fit_vars_model:
 fit_vars_model_biexc:
     fse:
         unit: ''
-        p0:
-            HH: 0.2
-            LH: 0.5
-            cont: 0.3
-        bounds:
-            HH: [ 0.0, 1.0 ]
-            LH: [ 0.0, 1.0 ]
-            cont: [ 0.0, 1.0 ]
+        p0: 0.0
+        bounds: [ 0.0, 1.0 ]
 
     fdepl:
         unit: ''
-        p0: 0.05
+        p0: 0.0
         bounds: [ 0.0, 1.0 ]
 
     alpha:
         unit: ''
         p0:
-            HH: 0.01
-            LH: 0.05
+            HH: 0.0
+            LH: 0.0
             cont: 0.0
         bounds:
             HH: [ 0.0, 0.05 ]
@@ -98,14 +97,8 @@ fit_vars_model_biexc:
 
     abs_shift:
         unit: 'eV'
-        p0:
-            HH: 0.03
-            LH: 0.03
-            cont: 0.03
-        bounds:
-            HH: [ 0.0, 0.05 ]
-            LH: [ 0.0, 0.05 ]
-            cont: [ 0.0, 0.05 ]
+        p0: 0.0
+        bounds: [ 0.0, 0.02 ]
 
     hhhh_mag:
         unit: ''
@@ -120,7 +113,7 @@ fit_vars_model_biexc:
 
     hhlh_mag:
         unit: ''
-        p0: 0.0001
+        p0: 0.0
         bounds: [ 0.0, 0.01 ]
 
     hhhh_loc:
@@ -130,14 +123,14 @@ fit_vars_model_biexc:
             LH: 2.41
             cont: 2.41
         bounds:
-            HH: [ 2.38, 2.43 ]
+            HH: [ 2.41, 2.43 ]
             LH: [ 2.38, 2.43 ]
             cont: [ 2.38, 2.43 ]
 
     hhlh_loc:
         unit: 'eV'
-        p0: 2.52
-        bounds: [ 2.45, 2.52 ]
+        p0: 2.5
+        bounds: [ 2.49, 2.51 ]
 
     hhhh_sig:
         unit: 'eV'
@@ -146,8 +139,8 @@ fit_vars_model_biexc:
 
     hhlh_sig:
         unit: 'eV'
-        p0: 0.03
-        bounds: [ 0.005, 0.05 ]
+        p0: 0.02
+        bounds: [ 0.005, 0.03 ]
 
 alpha_fit:
     tau0:
@@ -176,13 +169,3 @@ alpha_fit:
         p0: 100.0
         bounds: [ 0.0, inf ]
 
-    pump_mu:
-        unit: 'eV'
-        p0:
-            HH: 2.4188
-            LH: 2.5833
-            cont: 3.1
-        bounds:
-            HH: [ 2.41, 2.43 ]
-            LH: [ 2.55, 2.7 ]
-            cont: [ 3.1, 3.11 ]

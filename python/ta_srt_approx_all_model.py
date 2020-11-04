@@ -17,6 +17,7 @@ def f_dist_zero(E, mu, sigma):
 
 
 fit_vars_label = 'fit_vars_model_biexc'
+file_version = 'v1'
 
 
 def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
@@ -27,15 +28,6 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
 
     def model_fun(xdata, *popt, return_dict=False):
         load_popt(popt, globals(), var_list)
-        """
-        abs_interp = interp1d(
-            abs_data[:, 0],
-            abs_data[:, -1],
-            bounds_error=False,
-            fill_value=0.0,
-        )(xdata)
-        """
-
         abs_interp = interp1d(
             steady_data[:, 0],
             steady_data[:, -1],
@@ -138,68 +130,17 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
     return model_fun
 
 
-def TA_fit(time_idx, ta_data, abs_data, ta_srt_dict, pump_case):
-    eV_min, eV_max = 2.35, 2.65
-    E_vec = linspace(eV_min, eV_max, ta_srt_dict['settings']['N_E'])
-
-    ta_data_mask = (ta_data[time_idx, :, 0] > eV_min) * (ta_data[time_idx, :,
-                                                                 0] < eV_max)
-
-    TA_model_func = TA_model(
-        abs_data,
-        ta_srt_dict,
-        pump_case,
-        ta_data[0, :],
-    )
-
-    p0_values = tuple([
-        ta_srt_dict[fit_vars_label][var]['p0'] if isinstance(
-            ta_srt_dict[fit_vars_label][var]['p0'], float) else
-        ta_srt_dict[fit_vars_label][var]['p0'][pump_case]
-        for var in ta_srt_dict[fit_vars_label]
-    ])
-
-    bounds = array([
-        tuple(ta_srt_dict[fit_vars_label][var]['bounds']) if isinstance(
-            ta_srt_dict[fit_vars_label][var]['bounds'], list) else tuple(
-                ta_srt_dict[fit_vars_label][var]['bounds'][pump_case])
-        for var in ta_srt_dict[fit_vars_label]
-    ]).T
-
-    try:
-        popt, pcov = curve_fit(
-            TA_model_func,
-            ta_data[time_idx, ta_data_mask, 0],
-            ta_data[time_idx, ta_data_mask, 1],
-            p0=p0_values,
-            bounds=bounds,
-            method='trf',
-            maxfev=5000,
-        )
-    except Exception as e:
-        print('[Error] %s' % e)
-        popt = array(p0_values)
-        pcov = zeros((popt.size, popt.size))
-
-    data = {
-        'model': TA_model_func(ta_data[time_idx, ta_data_mask, 0], *popt),
-        'data': ta_data[time_idx, ta_data_mask, 1],
-        'n_params': len(popt),
-    }
-
-    return E_vec, data, popt, pcov
-
-
 def plot_fit(
     time_idx,
+    loaded_data,
     ta_data,
-    ta_times,
     abs_data,
     ta_srt_dict,
     pump_case,
     colors,
 ):
     import matplotlib.pyplot as plt
+    matplotlib.use('agg')
 
     plt.rcParams.update({'font.size': 16})
     plt.rcParams.update({
@@ -213,16 +154,21 @@ def plot_fit(
     fig = plt.figure(figsize=fig_size)
     ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
+    eV_min, eV_max = 2.35, 2.65
+    E_vec = linspace(eV_min, eV_max, ta_srt_dict['settings']['N_E'])
+
+    ta_times = loaded_data[:, 0]
+    popt = loaded_data[time_idx, 1:-1]
+    adj_r2 = loaded_data[time_idx, -1]
+
     time_value = ta_times[time_idx]
-    E_vec, fit_data, popt, pcov = TA_fit(
-        time_idx,
-        ta_data,
-        abs_data,
-        ta_srt_dict,
-        pump_case,
-    )
 
     load_popt(popt, globals(), ta_srt_dict[fit_vars_label].keys())
+
+    ta_exp_interp = interp1d(
+        ta_data[time_idx, :, 0],
+        ta_data[time_idx, :, 1],
+    )(E_vec)
 
     vis_dict = TA_model(
         abs_data,
@@ -233,6 +179,36 @@ def plot_fit(
         E_vec,
         *popt,
         return_dict=True,
+    )
+
+    header_list = ['hhhh', 'hhlh', 'depl', 'se_hh', 'se_lh', 'abs', 'all']
+    saved_data = zeros((
+        E_vec.size,
+        len(header_list) + 2,
+    ))
+
+    saved_data[:, 0] = E_vec
+
+    for n_h, key in enumerate(header_list):
+        saved_data[:, n_h + 1] = vis_dict[key]
+
+    saved_data[:, -1] = ta_exp_interp
+
+    data_folder = '/storage/Reference/Work/University/PhD/TA_Analysis/data_all_%s_%s_%s/' % (
+        os.path.splitext(os.path.basename(__file__))[0],
+        pump_case,
+        file_version,
+    )
+    try:
+        os.mkdir(data_folder)
+    except:
+        pass
+
+    savetxt(
+        data_folder + '%d.csv' % time_idx,
+        saved_data,
+        delimiter=',',
+        header='E,%s' % ','.join(header_list + ['ta_exp']),
     )
 
     ax[0].plot(
@@ -258,15 +234,6 @@ def plot_fit(
         vis_dict['depl'],
         color='m',
         label='Depletion',
-    )
-
-    ax[0].plot(
-        ta_data[0, :, 0],
-        ta_data[0, :, 1],
-        color='g',
-        linestyle=':',
-        linewidth=0.6,
-        label='Steady-state exp',
     )
 
     ax[0].plot(
@@ -302,8 +269,8 @@ def plot_fit(
     )
 
     ax[0].plot(
-        ta_data[time_idx, :, 0],
-        ta_data[time_idx, :, 1],
+        E_vec,
+        ta_exp_interp,
         color=colors[time_idx],
         linewidth=0.8,
         label='%.2f ps' % time_value,
@@ -321,7 +288,6 @@ def plot_fit(
 
     text_list.extend([
         r'abs_shift: %.2f meV' % (abs_shift * 1e3),
-        #r'pump_mu: %.4f eV' % pump_mu,
     ])
 
     try:
@@ -344,7 +310,7 @@ def plot_fit(
 
     text_list.extend([
         '',
-        'Adj R^2: %.5f' % adj_r_squared(**fit_data),
+        'Adj R^2: %.5f' % adj_r2,
     ])
 
     ax[0].text(
@@ -370,7 +336,7 @@ def plot_fit(
     fig_folder = '/storage/Reference/Work/University/PhD/TA_Analysis/plots_all_%s_%s_%s/' % (
         os.path.splitext(os.path.basename(__file__))[0],
         pump_case,
-        'v1',
+        file_version,
     )
 
     fig_filename = '%03d.png' % time_idx
@@ -449,18 +415,19 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     ta_data = array(ta_data_list)
     ta_data = ta_data[:, ::-1, :]
 
-    with open(ta_srt_dict['raw_data']['folder'] + pump_case + '/' +
-              ta_srt_dict['raw_data']['time_data'][pump_case] %
-              (ta_srt_dict['raw_data']['sample_label'], )) as f:
-        ta_times = loadtxt(f)[:, 1]
+    loaded_data = loadtxt(
+        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/%s_%s_%s.csv'
+        % ('ta_srt_approx_fits', pump_case, 'v5'),
+        delimiter=',',
+    )
 
     try:
         time_func(
             pool.map,
             functools.partial(
                 plot_fit,
+                loaded_data=loaded_data,
                 ta_data=ta_data,
-                ta_times=ta_times,
                 abs_data=abs_data,
                 ta_srt_dict=ta_srt_dict,
                 pump_case=pump_case,

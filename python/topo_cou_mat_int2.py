@@ -1,12 +1,4 @@
 from common import *
-import matplotlib.pyplot as plt
-
-plt.rcParams.update({'font.size': 16})
-plt.rcParams.update({
-    'font.family': 'serif',
-    'font.serif': ['Computer Modern'],
-    'text.usetex': True,
-})
 
 fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
 
@@ -19,58 +11,91 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-Q_val = 0
+N_Q = 1 << 6
+Q_vec = linspace(0, 0.2, N_Q)
 
-#N_k = 1 << 6
-uQ_val = 1 - 1 / (1 + Q_val)
+try:
+    os.mkdir('/storage/Reference/Work/University/PhD/TopoExciton/cou_mat')
+except:
+    pass
 
-result = array(time_func(
-    topo_eff_cou_Q_mat,
-    Q_val,
-    N_k,
-    sys,
-)).reshape(N_k, N_k)[::-1, ::-1]
 
-print(amax(result))
-print(amin(result))
-print(average(result))
+def cou_mat_savefig(ii, Q_vec):
+    Q_val = Q_vec[ii]
+    uQ_val = 1 - 1 / (1 + Q_val)
 
-n_x, n_y = 1, 1
-fig = plt.figure(figsize=fig_size)
-ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
+    result = array(time_func(
+        topo_eff_cou_Q_mat,
+        Q_val,
+        N_k,
+        sys,
+    )).reshape(N_k, N_k)[::-1, ::-1]
 
-plot_max = 1.5
+    import matplotlib.pyplot as plt
+    matplotlib.use('pdf')
 
-ax[0].imshow(
-    result,
-    cmap=cm.cividis,
-    aspect='auto',
-    extent=(0, 1, 0, 1),
-    interpolation='none',
-    vmin=-plot_max,
-    vmax=plot_max,
-    origin='lower',
-)
+    plt.rcParams.update({'font.size': 16})
+    plt.rcParams.update({
+        'font.family': 'serif',
+        'font.serif': ['Computer Modern'],
+        'text.usetex': True,
+    })
 
-ax[0].axvline(
-    x=uQ_val,
-    color='w',
-    linewidth=0.8,
-)
+    n_x, n_y = 1, 1
+    fig = plt.figure(figsize=fig_size)
+    ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-ax[0].axhline(
-    y=uQ_val,
-    color='w',
-    linewidth=0.8,
-)
+    plot_max = 2.0
 
-plt.tight_layout()
-fig.subplots_adjust(wspace=0, hspace=0)
+    ax[0].imshow(
+        result,
+        cmap=cm.cividis,
+        aspect='auto',
+        extent=(0, 1, 0, 1),
+        interpolation='none',
+        vmin=-plot_max,
+        vmax=plot_max,
+        origin='lower',
+    )
 
-plt.savefig(
-    '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
-    transparent=True,
-)
+    ax[0].axvline(
+        x=uQ_val,
+        color='w',
+        linewidth=0.8,
+    )
 
-plt.show()
+    ax[0].axhline(
+        y=uQ_val,
+        color='w',
+        linewidth=0.8,
+    )
+
+    plt.tight_layout()
+    fig.subplots_adjust(wspace=0, hspace=0)
+
+    plt.savefig(
+        '/storage/Reference/Work/University/PhD/TopoExciton/cou_mat/%0d_%s_%s.pdf'
+        % (
+            ii,
+            os.path.splitext(os.path.basename(__file__))[0],
+            'v1',
+        ),
+        transparent=True,
+        dpi=300,
+    )
+
+    plt.close()
+
+
+pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+
+try:
+    time_func(
+        pool.map,
+        functools.partial(cou_mat_savefig, Q_vec=Q_vec),
+        range(Q_vec.size),
+    )
+except FileNotFoundError as e:
+    print('Error: %s' % e)
+    pool.close()
+    exit()
