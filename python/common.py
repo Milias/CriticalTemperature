@@ -169,13 +169,13 @@ def load_raw_Abs_data(path, eV_min, eV_max):
     ]).T
 
 
-def adj_r_squared(data, model, n_params=1):
+def adj_r_squared(data, model, n_params=1, **kwargs):
     data_avg = average(data)
     return 1 - sum((model - data)**2) / sum(
         (data - data_avg)**2) * (data.size - n_params - 1) / (data.size - 1)
 
 
-def aic_criterion(data, model, n_params=1):
+def aic_criterion(data, model, n_params=1, **kwargs):
     rss = sum((model - data)**2)
     sigma2 = rss / data.size
     return (rss + 2 * n_params * sigma2) / (data.size * sigma2)

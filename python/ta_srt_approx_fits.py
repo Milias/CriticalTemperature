@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
-    'font.family': 'serif',
+    'font.family': ['serif'],
     'font.serif': ['Computer Modern'],
     'text.usetex': True,
 })
@@ -12,6 +12,9 @@ plt.rcParams.update({
 def srt_dist(E, fse, alpha, f_eq, f_zero):
     eq_data = f_eq(E)
     zero_data = f_zero(E)
+
+    eq_data /= trapz(eq_data, E)
+    zero_data /= trapz(zero_data, E)
 
     return eq_data * (1 - alpha) + zero_data * alpha
 
@@ -24,7 +27,7 @@ def f_dist_zero(E, mu, sigma):
     return stats.norm.pdf(E, loc=mu, scale=sigma)
 
 
-file_version = 'v5'
+file_version = 'v6'
 
 if file_version == 'v2':
     fit_vars_label = 'fit_vars_model_biexc'
@@ -38,6 +41,9 @@ elif file_version == 'v4':
 elif file_version == 'v5':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
+elif file_version == 'v6':
+    fit_vars_label = 'fit_vars_model_biexc'
+    n_x, n_y = 5, 3
 
 
 def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
@@ -76,12 +82,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
             fill_value=0.0,
         )(xdata)
 
-        cont_lh_interp = interp1d(
-            abs_data[:, 0],
-            abs_data[:, 4],
-            bounds_error=False,
-            fill_value=0.0,
-        )(xdata)
+        cont_hh_interp /= amax(cont_hh_interp)
 
         dist_data = srt_dist(
             xdata,
@@ -101,38 +102,59 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
 
         se_hh_data = hh_interp * dist_data
         se_lh_data = lh_interp * dist_data
-
         se_sum_data = se_hh_data + se_lh_data
 
-        se_hh_data /= amax(se_sum_data)
-        se_lh_data /= amax(se_sum_data)
-        se_sum_data /= amax(se_sum_data)
+        se_sum_data_max = amax(se_sum_data)
+        se_hh_data /= se_sum_data_max
+        se_lh_data /= se_sum_data_max
+        se_sum_data /= se_sum_data_max
 
         se_hh_data *= fse
         se_lh_data *= fse
         se_sum_data *= fse
 
-        depl_data = fdepl * (cont_hh_interp + cont_lh_interp)
+        depl_data = fdepl * cont_hh_interp
 
         try:
-            hhhh = hhhh_mag * stats.norm.pdf(
+            hhhh = stats.norm.pdf(
                 xdata,
                 loc=hhhh_loc,
                 scale=hhhh_sig,
             )
+
+            hhhh /= amax(hhhh)
+            hhhh *= hhhh_mag
         except:
             hhhh = zeros_like(xdata)
 
         try:
-            hhlh = hhlh_mag * stats.norm.pdf(
+            hhlh = stats.norm.pdf(
                 xdata,
                 loc=hhlh_loc,
                 scale=hhlh_sig,
             )
+
+            hhlh /= amax(hhlh)
+            hhlh *= hhlh_mag
         except:
             hhlh = zeros_like(xdata)
 
-        result = clip(abs_interp - depl_data - se_sum_data + hhhh + hhlh, 0, 1)
+        try:
+            cont_abs = interp1d(
+                abs_data[:, 0],
+                abs_data[:, 3],
+                bounds_error=False,
+                fill_value=0.0,
+            )(xdata - cont_loc)
+
+            cont_abs /= amax(cont_abs)
+            cont_abs *= fdepl
+        except:
+            cont_abs = zeros_like(xdata)
+
+        result = clip(
+            abs_interp - depl_data - se_sum_data + hhhh + hhlh + cont_abs, 0,
+            1)
 
         if return_dict:
             return {
@@ -143,6 +165,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
                 'abs': abs_interp,
                 'hhlh': hhlh,
                 'hhhh': hhhh,
+                'cont_abs': cont_abs,
             }
         else:
             return result
@@ -179,7 +202,7 @@ def TA_fit(time_idx,
                 for var in ta_srt_dict[fit_vars_label]
             ])
         else:
-            n_avg_items = 2
+            n_avg_items = ta_srt_dict['raw_data']['n_avg_items']
             idx_lims = (max(
                 time_idx - n_avg_items,
                 ta_times_zero,
@@ -201,7 +224,7 @@ def TA_fit(time_idx,
         ]).T
 
         if time_idx > ta_srt_dict['raw_data']['ta_times_zero'][pump_case]:
-            bounds[:, 2] = array([0.0, 0.000001])
+            bounds[:, 2] = array([0.0, 1e-5])
             p0_values[2] = 0.0
 
         try:
@@ -212,7 +235,7 @@ def TA_fit(time_idx,
                 p0=p0_values,
                 bounds=bounds,
                 method='trf',
-                maxfev=5000,
+                maxfev=8000,
             )
         except Exception as e:
             print('[Error] %s' % e)
@@ -230,9 +253,18 @@ def TA_fit(time_idx,
         pcov = zeros((popt.size, popt.size))
 
     data = {
-        'model': TA_model_func(ta_data[time_idx, ta_data_mask, 0], *popt),
-        'data': ta_data[time_idx, ta_data_mask, 1],
-        'n_params': len(popt),
+        'model':
+        TA_model_func(ta_data[time_idx, ta_data_mask, 0], *popt),
+        'full_model':
+        TA_model_func(
+            ta_data[time_idx, ta_data_mask, 0],
+            *popt,
+            return_dict=True,
+        ),
+        'data':
+        ta_data[time_idx, ta_data_mask, 1],
+        'n_params':
+        len(popt),
     }
 
     return E_vec, data, popt, pcov
@@ -331,7 +363,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
     popt_arr[ii] = array([r[2] for r in fit_results[ii]])
 
-    n_smooth_passes = 15
+    n_smooth_passes = ta_srt_dict['raw_data']['n_smooth_passes']
     for jj_smooth in range(n_smooth_passes):
         print(
             '[%d/%d] Smoothing pass' % (
@@ -372,7 +404,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     saved_data[:, -1] = stats_arr[ii]
 
     savetxt(
-        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/%s_%s_%s.csv'
+        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/popt_%s_%s_%s.csv'
         % (
             os.path.splitext(os.path.basename(__file__))[0],
             pump_case,
@@ -381,6 +413,27 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         saved_data,
         delimiter=',',
         header='t (ps),%s,adj_r2' %
+        ','.join(list(ta_srt_dict[fit_vars_label].keys())),
+    )
+
+    saved_data = zeros((
+        ta_times[ii].size,
+        perr_arr[ii][0, :].size + 1,
+    ))
+
+    saved_data[:, 0] = ta_times[ii]
+    saved_data[:, 1:] = perr_arr[ii]
+
+    savetxt(
+        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/perr_%s_%s_%s.csv'
+        % (
+            os.path.splitext(os.path.basename(__file__))[0],
+            pump_case,
+            file_version,
+        ),
+        saved_data,
+        delimiter=',',
+        header='t (ps),%s' %
         ','.join(list(ta_srt_dict[fit_vars_label].keys())),
     )
 
@@ -409,13 +462,44 @@ for n in range(len(ax)):
                 label=r'%s' % pump_case,
             )
 
-            if amax(popt_arr[ii][ta_times_zero[ii]:, n]) < 1:
-                ax[n].axhline(
-                    y=0,
-                    color='k',
-                    linewidth=0.7,
-                    linestyle='--',
+            ax[n].fill_between(
+                ta_times[ii],
+                popt_arr[ii][:, n] + perr_arr[ii][:, n],
+                popt_arr[ii][:, n] - perr_arr[ii][:, n],
+                color=case_colors[ii],
+                alpha=0.2,
+            )
+
+            ax[n].set_ylim(
+                *ta_srt_dict[fit_vars_label][fit_vars_list[n]]['bounds'])
+
+            if fit_vars_list[n] == 'alpha':
+                ax[n].set_xlim(
+                    0,
+                    amax(
+                        array([
+                            ta_times[ii][ta_srt_dict['raw_data']
+                                         ['ta_times_zero'][pc]]
+                            for pc in ta_srt_dict['settings']['plot_cases']
+                        ])),
                 )
+            else:
+                #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
+                ax[n].set_xlim(0, ta_times[ii][-1])
+
+        elif n < len(ax) - 2:
+            cont_int = array([
+                trapz(r[1]['full_model']['depl'] - r[1]['full_model']['cont_abs'], r[0])
+                for r in fit_results[ii]
+            ])
+            ax[n].plot(
+                ta_times[ii],
+                cont_int,
+                linewidth=1.6,
+                color=case_colors[ii],
+                label=r'%s' % pump_case,
+            )
+
         else:
             ax[n].plot(
                 ta_times[ii],
@@ -425,26 +509,31 @@ for n in range(len(ax)):
             )
 
             ax[n].set_yscale('log')
+            #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
+            ax[n].set_xlim(0, ta_times[ii][-1])
+            ax[n].set_ylim(5e-6, 3e-3)
 
         ax[n].axvline(
-            x=ta_times[ii][ta_srt_dict['raw_data']['ta_times_zero'][pump_case]],
+            x=ta_times[ii][ta_srt_dict['raw_data']['ta_times_zero']
+                           [pump_case]],
             color=case_colors[ii],
             linewidth=0.7,
         )
 
-    if n < n_x * (n_y - 1):
+    if n < n_x * (n_y - 1) and fit_vars_list[n] != 'alpha':
         ax[n].xaxis.set_visible(False)
         ax[n].set_xlabel('Time (ps)')
 
-    ax[n].set_xscale('symlog')
+    if n != 2:
+        ax[n].set_xscale('symlog')
+    else:
+        ax[n].set_xscale('linear')
 
     ax[n].axvline(
         x=0,
         color='k',
         linewidth=0.7,
     )
-
-    ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
 
     ax[n].legend(
         loc='upper right',
@@ -456,7 +545,7 @@ for n in range(len(ax)):
     )
 
 plt.tight_layout()
-fig.subplots_adjust(wspace=0.15, hspace=0)
+fig.subplots_adjust(wspace=0.15, hspace=0.1)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TA_Analysis/%s_%s.pdf' %

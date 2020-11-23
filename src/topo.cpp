@@ -460,17 +460,21 @@ arma::vec topo_disp_p(const arma::vec& k_vec, const system_data_v2& sys) {
            sys.d_params.m_p;
 }
 
+double topo_disp_t_shift(const system_data_v2& sys) {
+    return sys.params.A2 *
+           std::sqrt(
+               -std::pow(sys.params.A2, 2) +
+               4 * sys.params.B2 * sys.params.M) /
+           sys.params.B2;
+}
+
 arma::vec topo_disp_t(const arma::vec& k_vec, const system_data_v2& sys) {
     arma::vec k2_vec{arma::pow(k_vec, 2)};
 
-    return arma::sqrt(
-               4 * std::pow(sys.params.A2, 2) * k2_vec +
-               arma::pow(sys.params.B2 * k2_vec - 4 * sys.params.M, 2)) -
-           2 * sys.params.A2 *
-               std::sqrt(
-                   -std::pow(sys.params.A2, 2) +
-                   4 * sys.params.B2 * sys.params.M) /
-               sys.params.B2;
+    return 2 * arma::sqrt(
+                   std::pow(sys.params.A2, 2) * k2_vec +
+                   arma::pow(sys.params.B2 * k2_vec - sys.params.M, 2)) -
+           topo_disp_t_shift(sys);
 }
 
 arma::vec topo_disp_t2(const arma::vec& k_vec, const system_data_v2& sys) {
@@ -493,7 +497,7 @@ arma::vec topo_disp_t2(const arma::vec& k_vec, const system_data_v2& sys) {
 }
 
 double topo_disp_t_2d_th_f(double th, topo_disp_t_th_s* s) {
-    return 0.25 * s->k *
+    return 0.25 *
            (4 * s->sys.params.D2 * s->k * s->Q * std::cos(th) +
             std::sqrt(
                 4 * std::pow(s->sys.params.A2, 2) *
@@ -515,10 +519,39 @@ double topo_disp_t_2d_th_f(double th, topo_disp_t_th_s* s) {
                     2)));
 }
 
+double topo_disp_t_int(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_disp_t_th_s s{k, Q, sys};
+
+    integrands[0].function =
+        &templated_f<topo_disp_t_th_s, topo_disp_t_2d_th_f>;
+    integrands[0].params = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0] * M_1_PI * 0.5;
+}
+
 struct topo_pot_cou_f {
     const system_data_v2& sys;
     double k1, k2;
     double Q = 0;
+
+    double disp_min = 0.0;
 
     topo_pot_cou_f(const topo_pot_cou_f&) = default;
     topo_pot_cou_f(const system_data_v2& sys) : sys(sys) {}
@@ -581,6 +614,8 @@ struct topo_pot_eff_cou_2d_ij_f {
     uint8_t i, j;
     double k1, k2;
 
+    double disp_min = 0.0;
+
     topo_pot_eff_cou_2d_ij_f(const topo_pot_eff_cou_2d_ij_f&) = default;
 
     topo_pot_eff_cou_2d_ij_f(
@@ -627,8 +662,11 @@ struct topo_pot_eff_cou_2d_ij_f {
 
             gsl_integration_workspace_free(ws);
 
-            result_vec[i] = -result[0] * M_1_PI * 0.5;
+            result_vec[i] = result[0] * M_1_PI * 0.5;
         }
+
+        disp_min = result_vec.min();
+        result_vec -= disp_min;
 
         return result_vec;
     }
@@ -696,6 +734,8 @@ struct topo_pot_eff_cou_2d_f {
     double Q;
     double k1, k2;
 
+    double disp_min = 0.0;
+
     topo_pot_eff_cou_2d_f(const topo_pot_eff_cou_2d_f&) = default;
 
     topo_pot_eff_cou_2d_f(const system_data_v2& sys, double Q) :
@@ -740,8 +780,11 @@ struct topo_pot_eff_cou_2d_f {
 
             gsl_integration_workspace_free(ws);
 
-            result_vec[i] = result[0] * M_1_PI * 0.5;
+            result_vec[i] = result[0] * 0.5 * M_1_PI;
         }
+
+        disp_min = result_vec.min();
+        result_vec -= disp_min;
 
         return result_vec;
     }
@@ -801,7 +844,7 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
      * be_bnd: upper bound for the binding energy -> positive value!
      */
 
-    constexpr double local_eps{1e-8}, be_min{0.2};
+    constexpr double local_eps{1e-8}, be_min{0.001};
     double z, z_min{std::log(be_min)}, z_max{std::log(std::abs(be_bnd))},
         z0{std::log(be_bnd)};
     // double z, z_min{be_min}, z_max{std::abs(be_bnd)}, z0{be_bnd};
@@ -842,6 +885,7 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
                 f_min = funct.function(z_min, funct.params);
 
                 if (f_min * f_max < 0) {
+                    printf("[%s] Found correct interval.\n", __func__);
                     break;
                 } else if (i + 1 == max_iter) {
                     return std::numeric_limits<double>::quiet_NaN();
@@ -879,7 +923,8 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
 
         gsl_root_fsolver_free(solver);
 
-        z = std::exp(z);
+        // z = topo_disp_t_shift(s.pot_s.sys) - std::exp(z);
+        z = s.pot_s.disp_min - std::exp(z);
     } else {
         gsl_function_fdf funct;
         funct.f      = &templated_f<topo_mat_s<topo_functor>, topo_det_f>;
@@ -888,7 +933,8 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
         funct.params = &s;
 
         if (std::abs(funct.f(z0, funct.params)) < local_eps) {
-            return std::exp(z0);
+            // return topo_disp_t_shift(s.pot_s.sys) - std::exp(z0);
+            return s.pot_s.disp_min - std::exp(z0);
         }
 
         const gsl_root_fdfsolver_type* solver_type =
@@ -914,7 +960,8 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
         }
 
         gsl_root_fdfsolver_free(solver);
-        z = std::exp(z);
+        //z = topo_disp_t_shift(s.pot_s.sys) - std::exp(z);
+        z = s.pot_s.disp_min - std::exp(z);
     }
 
     return z;
@@ -1013,19 +1060,30 @@ double topo_be_t_eff_cou(
 
 double topo_be_t_eff_cou_Q(
     double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
-    using pot_functor       = topo_pot_eff_cou_2d_f;
-    constexpr auto det_zero = topo_det_zero_t<pot_functor>;
+    using pot_functor         = topo_pot_eff_cou_2d_f;
+    constexpr auto det_zero   = topo_det_zero_t<pot_functor, false>;
+    constexpr auto det_zero_b = topo_det_zero_t<pot_functor, true>;
 
     pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
-    return det_zero(mat_s, be_bnd);
+    double r{det_zero(mat_s, be_bnd)};
+
+    if (std::isnan(r) || std::isinf(r)) {
+        r = det_zero(mat_s, be_bnd);
+    }
+
+    if (r < -1e3) {
+        r = 0;
+    }
+
+    return r;
 }
 
 double topo_be_b_t_eff_cou_Q(
     double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     using pot_functor       = topo_pot_eff_cou_2d_f;
-    constexpr auto det_zero = topo_det_zero_t<pot_functor, true>;
+    constexpr auto det_zero = topo_det_zero_t<pot_functor, false>;
 
     pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);

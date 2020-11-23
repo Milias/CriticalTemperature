@@ -29,8 +29,11 @@ raw_data:
 
     ta_times_zero:
         HH: 41
-        LH: 35
-        cont: 47
+        LH: 37
+        cont: 48
+
+    n_smooth_passes: 20
+    n_avg_items: 2
 
 abs_data:
     folder: extra/extcharge/export_abs/
@@ -79,68 +82,55 @@ fit_vars_model_biexc:
         p0: 0.0
         bounds: [ 0.0, 1.0 ]
 
-    fdepl:
+    abs_shift:
+        unit: 'eV'
+        p0: 0.0125
+        bounds: [ 0.005, 0.015 ]
+
+    alpha:
         unit: ''
         p0: 0.0
         bounds: [ 0.0, 1.0 ]
 
-    alpha:
+    fdepl:
         unit: ''
-        p0:
-            HH: 0.0
-            LH: 0.0
-            cont: 0.0
-        bounds:
-            HH: [ 0.0, 0.05 ]
-            LH: [ 0.0, 0.05 ]
-            cont: [ 0.0, 0.0001 ]
-
-    abs_shift:
-        unit: 'eV'
         p0: 0.0
-        bounds: [ 0.0, 0.02 ]
+        bounds: [ 0.0, 0.15 ]
 
     hhhh_mag:
         unit: ''
-        p0:
-            HH: 0.0
-            LH: 0.0
-            cont: 0.0
-        bounds:
-            HH: [ 0.0, 0.04 ]
-            LH: [ 0.0, 0.02 ]
-            cont: [ 0.0, 0.02 ]
-
-    hhlh_mag:
-        unit: ''
         p0: 0.0
-        bounds: [ 0.0, 0.01 ]
+        bounds: [ 0.0, 0.5 ]
 
     hhhh_loc:
         unit: 'eV'
-        p0:
-            HH: 2.41
-            LH: 2.41
-            cont: 2.41
-        bounds:
-            HH: [ 2.41, 2.43 ]
-            LH: [ 2.38, 2.43 ]
-            cont: [ 2.38, 2.43 ]
-
-    hhlh_loc:
-        unit: 'eV'
-        p0: 2.5
-        bounds: [ 2.49, 2.51 ]
+        p0: 2.41
+        bounds: [ 2.39, 2.43 ]
 
     hhhh_sig:
         unit: 'eV'
         p0: 0.03
-        bounds: [ 0.005, 0.05 ]
+        bounds: [ 0.01, 0.04 ]
+
+    cont_loc:
+        unit: 'eV'
+        p0: 0.05
+        bounds: [ 0.02, 0.07 ]
+    
+    hhlh_mag:
+        unit: ''
+        p0: 0.0
+        bounds: [ 0.0, 0.07 ]
+
+    hhlh_loc:
+        unit: 'eV'
+        p0: 2.5
+        bounds: [ 2.495, 2.525 ]
 
     hhlh_sig:
         unit: 'eV'
         p0: 0.02
-        bounds: [ 0.005, 0.03 ]
+        bounds: [ 0.01, 0.035 ]
 
 alpha_fit:
     tau0:

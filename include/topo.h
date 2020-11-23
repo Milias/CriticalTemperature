@@ -35,6 +35,9 @@ std::vector<std::complex<double>> topo_cou_2d_v(
     const std::vector<double>& k2,
     const system_data_v2& sys);
 
+double topo_disp_t_shift(const system_data_v2& sys);
+double topo_disp_t_int(double Q, double k, const system_data_v2& sys);
+
 std::vector<double> topo_det_p_cou_vec(
     const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
 

@@ -37,29 +37,49 @@ eps_sol = find_eps_sol(N_k, sys, 193e-3, 1)
 print(eps_sol)
 """
 
-Q_vec = linspace(0, 0.2, 1 << 6)
-Q_vec = Q_vec[1]
+file_version = 'v1'
 
-be_bnd = 1.0
+if file_version == 'v1':
+    N_Q = 1 << 6
+    Q_vec = linspace(0, 0.2, N_Q)
+elif file_version == 'v2':
+    N_Q = 1 << 6
+    Q_vec = linspace(0, 0.045, N_Q)
+elif file_version == 'v3':
+    N_Q = 1 << 7
+    Q_vec = linspace(0, 0.125, N_Q)
 
-be_cou = topo_be_b_t_eff_cou_Q(Q_vec, N_k, sys, be_bnd)
+Q_vec = Q_vec[29]
+print(Q_vec)
+
+be_bnd = 0.5
+
+be_cou = topo_be_t_eff_cou_Q(Q_vec, N_k, sys, be_bnd)
 print(be_cou, flush=True)
 
-z_vec = linspace(0.0, 0.1, 1 << 9)
+z_vec = linspace(-0.1, 0.4, 1 << 10)
 det_vec = topo_det_t_eff_cou_Q_vec(Q_vec, z_vec, N_k, sys)
-print(det_vec, flush=True)
+#print(det_vec, flush=True)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
 ax[0].plot(z_vec, det_vec, 'r.')
-ax[0].set_ylim(-1e1, 1e1)
+ax[0].set_ylim(-1, 1)
 
+"""
 ax[0].axvline(
     x=be_cou,
     color='m',
     linewidth=0.9,
+)
+"""
+
+ax[0].axvline(
+    x=0,
+    color='k',
+    linewidth=0.7,
 )
 
 ax[0].axhline(
@@ -73,7 +93,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
+    (os.path.splitext(os.path.basename(__file__))[0], file_version),
     transparent=True,
 )
 
