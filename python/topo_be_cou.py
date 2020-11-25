@@ -37,7 +37,7 @@ eps_sol = find_eps_sol(N_k, sys, 193e-3, 1)
 print(eps_sol)
 """
 
-file_version = 'v1'
+file_version = 'v3'
 
 if file_version == 'v1':
     N_Q = 1 << 6
@@ -49,36 +49,43 @@ elif file_version == 'v3':
     N_Q = 1 << 7
     Q_vec = linspace(0, 0.125, N_Q)
 
-Q_vec = Q_vec[29]
+Q_vec = Q_vec[0]
 print(Q_vec)
 
 be_bnd = 0.5
 
-be_cou = topo_be_t_eff_cou_Q(Q_vec, N_k, sys, be_bnd)
-print(be_cou, flush=True)
+#be_cou = topo_be_t_eff_cou_Q(Q_vec, N_k, sys, be_bnd)
+be_cou = topo_be_p_cou_Q(Q_vec, N_k, sys, be_bnd)
+print('be_cou: %f' % be_cou, flush=True)
 
-z_vec = linspace(-0.1, 0.4, 1 << 10)
-det_vec = topo_det_t_eff_cou_Q_vec(Q_vec, z_vec, N_k, sys)
+k_int_vec = linspace(0.0, 0.125, 1 << 8)
+#disp_int = amin([topo_disp_t_int(Q_vec, k, sys) for k in k_int_vec])
+disp_int = amin([topo_disp_p_int(Q_vec, k, sys) for k in k_int_vec])
+print('disp_int: %f' % disp_int, flush=True)
+
+#z_vec = linspace(0.0, disp_int, 1 << 9)
+z_vec = linspace(0.0, 1e3, 1 << 9)
+#det_vec = topo_det_t_eff_cou_Q_vec(Q_vec, z_vec, N_k, sys)
+det_vec = topo_det_p_cou_Q_vec(Q_vec, z_vec, N_k, sys)
 #print(det_vec, flush=True)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-ax[0].plot(z_vec, det_vec, 'r.')
-ax[0].set_ylim(-1, 1)
+ax[0].plot(disp_int - z_vec, det_vec, 'r.')
+#ax[0].set_ylim(-1e-3, 1e-3)
+ax[0].set_ylim(-2, 2)
 
-"""
 ax[0].axvline(
     x=be_cou,
     color='m',
     linewidth=0.9,
 )
-"""
 
 ax[0].axvline(
-    x=0,
-    color='k',
+    x=disp_int,
+    color='g',
     linewidth=0.7,
 )
 

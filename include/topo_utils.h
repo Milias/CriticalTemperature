@@ -57,8 +57,10 @@ struct topo_mat_s {
                                std::string(typeid(topo_functor).name()) + "_" +
                                std::to_string(N_k) + "_" +
                                std::to_string(pot_s.Q) + ".csv";
+        std::cout << filename << std::endl;
         if (std::filesystem::exists(filename)) {
             mat_potcoef.load(filename, arma::csv_ascii);
+            mat_potcoef /= pot_s.sys.params.eps_sol;
         } else {
             /*
              * Evaluates the matrix elements corresponding to the

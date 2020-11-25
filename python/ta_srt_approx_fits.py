@@ -43,7 +43,7 @@ elif file_version == 'v5':
     n_x, n_y = 4, 3
 elif file_version == 'v6':
     fit_vars_label = 'fit_vars_model_biexc'
-    n_x, n_y = 5, 3
+    n_x, n_y = 4, 3
 
 
 def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
@@ -486,20 +486,6 @@ for n in range(len(ax)):
             else:
                 #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
                 ax[n].set_xlim(0, ta_times[ii][-1])
-
-        elif n < len(ax) - 2:
-            cont_int = array([
-                trapz(r[1]['full_model']['depl'] - r[1]['full_model']['cont_abs'], r[0])
-                for r in fit_results[ii]
-            ])
-            ax[n].plot(
-                ta_times[ii],
-                cont_int,
-                linewidth=1.6,
-                color=case_colors[ii],
-                label=r'%s' % pump_case,
-            )
-
         else:
             ax[n].plot(
                 ta_times[ii],

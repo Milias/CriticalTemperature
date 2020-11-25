@@ -39,8 +39,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_k = 1 << 7
-N_alpha = 9
+N_alpha = 1
 k_vec = linspace(0, 1, N_k)
 alpha_vec = linspace(-1, 1, N_alpha)
 result = zeros((1, N_k, N_k), dtype=complex)
@@ -49,8 +48,7 @@ plot_result = zeros((N_alpha, N_k, N_k), dtype=complex)
 for ii, alpha in enumerate([1]):
     print('[%d/%d] ⍺: %.3f' % (ii + 1, result.shape[0], alpha), flush=True)
     result[ii] = array(time_func(
-        topo_eff_cou_mat,
-        alpha,
+        topo_cou_mat,
         N_k,
         sys,
     )).reshape(N_k, N_k)[::-1, ::-1]
@@ -65,7 +63,7 @@ def plot_result_func(alpha):
 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
 plot_result[:] = time_func(pool.map, plot_result_func, alpha_vec)
 
-n_x, n_y = 3, 3
+n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 

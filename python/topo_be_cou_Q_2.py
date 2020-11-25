@@ -35,17 +35,24 @@ def find_eps_sol(N_k, sys, be_cou, be_bnd):
 
 be_bnd = 0.5
 
-file_version = 'v3'
+file_version = 'v4'
 
 if file_version == 'v1':
     N_Q = 1 << 6
     Q_vec = linspace(0, 0.2, N_Q)
+    be_func = topo_be_t_eff_cou_Q
 elif file_version == 'v2':
     N_Q = 1 << 6
     Q_vec = linspace(0, 0.045, N_Q)
+    be_func = topo_be_t_eff_cou_Q
 elif file_version == 'v3':
     N_Q = 1 << 7
     Q_vec = linspace(0, 0.125, N_Q)
+    be_func = topo_be_t_eff_cou_Q
+elif file_version == 'v4':
+    N_Q = 1 << 7
+    Q_vec = linspace(0, 0.125, N_Q)
+    be_func = topo_be_p_cou
 
 be_arr = zeros((N_Q))
 
@@ -92,12 +99,12 @@ try:
         (os.path.splitext(os.path.basename(__file__))[0], file_version))
 
     if (be_arr < under_threshold).any():
-        compute_be(topo_be_t_eff_cou_Q)
+        compute_be(be_func)
 
 except IOError as e:
     print('%s' % e, flush=True)
 
-    compute_be(topo_be_t_eff_cou_Q)
+    compute_be(be_func)
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)

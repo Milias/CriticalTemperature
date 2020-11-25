@@ -345,6 +345,11 @@ arma::cx_mat44 topo_vert_2d(
            transf.t();
 }
 
+arma::cx_mat44 topo_vert_check(
+    const arma::vec2& Q, const arma::vec2& k, const system_data_v2& sys) {
+    return arma::cx_mat44(arma::fill::eye);
+}
+
 arma::cx_mat topo_cou_3d(
     const arma::vec3& Q,
     const arma::vec3& k1,
@@ -363,6 +368,28 @@ arma::cx_mat topo_cou_2d(
     const system_data_v2& sys) {
     arma::cx_mat44 mat1{topo_vert_2d(Q, k1, sys)};
     arma::cx_mat44 mat2{topo_vert_2d(Q, k2, sys)};
+
+    const arma::mat transf = {
+        {1, 0, 0, 0},
+        {0, 0, 1, 0},
+        {0, 1, 0, 0},
+        {0, 0, 0, 1},
+    };
+
+    arma::mat eye(2, 2, arma::fill::eye);
+    arma::mat cou_transf = arma::kron(eye, arma::kron(transf, eye));
+
+    return topo_green_cou(arma::norm(k2 - k1), sys) * cou_transf *
+           arma::kron(mat1, mat2) * cou_transf.t();
+}
+
+arma::cx_mat topo_cou_check(
+    const arma::vec2& Q,
+    const arma::vec2& k1,
+    const arma::vec2& k2,
+    const system_data_v2& sys) {
+    arma::cx_mat44 mat1{topo_vert_check(Q, k1, sys)};
+    arma::cx_mat44 mat2{topo_vert_check(Q, k2, sys)};
 
     const arma::mat transf = {
         {1, 0, 0, 0},
@@ -496,6 +523,36 @@ arma::vec topo_disp_t2(const arma::vec& k_vec, const system_data_v2& sys) {
             std::pow(sys.params.B2, 2));
 }
 
+double topo_disp_p_th_f(double th, topo_disp_t_th_s* s) {
+    return 0.5 / s->sys.d_params.m_p * (s->Q * s->Q + s->k * s->k);
+}
+
+double topo_disp_p_int(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_disp_t_th_s s{k, Q, sys};
+
+    integrands[0].function = &templated_f<topo_disp_t_th_s, topo_disp_p_th_f>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0] * M_1_PI * 0.5;
+}
+
 double topo_disp_t_2d_th_f(double th, topo_disp_t_th_s* s) {
     return 0.25 *
            (4 * s->sys.params.D2 * s->k * s->Q * std::cos(th) +
@@ -546,6 +603,36 @@ double topo_disp_t_int(double Q, double k, const system_data_v2& sys) {
     return result[0] * M_1_PI * 0.5;
 }
 
+template <typename T>
+struct topo_cou_int_t {
+    double th;
+
+    const T& pot;
+
+    double operator()(double th2) {
+        arma::vec2 Q_vec  = {pot.Q, 0};
+        arma::vec2 k1_vec = {
+            pot.k1 * std::cos(th),
+            pot.k1 * std::sin(th),
+        };
+        arma::vec2 k2_vec = {
+            pot.k2 * std::cos(th2),
+            pot.k2 * std::sin(th2),
+        };
+
+        if (arma::norm(k2_vec - k1_vec) < 1e-5) {
+            return 0.0;
+        }
+
+        arma::mat22 result{
+            arma::real(topo_cou_check(Q_vec, k1_vec, k2_vec, pot.sys)
+                           .submat(1, 1, 2, 2)),
+        };
+
+        return -2 * (result(1, 1) - result(0, 1));
+    }
+};
+
 struct topo_pot_cou_f {
     const system_data_v2& sys;
     double k1, k2;
@@ -555,6 +642,7 @@ struct topo_pot_cou_f {
 
     topo_pot_cou_f(const topo_pot_cou_f&) = default;
     topo_pot_cou_f(const system_data_v2& sys) : sys(sys) {}
+    topo_pot_cou_f(const system_data_v2& sys, double Q) : sys(sys), Q(Q) {}
 
     topo_pot_cou_f set_momentum(const double kk[2]) {
         topo_pot_cou_f new_s{topo_pot_cou_f(*this)};
@@ -566,19 +654,43 @@ struct topo_pot_cou_f {
     }
 
     arma::vec dispersion(const arma::vec& k_vec) {
-        return topo_disp_p(k_vec, sys);
+        arma::vec result_vec(k_vec.n_elem);
+
+#pragma omp parallel for
+        for (uint32_t i = 0; i < k_vec.n_elem; i++) {
+            result_vec[i] = topo_disp_p_int(Q, k_vec[i], sys);
+        }
+
+        disp_min = result_vec.min();
+        result_vec -= disp_min;
+
+        return result_vec;
     }
 
     double operator()(double th) {
-        double k{
-            std::sqrt(k1 * k1 + k2 * k2 - 2 * k1 * k2 * std::cos(th)),
-        };
+        constexpr uint32_t n_int{1};
+        constexpr uint32_t local_ws_size{(1 << 7)};
+        constexpr double local_eps{1e-8};
 
-        if (k < 1e-5) {
-            k = 1e-5;
-        }
+        double result[n_int] = {0}, error[n_int] = {0};
 
-        return topo_green_cou(k, sys);
+        gsl_function integrands[n_int];
+
+        topo_cou_int_t<topo_pot_cou_f> s{th, *this};
+
+        integrands[0].function = &functor_call<topo_cou_int_t<topo_pot_cou_f>>;
+        integrands[0].params   = &s;
+
+        gsl_integration_workspace* ws =
+            gsl_integration_workspace_alloc(local_ws_size);
+
+        gsl_integration_qag(
+            integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
+            GSL_INTEG_GAUSS31, ws, result, error);
+
+        gsl_integration_workspace_free(ws);
+
+        return -result[0] * 0.5 * M_1_PI;
     }
 };
 
@@ -639,30 +751,7 @@ struct topo_pot_eff_cou_2d_ij_f {
 
 #pragma omp parallel for
         for (uint32_t i = 0; i < k_vec.n_elem; i++) {
-            constexpr uint32_t n_int{1};
-            constexpr uint32_t local_ws_size{(1 << 7)};
-            constexpr double local_eps{1e-8};
-
-            double result[n_int] = {0}, error[n_int] = {0};
-
-            gsl_function integrands[n_int];
-
-            topo_disp_t_th_s s{k_vec[i], Q, sys};
-
-            integrands[0].function =
-                &templated_f<topo_disp_t_th_s, topo_disp_t_2d_th_f>;
-            integrands[0].params = &s;
-
-            gsl_integration_workspace* ws =
-                gsl_integration_workspace_alloc(local_ws_size);
-
-            gsl_integration_qag(
-                integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
-                GSL_INTEG_GAUSS31, ws, result, error);
-
-            gsl_integration_workspace_free(ws);
-
-            result_vec[i] = result[0] * M_1_PI * 0.5;
+            result_vec[i] = topo_disp_t_int(Q, k_vec[i], sys);
         }
 
         disp_min = result_vec.min();
@@ -757,30 +846,7 @@ struct topo_pot_eff_cou_2d_f {
 
 #pragma omp parallel for
         for (uint32_t i = 0; i < k_vec.n_elem; i++) {
-            constexpr uint32_t n_int{1};
-            constexpr uint32_t local_ws_size{(1 << 7)};
-            constexpr double local_eps{1e-8};
-
-            double result[n_int] = {0}, error[n_int] = {0};
-
-            gsl_function integrands[n_int];
-
-            topo_disp_t_th_s s{k_vec[i], Q, sys};
-
-            integrands[0].function =
-                &templated_f<topo_disp_t_th_s, topo_disp_t_2d_th_f>;
-            integrands[0].params = &s;
-
-            gsl_integration_workspace* ws =
-                gsl_integration_workspace_alloc(local_ws_size);
-
-            gsl_integration_qag(
-                integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
-                GSL_INTEG_GAUSS31, ws, result, error);
-
-            gsl_integration_workspace_free(ws);
-
-            result_vec[i] = result[0] * 0.5 * M_1_PI;
+            result_vec[i] = topo_disp_t_int(Q, k_vec[i], sys);
         }
 
         disp_min = result_vec.min();
@@ -844,7 +910,7 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
      * be_bnd: upper bound for the binding energy -> positive value!
      */
 
-    constexpr double local_eps{1e-8}, be_min{0.001};
+    constexpr double local_eps{1e-8}, be_min{1e-4};
     double z, z_min{std::log(be_min)}, z_max{std::log(std::abs(be_bnd))},
         z0{std::log(be_bnd)};
     // double z, z_min{be_min}, z_max{std::abs(be_bnd)}, z0{be_bnd};
@@ -960,7 +1026,7 @@ double topo_det_zero_t(topo_mat_s<topo_functor>& s, double be_bnd) {
         }
 
         gsl_root_fdfsolver_free(solver);
-        //z = topo_disp_t_shift(s.pot_s.sys) - std::exp(z);
+        // z = topo_disp_t_shift(s.pot_s.sys) - std::exp(z);
         z = s.pot_s.disp_min - std::exp(z);
     }
 
@@ -975,6 +1041,30 @@ std::vector<double> topo_det_p_cou_vec(
     constexpr auto det_func = topo_det_f<pot_functor, false>;
 
     pot_functor pot_s(sys);
+    topo_mat_s<pot_functor> mat_s(N_k, pot_s);
+
+    mat_s.fill_mat_potcoef();
+    mat_s.fill_mat_elem();
+
+    std::vector<double> r(z_vec.size());
+
+#pragma omp parallel for
+    for (uint32_t i = 0; i < z_vec.size(); i++) {
+        r[i] = det_func(z_vec[i], &mat_s);
+    }
+
+    return r;
+}
+
+std::vector<double> topo_det_p_cou_Q_vec(
+    double Q,
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    const system_data_v2& sys) {
+    using pot_functor       = topo_pot_cou_f;
+    constexpr auto det_func = topo_det_f<pot_functor, false>;
+
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     mat_s.fill_mat_potcoef();
@@ -1039,9 +1129,20 @@ std::vector<double> topo_det_t_eff_cou_Q_vec(
 
 double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd) {
     using pot_functor       = topo_pot_cou_f;
-    constexpr auto det_zero = topo_det_zero_t<pot_functor, true>;
+    constexpr auto det_zero = topo_det_zero_t<pot_functor, false>;
 
     pot_functor pot_s(sys);
+    topo_mat_s<pot_functor> mat_s(N_k, pot_s);
+
+    return det_zero(mat_s, be_bnd);
+}
+
+double topo_be_p_cou_Q(
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd) {
+    using pot_functor       = topo_pot_cou_f;
+    constexpr auto det_zero = topo_det_zero_t<pot_functor, false>;
+
+    pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     return det_zero(mat_s, be_bnd);
@@ -1144,6 +1245,18 @@ std::vector<double> topo_eff_cou_Q_ij_mat(
 std::vector<double> topo_eff_cou_Q_mat(
     double Q, uint32_t N_k, const system_data_v2& sys) {
     using pot_functor = topo_pot_eff_cou_2d_f;
+
+    pot_functor pot_s(sys, Q);
+    topo_mat_s<pot_functor> mat_s(N_k, pot_s);
+    mat_s.fill_mat_potcoef();
+
+    return std::vector<double>(
+        mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
+}
+
+std::vector<double> topo_cou_Q_mat(
+    double Q, uint32_t N_k, const system_data_v2& sys) {
+    using pot_functor = topo_pot_cou_f;
 
     pot_functor pot_s(sys, Q);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);

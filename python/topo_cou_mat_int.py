@@ -39,9 +39,8 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-Q_val = 0.1
+Q_val = 0.0
 
-N_k = 1 << 6
 k_vec = linspace(0, 1, N_k)
 
 result = zeros((4, 4, N_k, N_k), dtype=complex)
@@ -126,7 +125,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v4'),
     transparent=True,
 )
 

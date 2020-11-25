@@ -201,7 +201,16 @@ def plot_fit(
         return_dict=True,
     )
 
-    header_list = ['hhhh', 'hhlh', 'depl', 'se_hh', 'se_lh', 'abs', 'cont_abs', 'all']
+    header_list = [
+        'hhhh',
+        'hhlh',
+        'depl',
+        'se_hh',
+        'se_lh',
+        'abs',
+        'cont_abs',
+        'all',
+    ]
     saved_data = zeros((
         E_vec.size,
         len(header_list) + 2,

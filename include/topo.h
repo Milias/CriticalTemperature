@@ -37,6 +37,7 @@ std::vector<std::complex<double>> topo_cou_2d_v(
 
 double topo_disp_t_shift(const system_data_v2& sys);
 double topo_disp_t_int(double Q, double k, const system_data_v2& sys);
+double topo_disp_p_int(double Q, double k, const system_data_v2& sys);
 
 std::vector<double> topo_det_p_cou_vec(
     const std::vector<double>& z_vec, uint32_t N_k, const system_data_v2& sys);
@@ -50,7 +51,15 @@ std::vector<double> topo_det_t_eff_cou_Q_vec(
     uint32_t N_k,
     const system_data_v2& sys);
 
+std::vector<double> topo_det_p_cou_Q_vec(
+    double Q,
+    const std::vector<double>& z_vec,
+    uint32_t N_k,
+    const system_data_v2& sys);
+
 double topo_be_p_cou(uint32_t N_k, const system_data_v2& sys, double be_bnd);
+double topo_be_p_cou_Q(
+    double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd);
 
 std::vector<double> topo_cou_mat(uint32_t N_k, const system_data_v2& sys);
 
