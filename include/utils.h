@@ -208,7 +208,7 @@ struct system_data {
     double ls_ideal(double n) const;
 
     double exc_mu_zero() const;
-    double exc_mu_val(double be) const;
+    double exc_mu_val(double val) const;
 
     double exc_bohr_radius() const;
     double exc_bohr_radius_mat() const;
@@ -221,10 +221,11 @@ struct system_data {
 struct sys_params {
     /*
      * Mass.
+     * NOTE: Proportional to c_m_e!!
      */
-    double m_e;  // eV
-    double m_hh; // eV
-    double m_lh; // eV
+    double m_e;
+    double m_hh;
+    double m_lh;
 
     /*
      * Environment.
@@ -246,13 +247,16 @@ struct der_params {
     /*
      * By default, m_p = m_p_hh.
      */
-    double m_p;  // eV
+    double m_p; // eV
+    double m_pe;
+    double m_phh;
     double beta; // eV^-1
 
     der_params(const sys_params& params) :
-        m_p(
-            system_data::c_m_e * params.m_e * params.m_hh /
+        m_p(system_data::c_m_e * params.m_e * params.m_hh /
             (params.m_e + params.m_hh)),
+        m_pe(m_p / params.m_e / system_data::c_m_e),
+        m_phh(m_p / params.m_hh / system_data::c_m_e),
         beta(1 / (system_data::c_kB * params.T)) {}
 };
 
@@ -302,4 +306,18 @@ struct system_data_v2 {
     double mu_hh_t0(double mu_e) const;
     double mu_hh_ht(double mu_e) const;
     double mu_hh(double mu_e) const;
+
+    // Computes mu_e such that mu_e + mu_h == val.
+    double exc_mu_val(double val) const;
+
+    // Computes chemical potential from densities.
+    double mu_ideal(double n) const;
+    double mu_h_ideal(double n) const;
+    double mu_exc(double n, double E_X) const;
+
+    /*
+     * Densities
+     */
+    double density_ideal(double mu_e) const;
+    double density_exc(double mu_ex, double eb) const;
 };

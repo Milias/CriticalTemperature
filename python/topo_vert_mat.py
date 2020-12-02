@@ -22,7 +22,7 @@ sys = system_data_v2(params)
 k_val = array([0.05, 0.0])
 kz_val = 0.0
 
-th_val = 0.5 * pi
+th_val = 0.25 * pi
 q_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
 result = zeros((q_vec.size, 4, 4), dtype=complex)
 
@@ -44,9 +44,9 @@ for i, j in itertools.product(range(4), repeat=2):
 for ii, q in enumerate(q_vec):
     result[ii] = array(
         topo_vert_2d_v(
-            [0.1, 0.0],
+            [0.0, 0.0],
+            [q * cos(th_val), q * sin(th_val)],
             k_val,
-            [k_val[0] + q * cos(th_val), k_val[1] + q * sin(th_val)],
             sys,
         ),
         order='F',

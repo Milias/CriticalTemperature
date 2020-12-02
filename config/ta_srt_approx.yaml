@@ -23,9 +23,9 @@ raw_data:
         cont: 0.014089824005878092
 
     pump_mu:
-        HH: 2.4188
-        LH: 2.5833
-        cont: 3.1
+        HH: 2.4188 # eV
+        LH: 2.5833 # eV
+        cont: 3.1 # eV
 
     ta_times_zero:
         HH: 41
@@ -43,49 +43,16 @@ settings:
     N_E: 256
     plot_cases: [ HH, LH, cont ]
 
-fit_vars_model:
-    fse:
-        unit: ''
-        p0: 0.4
-        bounds: [ 0.0, 1.0 ]
-
-    fdepl:
-        unit: ''
-        p0: 0.05
-        bounds: [ 0.0, 1.0 ]
-
-    alpha:
-        unit: ''
-        p0:
-            HH: 0.01
-            LH: 0.05
-            cont: 0.0
-        bounds:
-            HH: [ 0.0, 0.05 ]
-            LH: [ 0.0, 0.1 ]
-            cont: [ 0.0, 0.0001 ]
-
-    abs_shift:
-        unit: 'eV'
-        p0:
-            HH: 0.01
-            LH: 0.01
-            cont: 0.01
-        bounds:
-            HH: [ 0.0, 0.05 ]
-            LH: [ 0.0, 0.05 ]
-            cont: [ 0.0, 0.05 ]
-
 fit_vars_model_biexc:
     fse:
         unit: ''
         p0: 0.0
-        bounds: [ 0.0, 1.0 ]
+        bounds: [ 0.0, 0.05 ]
 
     abs_shift:
         unit: 'eV'
-        p0: 0.0125
-        bounds: [ 0.005, 0.015 ]
+        p0: 0.0
+        bounds: [ -0.005, 0.015 ]
 
     alpha:
         unit: ''
@@ -95,12 +62,17 @@ fit_vars_model_biexc:
     fdepl:
         unit: ''
         p0: 0.0
-        bounds: [ 0.0, 0.15 ]
+        bounds: [ 0.0, 0.01 ]
+
+    fdepl2:
+        unit: ''
+        p0: 0.0
+        bounds: [ 0.0, 0.004 ]
 
     hhhh_mag:
         unit: ''
         p0: 0.0
-        bounds: [ 0.0, 0.5 ]
+        bounds: [ 0.0, 0.05 ]
 
     hhhh_loc:
         unit: 'eV'
@@ -110,52 +82,56 @@ fit_vars_model_biexc:
     hhhh_sig:
         unit: 'eV'
         p0: 0.03
-        bounds: [ 0.01, 0.04 ]
+        bounds: [ 0.02, 0.04 ]
 
-    cont_loc:
-        unit: 'eV'
-        p0: 0.05
-        bounds: [ 0.02, 0.07 ]
-    
     hhlh_mag:
         unit: ''
         p0: 0.0
-        bounds: [ 0.0, 0.07 ]
+        bounds: [ 0.0, 0.007 ]
 
     hhlh_loc:
         unit: 'eV'
         p0: 2.5
-        bounds: [ 2.495, 2.525 ]
+        bounds: [ 2.495, 2.52 ]
 
     hhlh_sig:
         unit: 'eV'
         p0: 0.02
-        bounds: [ 0.01, 0.035 ]
+        bounds: [ 0.02, 0.035 ]
 
-alpha_fit:
-    tau0:
-        unit: 'ps'
-        p0: 0.1
-        bounds: [ 0.0, inf ]
-    tau1:
-        unit: 'ps'
-        p0: 10.0
-        bounds: [ 0.0, inf ]
-    tau2:
-        unit: 'ps'
-        p0: 100.0
-        bounds: [ 0.0, inf ]
+fit_chem_eq:
+    n_q_0:
+        unit: ''
+        p0:
+            HH: 0.1
+            LH: 0.9
+            cont: 1.0
+        bounds: [ 0.0, 1.0 ]
 
-    v0:
-        unit: 'ps'
-        p0: 0.1
-        bounds: [ 0.0, inf ]
-    v1:
-        unit: 'ps'
-        p0: 10.0
-        bounds: [ 0.0, inf ]
-    v2:
-        unit: 'ps'
-        p0: 100.0
-        bounds: [ 0.0, inf ]
+    n_X_0:
+        unit: ''
+        p0:
+            HH: 1.9
+            LH: 1.1
+            cont: 1.0
+        bounds: [ 0.0, 1.0 ]
 
+    chi_t_total:
+        unit: ''
+        p0: 0.5
+        bounds: [ 0.0, 1.0 ]
+
+    tau_mu:
+        unit: 'ps'
+        p0: 0.7
+        bounds: [ 0.05, 0.5 ]
+
+    tau_qt:
+        unit: 'ps'
+        p0: 0.01
+        bounds: [ 0.0, 10.0 ]
+
+    tau_Xt:
+        unit: 'ps'
+        p0: 0.12
+        bounds: [ 0.0, 0.2 ]

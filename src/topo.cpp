@@ -348,6 +348,15 @@ arma::cx_mat44 topo_vert_2d(
 arma::cx_mat44 topo_vert_check(
     const arma::vec2& Q, const arma::vec2& k, const system_data_v2& sys) {
     return arma::cx_mat44(arma::fill::eye);
+
+    /*
+    return {
+        {1, 0, 0, 0},
+        {0, -1, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, -1},
+    };
+    */
 }
 
 arma::cx_mat topo_cou_3d(
@@ -524,7 +533,8 @@ arma::vec topo_disp_t2(const arma::vec& k_vec, const system_data_v2& sys) {
 }
 
 double topo_disp_p_th_f(double th, topo_disp_t_th_s* s) {
-    return 0.5 / s->sys.d_params.m_p * (s->Q * s->Q + s->k * s->k);
+    return 0.5 * s->sys.c_hbarc * s->sys.c_hbarc / s->sys.d_params.m_p *
+           (s->Q * s->Q + s->k * s->k);
 }
 
 double topo_disp_p_int(double Q, double k, const system_data_v2& sys) {
@@ -603,6 +613,39 @@ double topo_disp_t_int(double Q, double k, const system_data_v2& sys) {
     return result[0] * M_1_PI * 0.5;
 }
 
+double topo_green_cou_th_f(double th, topo_disp_t_th_s* s) {
+    return topo_green_cou(
+        std::sqrt(s->Q * s->Q + s->k * s->k - 2 * s->Q * s->k * std::cos(th)),
+        s->sys);
+}
+
+double topo_green_cou_int(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_disp_t_th_s s{k, Q, sys};
+
+    integrands[0].function =
+        &templated_f<topo_disp_t_th_s, topo_green_cou_th_f>;
+    integrands[0].params = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0] * M_1_PI * 0.5;
+}
+
 template <typename T>
 struct topo_cou_int_t {
     double th;
@@ -636,7 +679,8 @@ struct topo_cou_int_t {
 struct topo_pot_cou_f {
     const system_data_v2& sys;
     double k1, k2;
-    double Q = 0;
+    double Q             = 0;
+    double det_log_scale = 9.0;
 
     double disp_min = 0.0;
 
@@ -725,6 +769,7 @@ struct topo_pot_eff_cou_2d_ij_f {
     double Q;
     uint8_t i, j;
     double k1, k2;
+    double det_log_scale = 0.0;
 
     double disp_min = 0.0;
 
@@ -823,6 +868,8 @@ struct topo_pot_eff_cou_2d_f {
     double Q;
     double k1, k2;
 
+    double det_log_scale = 3.0;
+
     double disp_min = 0.0;
 
     topo_pot_eff_cou_2d_f(const topo_pot_eff_cou_2d_f&) = default;
@@ -900,7 +947,7 @@ double topo_det_f(double z, topo_mat_s<topo_functor>* s) {
     if constexpr (only_sign) {
         return sign;
     } else {
-        return sign * std::exp(val);
+        return sign * std::exp(val + s->pot_s.det_log_scale * std::log(10));
     }
 }
 
@@ -1264,4 +1311,181 @@ std::vector<double> topo_cou_Q_mat(
 
     return std::vector<double>(
         mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
+}
+
+std::vector<double> topo_p_cou_eig(
+    double k_max, uint32_t N_k, const system_data_v2& sys) {
+    arma::vec E_k(N_k);
+    arma::vec k_vec{arma::linspace(1.0 / N_k, k_max, N_k)};
+
+    const double du{k_vec(1) - k_vec(0)};
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        E_k[i] = topo_disp_p_int(0, k_vec[i], sys);
+    }
+
+    arma::mat hamilt = arma::diagmat(E_k);
+
+#pragma omp parallel for collapse(2)
+    for (uint32_t i = 0; i < N_k; i++) {
+        for (uint32_t j = 0; j <= i; j++) {
+            if (j < i) {
+                hamilt(i, j) += du * M_SQRT2 * k_vec(j) *
+                                topo_green_cou_int(k_vec(i), k_vec(j), sys);
+                hamilt(j, i) = hamilt(i, j);
+            }
+        }
+    }
+
+    arma::cx_vec eig_val(N_k);
+    arma::cx_mat eig_vec(N_k, N_k);
+
+    arma::eig_gen(eig_val, eig_vec, hamilt);
+
+    arma::vec real_eig_val{arma::real(eig_val)};
+    arma::mat real_eig_vec{arma::real(eig_vec)};
+
+    arma::uvec sort_idx{arma::sort_index(real_eig_val)};
+
+    arma::mat result(N_k, N_k + 1);
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        result(i, 0)      = real_eig_val(sort_idx(i));
+        result.col(1 + i) = real_eig_vec.col(sort_idx(i));
+
+        result.col(1 + i) /= k_vec;
+        result.col(1 + i) /= std::sqrt(
+            arma::trapz(k_vec, arma::pow(result.col(1 + i), 2)).eval()(0, 0));
+
+        if (result(0, 1 + i) < 0) {
+            result.col(1 + i) = -result.col(1 + i);
+        }
+    }
+
+    return std::vector<double>(result.begin(), result.end());
+}
+
+std::vector<double> topo_t_cou_eig(
+    double k_max, uint32_t N_k, const system_data_v2& sys) {
+    arma::vec E_k(N_k);
+    arma::vec k_vec{arma::linspace(1.0 / N_k, k_max, N_k)};
+
+    const double du{k_vec(1) - k_vec(0)};
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        E_k[i] = topo_disp_t_int(0, k_vec[i], sys);
+    }
+
+    arma::mat hamilt = arma::diagmat(E_k);
+
+#pragma omp parallel for collapse(2)
+    for (uint32_t i = 0; i < N_k; i++) {
+        for (uint32_t j = 0; j <= i; j++) {
+            if (j < i) {
+                hamilt(i, j) += du * M_SQRT2 * k_vec(j) *
+                                topo_green_cou_int(k_vec(i), k_vec(j), sys);
+                hamilt(j, i) = hamilt(i, j);
+            }
+        }
+    }
+
+    arma::cx_vec eig_val(N_k);
+    arma::cx_mat eig_vec(N_k, N_k);
+
+    arma::eig_gen(eig_val, eig_vec, hamilt);
+
+    arma::vec real_eig_val{arma::real(eig_val)};
+    arma::mat real_eig_vec{arma::real(eig_vec)};
+
+    arma::uvec sort_idx{arma::sort_index(real_eig_val)};
+
+    arma::mat result(N_k, N_k + 1);
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        result(i, 0)      = real_eig_val(sort_idx(i));
+        result.col(1 + i) = real_eig_vec.col(sort_idx(i));
+
+        result.col(1 + i) /= k_vec;
+        result.col(1 + i) /= std::sqrt(
+            arma::trapz(k_vec, arma::pow(result.col(1 + i), 2)).eval()(0, 0));
+
+        if (result(0, 1 + i) < 0) {
+            result.col(1 + i) = -result.col(1 + i);
+        }
+    }
+
+    return std::vector<double>(result.begin(), result.end());
+}
+
+std::vector<double> topo_t_eff_cou_eig(
+    double Q, double k_max, uint32_t N_k, const system_data_v2& sys) {
+    using pot_functor = topo_pot_cou_f;
+
+    pot_functor pot_s(sys, Q);
+    topo_mat_s<pot_functor> mat_s(N_k, pot_s);
+
+    arma::vec E_k(N_k);
+    arma::vec k_vec{arma::linspace(1.0 / N_k, k_max, N_k)};
+
+    const double du{k_vec(1) - k_vec(0)};
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        E_k[i] = topo_disp_t_int(Q, k_vec[i], sys);
+    }
+
+    arma::mat hamilt(N_k, N_k, arma::fill::none);
+
+    std::string filename = "extra/data/topo/potcoef_eig/" +
+                           std::string(typeid(pot_functor).name()) + "_" +
+                           std::to_string(N_k) + "_" + std::to_string(k_max) +
+                           "_" + std::to_string(pot_s.Q) + ".csv";
+    std::cout << filename << std::endl;
+
+    if (std::filesystem::exists(filename)) {
+        hamilt.load(filename, arma::csv_ascii);
+        hamilt /= pot_s.sys.params.eps_sol;
+    } else {
+#pragma omp parallel for collapse(2) schedule(guided)
+        for (uint32_t i = 0; i < N_k; i++) {
+            for (uint32_t j = 0; j <= i; j++) {
+                if (j <= i) {
+                    hamilt(i, j) = -du * k_vec(j) *
+                                   mat_s.pot_integral_d(k_vec(i), k_vec(j));
+                    hamilt(j, i) = hamilt(i, j);
+                }
+            }
+        }
+
+        // Saves only the potential contribution to the hamiltonian.
+        hamilt.save(filename, arma::csv_ascii);
+    }
+
+    hamilt += arma::diagmat(E_k);
+
+    arma::cx_vec eig_val(N_k);
+    arma::cx_mat eig_vec(N_k, N_k);
+
+    arma::eig_gen(eig_val, eig_vec, hamilt);
+
+    arma::vec real_eig_val{arma::real(eig_val)};
+    arma::mat real_eig_vec{arma::real(eig_vec)};
+
+    arma::uvec sort_idx{arma::sort_index(real_eig_val)};
+
+    arma::mat result(N_k, N_k + 1);
+
+    for (uint32_t i = 0; i < N_k; i++) {
+        result(i, 0)      = real_eig_val(sort_idx(i));
+        result.col(1 + i) = real_eig_vec.col(sort_idx(i));
+
+        result.col(1 + i) /= k_vec;
+        result.col(1 + i) /= std::sqrt(
+            arma::trapz(k_vec, arma::pow(result.col(1 + i), 2)).eval()(0, 0));
+
+        if (result(0, 1 + i) < 0) {
+            result.col(1 + i) = -result.col(1 + i);
+        }
+    }
+
+    return std::vector<double>(result.begin(), result.end());
 }

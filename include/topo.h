@@ -86,3 +86,13 @@ double topo_be_t_eff_cou_Q(
 
 double topo_be_b_t_eff_cou_Q(
     double Q, uint32_t N_k, const system_data_v2& sys, double be_bnd);
+
+std::vector<double> topo_p_cou_eig(
+    double k_max, uint32_t N_k, const system_data_v2& sys);
+
+std::vector<double> topo_t_cou_eig(
+    double k_max, uint32_t N_k, const system_data_v2& sys);
+
+std::vector<double> topo_t_eff_cou_eig(
+    double Q, double k_max, uint32_t N_k, const system_data_v2& sys);
+

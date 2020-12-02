@@ -33,6 +33,39 @@ double exc_mu_val_df(double x, exc_mu_s* s) {
     return result;
 }
 
+struct exc_mu_v2_s {
+    const system_data_v2& sys;
+
+    double val{0.0};
+};
+
+double exc_mu_val_v2_f(double x, exc_mu_v2_s* s) {
+    return x + s->sys.mu_hh(x) - s->val;
+}
+
+double exc_mu_val_v2_df(double x, exc_mu_v2_s* s) {
+    double result;
+
+    if (s->sys.d_params.beta * x < -20) {
+        result = 2;
+    } else if (s->sys.d_params.beta * x > 20) {
+        result = 1 + (s->sys.params.m_e / s->sys.params.m_hh);
+    } else {
+        result = 1 + ((s->sys.params.m_e / s->sys.params.m_hh) *
+                      std::exp(s->sys.d_params.beta * x) *
+                      std::pow(
+                          1 + std::exp(s->sys.d_params.beta * x),
+                          s->sys.params.m_e / s->sys.params.m_hh - 1)) /
+                         (s->sys.d_params.beta *
+                          (std::pow(
+                               1 + std::exp(s->sys.d_params.beta * x),
+                               s->sys.params.m_e / s->sys.params.m_hh) -
+                           1));
+    }
+
+    return result;
+}
+
 system_data::system_data(
     double m_e,
     double m_h,
@@ -508,4 +541,116 @@ double system_data_v2::mu_hh(double mu_e) const {
     }
 
     return result;
+}
+
+double system_data_v2::exc_mu_val(double val) const {
+    constexpr uint32_t local_max_iter{1 << 7};
+
+    exc_mu_v2_s s{*this, val};
+
+    gsl_function_fdf funct;
+    funct.f   = &templated_f<exc_mu_v2_s, exc_mu_val_v2_f>;
+    funct.df  = &templated_f<exc_mu_v2_s, exc_mu_val_v2_df>;
+    funct.fdf = &templated_fdf<exc_mu_v2_s, exc_mu_val_v2_f, exc_mu_val_v2_df>;
+    funct.params = &s;
+
+    double z{
+        std::max(
+            0.5 * (val - std::log(params.m_e / params.m_hh) / d_params.beta),
+            val / (1 + params.m_e / params.m_hh)),
+    };
+    double z0{0};
+
+    if (std::abs(funct.f(z, &s)) < 1e-8) {
+        return z;
+    }
+
+    const gsl_root_fdfsolver_type* solver_type = gsl_root_fdfsolver_steffenson;
+    gsl_root_fdfsolver* solver = gsl_root_fdfsolver_alloc(solver_type);
+
+    gsl_root_fdfsolver_set(solver, &funct, z);
+
+    for (int status = GSL_CONTINUE, iter = 0;
+         status == GSL_CONTINUE && iter < local_max_iter; iter++) {
+        z0     = z;
+        status = gsl_root_fdfsolver_iterate(solver);
+        z      = gsl_root_fdfsolver_root(solver);
+        status = gsl_root_test_residual(funct.f(z, &s), 1e-8);
+    }
+
+    gsl_root_fdfsolver_free(solver);
+
+    return z;
+}
+
+double system_data_v2::mu_ideal(double n) const {
+    const double r{
+        std::log(
+            std::exp(
+                M_PI * c_hbarc * c_hbarc / params.m_e / c_m_e * d_params.beta *
+                n) -
+            1) /
+            d_params.beta,
+    };
+
+    if (std::isinf(r)) {
+        return M_PI * c_hbarc * c_hbarc / params.m_e / c_m_e * n;
+    } else if (r < 1e-10) {
+        return std::log(
+                   M_PI * c_hbarc * c_hbarc / params.m_e / c_m_e *
+                   d_params.beta * n) /
+                   d_params.beta +
+               0.5 * M_PI * c_hbarc * c_hbarc / params.m_e / c_m_e * n;
+    }
+
+    return r;
+}
+
+double system_data_v2::mu_h_ideal(double n) const {
+    const double r{
+        std::log(
+            std::exp(
+                M_PI * c_hbarc * c_hbarc / params.m_hh / c_m_e *
+                d_params.beta * n) -
+            1) /
+            d_params.beta,
+    };
+
+    if (std::isinf(r)) {
+        return M_PI * c_hbarc * c_hbarc / params.m_hh / c_m_e * n;
+    }
+
+    return r;
+}
+
+double system_data_v2::mu_exc(double n, double E_X) const {
+    if (n < 1e-8) {
+        return E_X;
+    }
+
+    const double r{std::log(
+        1 - std::exp(
+                -M_PI * c_hbarc * c_hbarc * d_params.beta * 0.5 /
+                (params.m_e + params.m_hh) / c_m_e * n))};
+
+    return E_X + r / d_params.beta;
+}
+
+double system_data_v2::density_ideal(double mu_e) const {
+    double result{
+        c_m_e * params.m_e * M_1_PI * logExp(d_params.beta * mu_e) /
+            (std::pow(c_hbarc, 2) * d_params.beta),
+    };
+
+    return result;
+}
+
+double system_data_v2::density_exc(double mu_ex, double eb) const {
+    const double r{
+        -2 * c_m_e * (params.m_e + params.m_hh) * M_1_PI /
+            (std::pow(c_hbarc, 2) * d_params.beta) *
+            std::log(1 - std::exp(d_params.beta * (mu_ex - eb))),
+    };
+
+    return r;
 }

@@ -31,7 +31,7 @@ from matplotlib.patches import Rectangle
 from mpl_toolkits.mplot3d import Axes3D
 
 import scipy.integrate
-from scipy.integrate import (quad, simps, dblquad)
+from scipy.integrate import (quad, simps, dblquad, solve_ivp)
 from scipy.interpolate import interp1d
 from scipy import special
 import scipy.misc

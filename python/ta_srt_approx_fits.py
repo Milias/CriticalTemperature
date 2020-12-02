@@ -27,7 +27,7 @@ def f_dist_zero(E, mu, sigma):
     return stats.norm.pdf(E, loc=mu, scale=sigma)
 
 
-file_version = 'v6'
+file_version = 'v8'
 
 if file_version == 'v2':
     fit_vars_label = 'fit_vars_model_biexc'
@@ -42,6 +42,12 @@ elif file_version == 'v5':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 elif file_version == 'v6':
+    fit_vars_label = 'fit_vars_model_biexc'
+    n_x, n_y = 4, 3
+elif file_version == 'v7':
+    fit_vars_label = 'fit_vars_model_biexc'
+    n_x, n_y = 4, 3
+elif file_version == 'v8':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 
@@ -80,9 +86,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
             abs_data[:, 3],
             bounds_error=False,
             fill_value=0.0,
-        )(xdata)
-
-        cont_hh_interp /= amax(cont_hh_interp)
+        )(xdata - abs_shift)
 
         dist_data = srt_dist(
             xdata,
@@ -104,7 +108,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         se_lh_data = lh_interp * dist_data
         se_sum_data = se_hh_data + se_lh_data
 
-        se_sum_data_max = amax(se_sum_data)
+        se_sum_data_max = trapz(se_sum_data, xdata)
         se_hh_data /= se_sum_data_max
         se_lh_data /= se_sum_data_max
         se_sum_data /= se_sum_data_max
@@ -113,7 +117,24 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         se_lh_data *= fse
         se_sum_data *= fse
 
-        depl_data = fdepl * cont_hh_interp
+        depl_data = cont_hh_interp * f_dist_eq(
+            xdata - abs_shift,
+            sys.d_params.beta,
+            shift=xdata[0],
+        )
+        depl_data /= trapz(depl_data, xdata)
+        depl_data *= fdepl
+
+        m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
+        m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
+        xdata_shift = xdata - abs_shift
+        delta_mu = log(sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
+
+        depl2_data = cont_hh_interp * (
+            exp(-sys.d_params.beta * m_hhX * xdata_shift) +
+            exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
+        depl2_data /= trapz(depl2_data, xdata)
+        depl2_data *= fdepl2
 
         try:
             hhhh = stats.norm.pdf(
@@ -122,7 +143,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
                 scale=hhhh_sig,
             )
 
-            hhhh /= amax(hhhh)
+            hhhh /= trapz(hhhh, xdata)
             hhhh *= hhhh_mag
         except:
             hhhh = zeros_like(xdata)
@@ -134,38 +155,27 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
                 scale=hhlh_sig,
             )
 
-            hhlh /= amax(hhlh)
+            hhlh /= trapz(hhlh, xdata)
             hhlh *= hhlh_mag
         except:
             hhlh = zeros_like(xdata)
 
-        try:
-            cont_abs = interp1d(
-                abs_data[:, 0],
-                abs_data[:, 3],
-                bounds_error=False,
-                fill_value=0.0,
-            )(xdata - cont_loc)
-
-            cont_abs /= amax(cont_abs)
-            cont_abs *= fdepl
-        except:
-            cont_abs = zeros_like(xdata)
-
         result = clip(
-            abs_interp - depl_data - se_sum_data + hhhh + hhlh + cont_abs, 0,
-            1)
+            abs_interp - depl_data - depl2_data - se_sum_data + hhhh + hhlh,
+            0,
+            1,
+        )
 
         if return_dict:
             return {
                 'all': result,
                 'depl': depl_data,
+                'depl2': depl2_data,
                 'se_hh': se_hh_data,
                 'se_lh': se_lh_data,
                 'abs': abs_interp,
                 'hhlh': hhlh,
                 'hhhh': hhhh,
-                'cont_abs': cont_abs,
             }
         else:
             return result
@@ -497,7 +507,7 @@ for n in range(len(ax)):
             ax[n].set_yscale('log')
             #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
             ax[n].set_xlim(0, ta_times[ii][-1])
-            ax[n].set_ylim(5e-6, 3e-3)
+            ax[n].set_ylim(2e-5, 5e-3)
 
         ax[n].axvline(
             x=ta_times[ii][ta_srt_dict['raw_data']['ta_times_zero']
@@ -514,6 +524,12 @@ for n in range(len(ax)):
         ax[n].set_xscale('symlog')
     else:
         ax[n].set_xscale('linear')
+
+    ax[n].axhline(
+        y=0,
+        color='k',
+        linewidth=0.7,
+    )
 
     ax[n].axvline(
         x=0,

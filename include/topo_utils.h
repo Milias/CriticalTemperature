@@ -9,6 +9,7 @@ struct topo_mat_s {
     topo_functor pot_s;
 
     arma::Row<T> row_G0;
+    arma::Mat<T> row_elem;
     arma::Mat<T> mat_potcoef;
     arma::Mat<T> mat_elem;
     arma::Row<T> row_z_G0;
@@ -43,6 +44,11 @@ struct topo_mat_s {
         return result[0] * M_1_PI * 0.5;
     }
 
+    double pot_integral_d(double k1, double k2) {
+        const double kk[2] = {k1, k2};
+        return pot_integral(kk);
+    }
+
     void fill_row_G0() {
         /*
          * Computes the contribution from the free Hamiltonian,
@@ -66,7 +72,7 @@ struct topo_mat_s {
              * Evaluates the matrix elements corresponding to the
              * interaction potential.
              */
-#pragma omp parallel for
+#pragma omp parallel for schedule(guided)
             for (uint32_t i = 0; i < N_k; i++) {
                 for (uint32_t j = 0; j <= i; j++) {
                     const double kk[2] = {
@@ -106,6 +112,31 @@ struct topo_mat_s {
         }
     }
 
+    void fill_row_elem() {
+        /*
+         * Generates the matrix form of H_0, in the same way we do for V in
+         * mat_elem.
+         */
+
+        // -= because the kinetic part is saved for z - H_0.
+        row_elem = -arma::diagmat(row_G0);
+
+#pragma omp parallel for collapse(2)
+        for (uint32_t i = 0; i < N_k; i++) {
+            for (uint32_t k = 0; k < N_k; k++) {
+                const double t_v[2] = {u0(i), u0(k)};
+
+                const double k_v[2] = {
+                    (1.0 - t_v[0]) / t_v[0],
+                    (1.0 - t_v[1]) / t_v[1],
+                };
+
+                row_elem(i, k) =
+                    du0 * k_v[1] / std::pow(t_v[1], 2) * row_elem(i, k);
+            }
+        }
+    }
+
     void update_mat_potcoef(double z) {
         /*
          * The contribution G_0 = 1 / (z - H_0) is recomputed using
@@ -115,6 +146,11 @@ struct topo_mat_s {
         row_z_G0 += row_G0;
         row_z_G0 = 1.0 / row_z_G0;
 
+        /*
+         * Once mat_elem is computed, mat_potcoef is reused to store 1 - V G_0.
+         * Because G_0 is diagonal, it simplifies to multiplying each row by
+         * the diagonal element.
+         */
         mat_potcoef.fill(arma::fill::eye);
         mat_potcoef += mat_elem.each_row() % row_z_G0;
     }
@@ -123,11 +159,15 @@ struct topo_mat_s {
         N_k(N_k),
         pot_s(pot_s),
         row_G0(arma::Row<T>(N_k)),
+        row_elem(arma::Mat<T>(N_k, N_k)),
         mat_potcoef(arma::Mat<T>(N_k, N_k)),
         mat_elem(arma::Mat<T>(N_k, N_k)),
         row_z_G0(arma::Row<T>(N_k)),
         u0(arma::linspace(1e-1 / N_k, 1 - 1e-1 / N_k, N_k)) {
         du0 = u0(1) - u0(0);
+        /*
+         * Compute the kinetic part, H_0.
+         */
         fill_row_G0();
     }
 };

@@ -20,7 +20,7 @@ def f_dist_zero(E, mu, sigma):
 
 
 fit_vars_label = 'fit_vars_model_biexc'
-file_version = 'v2'
+file_version = 'v4'
 
 
 def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
@@ -57,9 +57,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
             abs_data[:, 3],
             bounds_error=False,
             fill_value=0.0,
-        )(xdata)
-
-        cont_hh_interp /= amax(cont_hh_interp)
+        )(xdata - abs_shift)
 
         dist_data = srt_dist(
             xdata,
@@ -81,7 +79,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         se_lh_data = lh_interp * dist_data
         se_sum_data = se_hh_data + se_lh_data
 
-        se_sum_data_max = amax(se_sum_data)
+        se_sum_data_max = trapz(se_sum_data, xdata)
         se_hh_data /= se_sum_data_max
         se_lh_data /= se_sum_data_max
         se_sum_data /= se_sum_data_max
@@ -90,7 +88,24 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         se_lh_data *= fse
         se_sum_data *= fse
 
-        depl_data = fdepl * cont_hh_interp
+        depl_data = cont_hh_interp * f_dist_eq(
+            xdata,
+            sys.d_params.beta,
+            shift=xdata[0],
+        )
+        depl_data /= trapz(depl_data, xdata)
+        depl_data *= fdepl
+
+        m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
+        m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
+        xdata_shift = xdata - abs_shift
+        delta_mu = log(sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
+
+        depl2_data = cont_hh_interp * (
+            exp(-sys.d_params.beta * m_hhX * xdata_shift) +
+            exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
+        depl2_data /= trapz(depl2_data, xdata)
+        depl2_data *= fdepl2
 
         try:
             hhhh = stats.norm.pdf(
@@ -99,7 +114,7 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
                 scale=hhhh_sig,
             )
 
-            hhhh /= amax(hhhh)
+            hhhh /= trapz(hhhh, xdata)
             hhhh *= hhhh_mag
         except:
             hhhh = zeros_like(xdata)
@@ -111,38 +126,27 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
                 scale=hhlh_sig,
             )
 
-            hhlh /= amax(hhlh)
+            hhlh /= trapz(hhlh, xdata)
             hhlh *= hhlh_mag
         except:
             hhlh = zeros_like(xdata)
 
-        try:
-            cont_abs = interp1d(
-                abs_data[:, 0],
-                abs_data[:, 3],
-                bounds_error=False,
-                fill_value=0.0,
-            )(xdata - cont_loc)
-
-            cont_abs /= amax(cont_abs)
-            cont_abs *= fdepl
-        except:
-            cont_abs = zeros_like(xdata)
-
         result = clip(
-            abs_interp - depl_data - se_sum_data + hhhh + hhlh + cont_abs, 0,
-            1)
+            abs_interp - depl_data - depl2_data - se_sum_data + hhhh + hhlh,
+            0,
+            1,
+        )
 
         if return_dict:
             return {
                 'all': result,
                 'depl': depl_data,
+                'depl2': depl2_data,
                 'se_hh': se_hh_data,
                 'se_lh': se_lh_data,
                 'abs': abs_interp,
                 'hhlh': hhlh,
                 'hhhh': hhhh,
-                'cont_abs': cont_abs,
             }
         else:
             return result
@@ -205,10 +209,10 @@ def plot_fit(
         'hhhh',
         'hhlh',
         'depl',
+        'depl2',
         'se_hh',
         'se_lh',
         'abs',
-        'cont_abs',
         'all',
     ]
     saved_data = zeros((
@@ -260,23 +264,6 @@ def plot_fit(
 
     ax[0].plot(
         E_vec,
-        vis_dict['cont_abs'],
-        color='m',
-        label='Continuum absorption',
-        linestyle='--',
-        linewidth=0.7,
-    )
-
-    ax[0].fill_between(
-        E_vec,
-        vis_dict['cont_abs'],
-        vis_dict['depl'],
-        color='m',
-        alpha=0.2,
-    )
-
-    ax[0].plot(
-        E_vec,
         vis_dict['se_hh'],
         color='r',
         label='Stimulated Emission (hh)',
@@ -295,8 +282,18 @@ def plot_fit(
         E_vec,
         vis_dict['depl'],
         color='m',
-        label='Depletion',
-        linewidth=0.7,
+        label='N_e N_h',
+        linewidth=0.9,
+        linestyle='--',
+    )
+
+    ax[0].plot(
+        E_vec,
+        vis_dict['depl2'],
+        color='c',
+        label='N_e + N_h',
+        linewidth=0.9,
+        linestyle='--',
     )
 
     ax[0].plot(
@@ -326,6 +323,7 @@ def plot_fit(
     text_list = [
         r'fse: %.5f' % fse,
         r'depl: %.5f' % fdepl,
+        r'depl2: %.5f' % fdepl2,
     ]
 
     try:
@@ -352,11 +350,6 @@ def plot_fit(
             hhlh_loc,
             hhlh_sig * 1e3,
         ))
-    except:
-        pass
-
-    try:
-        text_list.append(r'cont_abs: (%.3f meV)' % (cont_loc * 1e3, ))
     except:
         pass
 
@@ -469,7 +462,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
     loaded_data = loadtxt(
         '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/popt_%s_%s_%s.csv'
-        % ('ta_srt_approx_fits', pump_case, 'v6'),
+        % ('ta_srt_approx_fits', pump_case, 'v8'),
         delimiter=',',
     )
 

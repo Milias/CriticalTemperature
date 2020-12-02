@@ -16,7 +16,7 @@ def find_files(path, ext):
 src_path = 'src'
 swig_path = 'swig'
 
-includes = ['include', '/usr/include/python3.8', '/usr/local/include']
+includes = ['include', '/usr/include/python3.9', '/usr/local/include']
 
 output_bin = 'bin'
 output_lib = output_bin + '/semiconductor.so'
