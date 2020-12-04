@@ -1,5 +1,6 @@
 from common import *
 import matplotlib.pyplot as plt
+matplotlib.use('pdf')
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -27,7 +28,7 @@ def f_dist_zero(E, mu, sigma):
     return stats.norm.pdf(E, loc=mu, scale=sigma)
 
 
-file_version = 'v8'
+file_version = 'v9'
 
 if file_version == 'v2':
     fit_vars_label = 'fit_vars_model_biexc'
@@ -48,6 +49,9 @@ elif file_version == 'v7':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 elif file_version == 'v8':
+    fit_vars_label = 'fit_vars_model_biexc'
+    n_x, n_y = 4, 3
+elif file_version == 'v9':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 
@@ -88,21 +92,9 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
             fill_value=0.0,
         )(xdata - abs_shift)
 
-        dist_data = srt_dist(
-            xdata,
-            fse,
-            alpha,
-            functools.partial(
-                f_dist_eq,
-                beta=sys.d_params.beta,
-                shift=xdata[0],
-            ),
-            functools.partial(
-                f_dist_zero,
-                mu=pump_mu,
-                sigma=pump_sigma,
-            ),
-        )
+        beta = sys.d_params.beta
+        dist_data = f_dist_eq(xdata, beta, xdata[0])
+        dist_data /= trapz(dist_data, xdata)
 
         se_hh_data = hh_interp * dist_data
         se_lh_data = lh_interp * dist_data
@@ -118,23 +110,27 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         se_sum_data *= fse
 
         depl_data = cont_hh_interp * f_dist_eq(
-            xdata - abs_shift,
-            sys.d_params.beta,
+            xdata,
+            beta,
             shift=xdata[0],
         )
         depl_data /= trapz(depl_data, xdata)
         depl_data *= fdepl
 
-        m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
-        m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
-        xdata_shift = xdata - abs_shift
-        delta_mu = log(sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
+        try:
+            m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
+            m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
+            xdata_shift = xdata - abs_shift
+            delta_mu = log(
+                sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
 
-        depl2_data = cont_hh_interp * (
-            exp(-sys.d_params.beta * m_hhX * xdata_shift) +
-            exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
-        depl2_data /= trapz(depl2_data, xdata)
-        depl2_data *= fdepl2
+            depl2_data = cont_hh_interp * (
+                exp(-sys.d_params.beta * m_hhX * xdata_shift) +
+                exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
+            depl2_data /= trapz(depl2_data, xdata)
+            depl2_data *= fdepl2
+        except:
+            depl2_data = zeros_like(xdata)
 
         try:
             hhhh = stats.norm.pdf(
@@ -232,10 +228,6 @@ def TA_fit(time_idx,
                     ta_srt_dict[fit_vars_label][var]['bounds'][pump_case])
             for var in ta_srt_dict[fit_vars_label]
         ]).T
-
-        if time_idx > ta_srt_dict['raw_data']['ta_times_zero'][pump_case]:
-            bounds[:, 2] = array([0.0, 1e-5])
-            p0_values[2] = 0.0
 
         try:
             popt, pcov = curve_fit(
@@ -483,19 +475,7 @@ for n in range(len(ax)):
             ax[n].set_ylim(
                 *ta_srt_dict[fit_vars_label][fit_vars_list[n]]['bounds'])
 
-            if fit_vars_list[n] == 'alpha':
-                ax[n].set_xlim(
-                    0,
-                    amax(
-                        array([
-                            ta_times[ii][ta_srt_dict['raw_data']
-                                         ['ta_times_zero'][pc]]
-                            for pc in ta_srt_dict['settings']['plot_cases']
-                        ])),
-                )
-            else:
-                #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
-                ax[n].set_xlim(0, ta_times[ii][-1])
+            ax[n].set_xlim(0, ta_times[ii][-1])
         else:
             ax[n].plot(
                 ta_times[ii],
@@ -505,7 +485,6 @@ for n in range(len(ax)):
             )
 
             ax[n].set_yscale('log')
-            #ax[n].set_xlim(ta_times[ii][0], ta_times[ii][-1])
             ax[n].set_xlim(0, ta_times[ii][-1])
             ax[n].set_ylim(2e-5, 5e-3)
 
@@ -520,10 +499,7 @@ for n in range(len(ax)):
         ax[n].xaxis.set_visible(False)
         ax[n].set_xlabel('Time (ps)')
 
-    if n != 2:
-        ax[n].set_xscale('symlog')
-    else:
-        ax[n].set_xscale('linear')
+    ax[n].set_xscale('symlog')
 
     ax[n].axhline(
         y=0,
@@ -555,4 +531,4 @@ plt.savefig(
     transparent=True,
 )
 
-plt.show()
+#plt.show()

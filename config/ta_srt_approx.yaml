@@ -27,6 +27,11 @@ raw_data:
         LH: 2.5833 # eV
         cont: 3.1 # eV
 
+    ta_times_start:
+        HH: 30 # 27
+        LH: 26 # 22
+        cont: 30 # 25
+
     ta_times_zero:
         HH: 41
         LH: 37
@@ -49,25 +54,20 @@ fit_vars_model_biexc:
         p0: 0.0
         bounds: [ 0.0, 0.05 ]
 
-    abs_shift:
-        unit: 'eV'
-        p0: 0.0
-        bounds: [ -0.005, 0.015 ]
-
-    alpha:
-        unit: ''
-        p0: 0.0
-        bounds: [ 0.0, 1.0 ]
-
     fdepl:
         unit: ''
         p0: 0.0
-        bounds: [ 0.0, 0.01 ]
+        bounds: [ 0.0, 0.012 ]
 
     fdepl2:
         unit: ''
         p0: 0.0
         bounds: [ 0.0, 0.004 ]
+    
+    abs_shift:
+        unit: 'eV'
+        p0: 0.0125
+        bounds: [ 0.006, 0.015 ]
 
     hhhh_mag:
         unit: ''
@@ -102,19 +102,18 @@ fit_vars_model_biexc:
 fit_chem_eq:
     n_q_0:
         unit: ''
-        p0:
-            HH: 0.1
-            LH: 0.9
-            cont: 1.0
-        bounds: [ 0.0, 1.0 ]
+        p0: 0.0005
+        bounds: [ 0.0, 1.0e-1 ]
 
     n_X_0:
         unit: ''
-        p0:
-            HH: 1.9
-            LH: 1.1
-            cont: 1.0
-        bounds: [ 0.0, 1.0 ]
+        p0: 0.04
+        bounds: [ 0.0, 3.0 ]
+
+    n_t_0:
+        unit: ''
+        p0: 0.0
+        bounds: [ 0.0, 0.7 ]
 
     chi_t_total:
         unit: ''
@@ -123,15 +122,66 @@ fit_chem_eq:
 
     tau_mu:
         unit: 'ps'
-        p0: 0.7
-        bounds: [ 0.05, 0.5 ]
+        p0: 0.3
+        bounds: [ 0.1, 0.7 ]
 
     tau_qt:
         unit: 'ps'
         p0: 0.01
-        bounds: [ 0.0, 10.0 ]
+        bounds: [ 0.001, 0.05 ]
 
     tau_Xt:
         unit: 'ps'
         p0: 0.12
-        bounds: [ 0.0, 0.2 ]
+        bounds: [ 0.08, 0.3 ]
+
+    tau_decay:
+        unit: 'ps'
+        p0: 100.0
+        bounds: [ 5.0, 500.0 ]
+
+    sigma_q:
+        unit: ''
+        p0: 5.0
+        bounds: [ 0.0, 10.0 ]
+
+fit_chem_eq_pump:
+    n_gamma_0:
+        unit: ''
+        p0: 0.1
+        bounds: [ 0.0, 0.5 ]
+
+    r_q:
+        unit: ''
+        p0: 0.5
+        bounds: [ 0.0, 1.0 ]
+
+    tau_pump:
+        unit: 'ps'
+        p0: 0.05
+        bounds: [ 0.001, 0.1 ]
+
+    tau_mu:
+        unit: 'ps'
+        p0: 0.6
+        bounds: [ 0.1, 0.7 ]
+
+    sigma_q:
+        unit: ''
+        p0: 5.0
+        bounds: [ 0.0, 10.0 ]
+
+    tau_qt:
+        unit: 'ps'
+        p0: 0.01
+        bounds: [ 0.0001, 0.05 ]
+
+    tau_Xt:
+        unit: 'ps'
+        p0: 0.05
+        bounds: [ 0.03, 0.3 ]
+
+    chi_t_total:
+        unit: ''
+        p0: 0.5
+        bounds: [ 0.0, 1.0 ]

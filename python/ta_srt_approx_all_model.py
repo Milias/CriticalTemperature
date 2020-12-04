@@ -20,7 +20,8 @@ def f_dist_zero(E, mu, sigma):
 
 
 fit_vars_label = 'fit_vars_model_biexc'
-file_version = 'v4'
+file_version = 'v5'
+data_file_version = 'v9'
 
 
 def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
@@ -59,21 +60,8 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
             fill_value=0.0,
         )(xdata - abs_shift)
 
-        dist_data = srt_dist(
-            xdata,
-            fse,
-            alpha,
-            functools.partial(
-                f_dist_eq,
-                beta=sys.d_params.beta,
-                shift=xdata[0],
-            ),
-            functools.partial(
-                f_dist_zero,
-                mu=pump_mu,
-                sigma=pump_sigma,
-            ),
-        )
+        dist_data = f_dist_eq(xdata, sys.d_params.beta, xdata[0])
+        dist_data /= trapz(dist_data, xdata)
 
         se_hh_data = hh_interp * dist_data
         se_lh_data = lh_interp * dist_data
@@ -96,16 +84,19 @@ def TA_model(abs_data, ta_srt_dict, pump_case, steady_data):
         depl_data /= trapz(depl_data, xdata)
         depl_data *= fdepl
 
-        m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
-        m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
-        xdata_shift = xdata - abs_shift
-        delta_mu = log(sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
+        try:
+            m_hhX = sys.params.m_hh / (sys.params.m_e + sys.params.m_hh)
+            m_eX = sys.params.m_e / (sys.params.m_e + sys.params.m_hh)
+            xdata_shift = xdata - abs_shift
+            delta_mu = log(sys.params.m_e / sys.params.m_hh) / sys.d_params.beta
 
-        depl2_data = cont_hh_interp * (
-            exp(-sys.d_params.beta * m_hhX * xdata_shift) +
-            exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
-        depl2_data /= trapz(depl2_data, xdata)
-        depl2_data *= fdepl2
+            depl2_data = cont_hh_interp * (
+                exp(-sys.d_params.beta * m_hhX * xdata_shift) +
+                exp(-sys.d_params.beta * (m_eX * xdata_shift - delta_mu)))
+            depl2_data /= trapz(depl2_data, xdata)
+            depl2_data *= fdepl2
+        except:
+            depl2_data = zeros_like(xdata)
 
         try:
             hhhh = stats.norm.pdf(
@@ -287,14 +278,15 @@ def plot_fit(
         linestyle='--',
     )
 
-    ax[0].plot(
-        E_vec,
-        vis_dict['depl2'],
-        color='c',
-        label='N_e + N_h',
-        linewidth=0.9,
-        linestyle='--',
-    )
+    if amax(vis_dict['depl2']) > 0:
+        ax[0].plot(
+            E_vec,
+            vis_dict['depl2'],
+            color='c',
+            label='N_e + N_h',
+            linewidth=0.9,
+            linestyle='--',
+        )
 
     ax[0].plot(
         E_vec,
@@ -323,8 +315,12 @@ def plot_fit(
     text_list = [
         r'fse: %.5f' % fse,
         r'depl: %.5f' % fdepl,
-        r'depl2: %.5f' % fdepl2,
     ]
+
+    try:
+        text_list.append(r'depl2: %.5f' % fdepl2)
+    except:
+        pass
 
     try:
         text_list.append(r'alpha: %.5f' % alpha)
@@ -462,7 +458,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
     loaded_data = loadtxt(
         '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/popt_%s_%s_%s.csv'
-        % ('ta_srt_approx_fits', pump_case, 'v8'),
+        % ('ta_srt_approx_fits', pump_case, data_file_version),
         delimiter=',',
     )
 
