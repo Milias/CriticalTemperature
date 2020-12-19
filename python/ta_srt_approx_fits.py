@@ -28,7 +28,7 @@ def f_dist_zero(E, mu, sigma):
     return stats.norm.pdf(E, loc=mu, scale=sigma)
 
 
-file_version = 'v9'
+file_version = 'v10'
 
 if file_version == 'v2':
     fit_vars_label = 'fit_vars_model_biexc'
@@ -52,6 +52,9 @@ elif file_version == 'v8':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 elif file_version == 'v9':
+    fit_vars_label = 'fit_vars_model_biexc'
+    n_x, n_y = 4, 3
+elif file_version == 'v10':
     fit_vars_label = 'fit_vars_model_biexc'
     n_x, n_y = 4, 3
 

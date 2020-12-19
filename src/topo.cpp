@@ -1489,3 +1489,96 @@ std::vector<double> topo_t_eff_cou_eig(
 
     return std::vector<double>(result.begin(), result.end());
 }
+
+double topo_chern_th1_f(double th, topo_chern_int_s* s) {
+    const double kQcos{
+        s->k * s->k + s->Q * s->Q + 2 * s->k * s->Q * std::cos(th),
+    };
+
+    return s->sys.params.A2 * s->sys.params.A2 * 0.5 / s->Q *
+           (s->Q + s->k * std::cos(th)) *
+           (s->sys.params.M + s->sys.params.B2 * kQcos) /
+           std::pow(
+               s->sys.params.A2 * s->sys.params.A2 * kQcos +
+                   std::pow(s->sys.params.M - s->sys.params.B2 * kQcos, 2),
+               1.5);
+}
+
+double topo_chern_th1(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_chern_int_s s{k, Q, sys};
+
+    integrands[0].function = &templated_f<topo_chern_int_s, topo_chern_th1_f>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, M_PI, local_eps, 0, local_ws_size, GSL_INTEG_GAUSS21,
+        ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0] * 2;
+}
+
+double topo_chern_th2_f(double th, topo_chern_int_s* s) {
+    const double kQcos{
+        s->k * s->k + s->Q * s->Q + 2 * s->k * s->Q * std::cos(th),
+    };
+
+    const double long_kQcos{
+        s->sys.params.A2 * s->sys.params.A2 * (s->k * s->k + s->Q * s->Q) +
+            std::pow(
+                s->sys.params.M -
+                    s->sys.params.B2 * (s->k * s->k + s->Q * s->Q),
+                2) +
+            2 * s->k * s->Q * std::cos(th) *
+                (s->sys.params.A2 * s->sys.params.A2 +
+                 -2 * s->sys.params.B2 * s->sys.params.M +
+                 s->sys.params.B2 * s->sys.params.B2 *
+                     (s->k * s->k + s->Q * s->Q) +
+                 s->sys.params.B2 * s->sys.params.B2 * kQcos),
+    };
+
+    return -M_SQRT2 * s->sys.params.A2 / s->Q * (s->Q + s->k * std::cos(th)) *
+           std::pow(long_kQcos, 0.25) /
+           std::pow(
+               s->sys.params.M - s->sys.params.B2 * kQcos +
+                   std::sqrt(long_kQcos),
+               1.5);
+}
+
+double topo_chern_th2(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_chern_int_s s{k, Q, sys};
+
+    integrands[0].function = &templated_f<topo_chern_int_s, topo_chern_th2_f>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, M_PI, local_eps, 0, local_ws_size, GSL_INTEG_GAUSS21,
+        ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    return result[0] * 2;
+}

@@ -1,5 +1,6 @@
 from common import *
 import matplotlib.pyplot as plt
+matplotlib.use('pdf')
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -47,13 +48,16 @@ def dn_dt(
     sys,
     E_X,
     r_q,
-    chi_t_total,
     tau_mu,
     tau_qt,
     tau_Xt,
+    tau_decay,
+    chi_t_total,
     tau_pump,
+    pump_shift,
+    n_gamma_0,
 ):
-    n_q, n_X, n_t, n_gamma = y_vec
+    n_q, n_X, n_t = y_vec
 
     mu_e = sys.mu_ideal(n_q)
     mu_h = sys.mu_h_ideal(n_q)
@@ -61,18 +65,24 @@ def dn_dt(
 
     mu_X = sys.mu_exc(n_X, E_X)
 
-    dmu = 0.5 * (1 / dmu_q(n_q, sys) + 1 / dmu_X(n_X, sys))
+    dmu = 0
+    if n_q > 1e-10:
+        dmu += 0.5 / dmu_q(n_q, sys)
+    if n_X > 1e-10:
+        dmu += 0.5 / dmu_X(n_X, sys)
 
-    n_total = n_q + n_X + n_t + n_gamma
+    dn_pump = n_gamma_0 * stats.norm.pdf(
+        t,
+        loc=pump_shift,
+        scale=tau_pump,
+    )
 
     return [
-        (-mu_q / tau_mu + mu_X / tau_mu) * dmu - n_q *
-        (chi_t_total - n_t / n_total) / tau_qt + r_q * n_gamma / tau_pump,
-        (-mu_X / tau_mu + mu_q / tau_mu) * dmu - n_X *
-        (chi_t_total - n_t / n_total) / tau_Xt +
-        (1.0 - r_q) * n_gamma / tau_pump,
-        (chi_t_total - n_t / n_total) * (n_q / tau_qt + n_X / tau_Xt),
-        -n_gamma / tau_pump,
+        (-mu_q / tau_mu + mu_X / tau_mu) * dmu + r_q * dn_pump -
+        (chi_t_total - n_t / n_gamma_0) * n_q / tau_qt - n_q / tau_decay,
+        (-mu_X / tau_mu + mu_q / tau_mu) * dmu + (1.0 - r_q) * dn_pump -
+        (chi_t_total - n_t / n_gamma_0) * n_X / tau_Xt - n_X / tau_decay,
+        (n_q / tau_qt + n_X / tau_Xt) * (chi_t_total - n_t / n_gamma_0),
     ]
 
 
@@ -86,7 +96,7 @@ def solve_chem_eq(t_span, y0_vec, args_vec):
     )
 
 
-file_version = 'v9'
+file_version = 'v10'
 fit_vars_label = 'fit_vars_model_biexc'
 c_fit_label = 'fit_chem_eq_pump'
 n_x, n_y = 2, 2
@@ -95,22 +105,30 @@ n_x, n_y = 2, 2
 def fit_ivp_model(t_span, ravel=True, n_q_0=1e-10, n_X_0=1e-10):
     var_list = list(ta_srt_dict[c_fit_label].keys())
 
+    #tau_pump = ta_srt_dict['raw_data']['tau_pump']
+    #pump_shift = ta_srt_dict['raw_data']['pump_shift']
+
     def fit_ivp_func(xdata, *popt):
         load_popt(popt, globals(), var_list)
+
+        #print(popt)
 
         args_vec = [
             sys,
             -135e-3,
             r_q,
-            chi_t_total,
             tau_mu,
             tau_qt,
             tau_Xt,
+            tau_decay,
+            chi_t_total,
             tau_pump,
+            pump_shift,
+            n_gamma_0,
         ]
         result = solve_chem_eq(
             t_span,
-            [n_q_0 / sigma_q, n_X_0, 0.0, n_gamma_0],
+            [n_q_0, n_X_0, 0.0],
             args_vec,
         )
 
@@ -203,19 +221,38 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     )
 
     t0_idx = ta_srt_dict['raw_data']['ta_times_start'][pump_case]
-    end_n_t = 113
+    end_n_t = 163
 
     ta_times[ii] = saved_data[:, 0]
     ta_times[ii] -= ta_times[ii][t0_idx]
-    popt_arr[ii] = saved_data[:, 1:-1]
+    popt_arr[ii] = saved_data[:, 1:]
+
+    saved_data = loadtxt(
+        '/storage/Reference/Work/University/PhD/TA_Analysis/fit_data/perr_%s_%s_%s.csv'
+        % (
+            'ta_srt_approx_fits',
+            pump_case,
+            file_version,
+        ),
+        delimiter=',',
+    )
+
+    perr_arr[ii] = saved_data[:, 1:]
 
     t_vec[ii] = ta_times[ii][t0_idx:end_n_t]
 
     t_span = [t_vec[ii][0], t_vec[ii][-1]]
 
+    popt_arr[ii][:, 1] += popt_arr[ii][:, 2]
+
     fit_data[ii] = array([
         popt_arr[ii][t0_idx:end_n_t, 1],
         popt_arr[ii][t0_idx:end_n_t, 0],
+    ]).ravel()
+
+    sigma_data = array([
+        perr_arr[ii][t0_idx:end_n_t, 1],
+        perr_arr[ii][t0_idx:end_n_t, 0],
     ]).ravel()
 
     p0_values = array([
@@ -234,8 +271,8 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
     fit_func = fit_ivp_model(
         t_span,
-        n_q_0=popt_arr[ii][t0_idx, 1],
-        n_X_0=popt_arr[ii][t0_idx, 0],
+        #n_q_0=popt_arr[ii][t0_idx, 1],
+        #n_X_0=popt_arr[ii][t0_idx, 0],
     )
 
     c_fit_popt_arr[ii], c_fit_pcov_arr[ii] = time_func(
@@ -243,10 +280,14 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         fit_func,
         array([t_vec[ii], t_vec[ii]]).ravel(),
         fit_data[ii],
+        sigma=sigma_data + 1e-5,
         p0=p0_values,
         bounds=bounds,
         method='trf',
-        maxfev=8000,
+        maxfev=10000,
+        ftol=1e-12,
+        gtol=1e-12,
+        xtol=1e-12,
     )
 
     print(c_fit_popt_arr[ii])
@@ -254,19 +295,19 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     fit_func = fit_ivp_model(
         t_span,
         ravel=False,
-        n_q_0=popt_arr[ii][t0_idx, 1],
-        n_X_0=popt_arr[ii][t0_idx, 0],
+        #n_q_0=popt_arr[ii][t0_idx, 1],
+        #n_X_0=popt_arr[ii][t0_idx, 0],
     )
     fit_result_data[ii] = fit_func(t_vec[ii], *c_fit_popt_arr[ii])
 
     c_fit_perr_arr[ii] = sqrt(diag(c_fit_pcov_arr[ii]))
 
-    plot_t_vec[ii] = linspace(0.0, t_span[-1], 1 << 10)
+    plot_t_vec[ii] = linspace(0.0, ta_times[ii][end_n_t], 1 << 10)
     plot_func = fit_ivp_model(
         [plot_t_vec[ii][0], plot_t_vec[ii][-1]],
         ravel=False,
-        n_q_0=popt_arr[ii][t0_idx, 1],
-        n_X_0=popt_arr[ii][t0_idx, 0],
+        #n_q_0=popt_arr[ii][t0_idx, 1],
+        #n_X_0=popt_arr[ii][t0_idx, 0],
     )
 
     n_result_data[ii] = plot_func(plot_t_vec[ii], *c_fit_popt_arr[ii])
@@ -274,7 +315,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     saved_data = zeros((
         t_vec[ii].size,
-        5,
+        4,
     ))
 
     saved_data[:, 0] = t_vec[ii]
@@ -289,12 +330,12 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         ),
         saved_data,
         delimiter=',',
-        header='t (ps),n_q,n_X,n_t,n_gamma',
+        header='t (ps),n_q,n_X,n_t',
     )
 
     saved_data = zeros((
         plot_t_vec[ii].size,
-        5,
+        4,
     ))
 
     saved_data[:, 0] = plot_t_vec[ii]
@@ -309,7 +350,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         ),
         saved_data,
         delimiter=',',
-        header='t (ps),n_q,n_X,n_t,n_gamma',
+        header='t (ps),n_q,n_X,n_t',
     )
 
 saved_data = zeros((
@@ -346,7 +387,28 @@ case_colors = [
     for h in linspace(0, 0.7, 3)
 ]
 
-fig_size = (6.8 * 2, 5.3 * 2)
+
+def gen_legend(ii, text, index_list, digit_list):
+    var_list = list(ta_srt_dict[c_fit_label].keys())
+    pump_case = ta_srt_dict['settings']['plot_cases'][ii]
+
+    return ('%s: %s\n%s' % (
+        pump_case,
+        text,
+        '\n'.join([('%%s: %%.%df$\pm$%%.%df%s' % (
+            digit_list[jj],
+            digit_list[jj],
+            (' %s' % ta_srt_dict[c_fit_label][var_list[idx]]['unit'])
+            if ta_srt_dict[c_fit_label][var_list[idx]]['unit'] != '' else '',
+        )) % (
+            var_list[idx],
+            c_fit_popt_arr[ii][idx],
+            c_fit_perr_arr[ii][idx],
+        ) for jj, idx in enumerate(index_list)]),
+    )).replace('_', '\_')
+
+
+fig_size = (6.8 * 3, 5.3 * 2)
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
@@ -356,33 +418,35 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
     ax[0].plot(
         ta_times[ii],
         popt_arr[ii][:, 0],
-        label='%s\ntau$_{Xt}$: %.3f$\pm$%.3f\ntau$_\mu$: %.2f$\pm$%.2f' % (
-            pump_case,
-            c_fit_popt_arr[ii][6],
-            c_fit_perr_arr[ii][6],
-            c_fit_popt_arr[ii][3],
-            c_fit_perr_arr[ii][3],
-        ),
         color=case_colors[ii],
-        marker='.',
-        linestyle='-',
-        linewidth=1.1,
+        linestyle='--',
+        linewidth=0.9,
+        label='%s: TA fit' % pump_case,
     )
 
     ax[1].plot(
         ta_times[ii],
         popt_arr[ii][:, 1],
-        label='%s\n$\sigma_q$: %.2f$\pm$%.2f\ntau$_{qt}$: %.3f$\pm$%.3f' % (
-            pump_case,
-            c_fit_popt_arr[ii][4],
-            c_fit_perr_arr[ii][4],
-            c_fit_popt_arr[ii][5],
-            c_fit_perr_arr[ii][5],
-        ),
         color=case_colors[ii],
-        marker='.',
-        linestyle='-',
-        linewidth=1.1,
+        linestyle='--',
+        linewidth=0.9,
+        label='%s: TA fit' % pump_case,
+    )
+
+    ax[0].fill_between(
+        ta_times[ii],
+        popt_arr[ii][:, 0] + perr_arr[ii][:, 0],
+        popt_arr[ii][:, 0] - perr_arr[ii][:, 0],
+        color=case_colors[ii],
+        alpha=0.2,
+    )
+
+    ax[1].fill_between(
+        ta_times[ii],
+        popt_arr[ii][:, 1] + perr_arr[ii][:, 1],
+        popt_arr[ii][:, 1] - perr_arr[ii][:, 1],
+        color=case_colors[ii],
+        alpha=0.2,
     )
 
     ax[0].plot(
@@ -390,8 +454,13 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         n_result_data[ii][1],
         color=case_colors[ii],
         linestyle='-',
-        linewidth=4.0,
-        alpha=0.5,
+        linewidth=1.6,
+        label=gen_legend(
+            ii,
+            'CE fit',
+            (1, 2, 5),
+            (4, 2, 4),
+        ),
     )
 
     ax[1].plot(
@@ -399,44 +468,56 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
         n_result_data[ii][0],
         color=case_colors[ii],
         linestyle='-',
-        linewidth=4.0,
-        alpha=0.5,
+        linewidth=1.6,
+        label=gen_legend(
+            ii,
+            'CE fit',
+            (3, 4, 9),
+            (2, 4, 1),
+        ),
     )
 
     ax[2].plot(
         plot_t_vec[ii],
         n_result_data[ii][2],
-        label='%s\n$\chi_t$: %.2f$\pm$%.2f' % (
-            pump_case,
-            c_fit_popt_arr[ii][7],
-            c_fit_perr_arr[ii][7],
-        ),
         color=case_colors[ii],
         linestyle='-',
         linewidth=1.5,
+        label=gen_legend(
+            ii,
+            'CE fit',
+            (8, ),
+            (5, ),
+        ),
     )
 
     ax[3].plot(
         plot_t_vec[ii],
-        n_result_data[ii][3],
-        label=
-        '%s\n$n_\gamma$: %.3f$\pm$%.3f\n$r_q$: %.3f$\pm$%.3f\ntau$_{pump}$: %.4f$\pm$%.4f'
-        % (
-            pump_case,
-            c_fit_popt_arr[ii][0],
-            c_fit_perr_arr[ii][0],
-            c_fit_popt_arr[ii][1],
-            c_fit_perr_arr[ii][1],
-            c_fit_popt_arr[ii][2],
-            c_fit_perr_arr[ii][2],
+        c_fit_popt_arr[ii][0] * stats.norm.cdf(
+            plot_t_vec[ii],
+            loc=c_fit_popt_arr[ii][7],
+            scale=c_fit_popt_arr[ii][6],
         ),
         color=case_colors[ii],
         linestyle='-',
         linewidth=1.5,
+        label=gen_legend(
+            ii,
+            'CE fit',
+            (0, 6, 7),
+            (4, 4, 4),
+        ),
     )
 
     for n in range(len(ax)):
         ax[n].set_xlim(0.0, t_vec[ii][-1])
+        ax[n].set_xscale('symlog')
+
+        ax[n].axvline(
+            x=c_fit_popt_arr[ii][7],
+            color=case_colors[ii],
+            linewidth=0.6,
+        )
 
         ax[n].axvline(
             x=2.0,
@@ -451,7 +532,7 @@ for ii, pump_case in enumerate(ta_srt_dict['settings']['plot_cases']):
 
 for n in range(len(ax)):
     ax[n].legend(
-        loc='upper right',
+        loc='upper left',
         prop={'size': 12},
         title=fit_vars_list[n],
     )
@@ -465,4 +546,4 @@ plt.savefig(
     transparent=True,
 )
 
-plt.show()
+#plt.show()

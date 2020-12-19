@@ -35,7 +35,7 @@ def find_eps_sol(N_k, sys, be_cou, be_bnd):
 
 be_bnd = 0.5
 
-file_version = 'v4'
+file_version = 'v5'
 
 if file_version == 'v1':
     N_Q = 1 << 6
@@ -50,6 +50,10 @@ elif file_version == 'v3':
     Q_vec = linspace(0, 0.125, N_Q)
     be_func = topo_be_t_eff_cou_Q
 elif file_version == 'v4':
+    N_Q = 1 << 7
+    Q_vec = linspace(0, 0.125, N_Q)
+    be_func = topo_be_p_cou
+elif file_version == 'v5':
     N_Q = 1 << 7
     Q_vec = linspace(0, 0.125, N_Q)
     be_func = topo_be_p_cou

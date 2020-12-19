@@ -178,3 +178,10 @@ struct topo_disp_t_th_s {
 
     const system_data_v2& sys;
 };
+
+struct topo_chern_int_s {
+    double k;
+    double Q;
+
+    const system_data_v2& sys;
+};

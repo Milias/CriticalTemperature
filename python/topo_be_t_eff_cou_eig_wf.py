@@ -43,6 +43,10 @@ disp_vec = array([topo_eigenval_2d_v(0.5 * k, sys) for k in k_vec])
 disp_int_vec = array(
     [amin([topo_disp_t_int(Q, k, sys) for k in k_int_vec]) for Q in Q_vec])
 
+print(topo_chern_th1(0.1, 0.1, sys))
+print(topo_chern_th2(0.1, 0.1, sys))
+
+"""
 eig_val = full((N_Q_max, N_k), float('nan'))
 eig_vec = full((N_Q_max, N_k, N_k), float('nan'))
 
@@ -51,7 +55,7 @@ try:
         'extra/data/topo/%s_data_%s.npy' %
         (os.path.splitext(os.path.basename(__file__))[0], file_version))
 
-    eig_val[:loaded_data.shape[0]] = loaded_data
+    eig_val[:loaded_data.shape[0] + 1] = loaded_data
 
 except IOError as e:
     print('%s' % e, flush=True)
@@ -86,6 +90,12 @@ for ii, Q_val in enumerate(Q_vec[:N_Q_max]):
         eig_arr[0, 0],
     ))
 
+plot_vec = array([
+    flatnonzero(eig_val[n_q] < disp_int_vec[N_Q_max - 1])[:N_states_max].size
+    for n_q in range(N_Q_max)
+])
+"""
+
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
@@ -95,15 +105,12 @@ colors = [
     for h in linspace(0, 0.7, N_states_max)
 ]
 
-plot_vec = array([
-    flatnonzero(eig_val[n_q] < disp_int_vec[N_Q_max - 1])[:N_states_max].size
-    for n_q in range(N_Q_max)
-])
-
 plot_data = full((N_Q, N_states_max), float('nan'))
 
+"""
 for ii, n_s_max in enumerate(plot_vec):
     plot_data[:N_Q_max, :n_s_max] = eig_val[:, arange(n_s_max)]
+"""
 
 ax[0].axhline(
     y=0,
@@ -140,6 +147,7 @@ ax[0].plot(
     linewidth=0.7,
 )
 
+"""
 for ii in range(N_states_max - 1, -1, -1):
     kwargs = {
         'color': colors[ii],
@@ -160,6 +168,7 @@ for ii in range(N_states_max - 1, -1, -1):
         plot_data[:, ii],
         **kwargs,
     )
+"""
 
 ax[0].set_xlim(-Q_vec[-1], Q_vec[-1])
 

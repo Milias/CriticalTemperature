@@ -96,3 +96,6 @@ std::vector<double> topo_t_cou_eig(
 std::vector<double> topo_t_eff_cou_eig(
     double Q, double k_max, uint32_t N_k, const system_data_v2& sys);
 
+double topo_chern_th1(double Q, double k, const system_data_v2& sys);
+double topo_chern_th2(double Q, double k, const system_data_v2& sys);
+
