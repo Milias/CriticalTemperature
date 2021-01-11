@@ -1,20 +1,19 @@
 from common import *
 import matplotlib.pyplot as plt
+matplotlib.use('pdf')
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['Computer Modern'],
-    'text.usetex': True,
+    'text.usetex': False,
 })
-
-fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
 
 states_transf = array([
     [1, 0, 0, 0],
-    [0, 0, 0, 1],
-    [0, 1, 0, 0],
     [0, 0, 1, 0],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
 ])
 
 cou_transf = kron(
@@ -36,25 +35,31 @@ with open('config/topo_sys.yaml') as f:
 
 globals().update(settings_dict['globals'])
 
+N_k = 64
+
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-Q_val = 0.0
+Q_val = 1.00001
 
-k_vec = linspace(0, 1, N_k)
+k_max = 8
+N_max = 4
 
-result = zeros((4, 4, N_k, N_k), dtype=complex)
+fig_size = (6.8 * N_max // 2, 5.3 * N_max // 2)
 
-for i, j in itertools.product(range(4), repeat=2):
+result = zeros((N_max, N_max, N_k, N_k), dtype=complex)
+
+for i, j in itertools.product(range(N_max), repeat=2):
     print((i, j), flush=True)
-    result[i, j] = array(time_func(
-        topo_eff_cou_Q_ij_mat,
-        Q_val,
-        i,
-        j,
-        N_k,
-        sys,
-    )).reshape(N_k, N_k)[::-1, ::-1]
+    result[i,
+           j] = array(time_func(
+               topo_eff_cou_Q_ij_mat,
+               Q_val,
+               i,
+               j,
+               N_k,
+               sys,
+           )).reshape(N_k, N_k)
 
     print("", flush=True)
 
@@ -66,11 +71,12 @@ print(amax(imag(result)))
 print(amin(imag(result)))
 print(average(imag(result)))
 
-n_x, n_y = 4, 4
+n_x, n_y = N_max, N_max
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-band_labels = ('v', 'v\'', 'c\'', 'c')
+#band_labels = ('v', 'v\'', 'c\'', 'c')
+band_labels = ('h_+', 'h_-', 'e_+', 'e_-')
 states_transf_16 = kron(states_transf, states_transf)
 band_idx_all = array(tuple(itertools.product(
     range(4),
@@ -88,23 +94,28 @@ for i in range(4):
         band_idx_all[:, :, i],
     ), cou_transf.T)
 
-plot_max = 2
+plot_max = 0.3
 
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     ax[n].imshow(
-        real(result[i, j]),
+        #real(result[i, j]),
+        real(result[1, 1] + result[2, 2] + (result[1, 2] + result[2, 1])),
         cmap=cm.cividis,
         aspect='auto',
-        extent=(0, 1, 0, 1),
+        extent=(0, k_max, 0, k_max),
         interpolation='none',
         vmin=-plot_max,
         vmax=plot_max,
         origin='lower',
     )
+    """
+    ax[n].set_xlim(0, 1)
+    ax[n].set_ylim(0, 1)
+    """
 
     ax[n].plot(
-        [0.5],
-        [0.95],
+        [0.5 * k_max],
+        [0.95 * k_max],
         color='w',
         marker=r'$%s%s \rightarrow %s%s$' % (
             band_labels[band_idx_all[i, j, 1]],
@@ -117,6 +128,18 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
         markersize=100,
     )
 
+    ax[n].axvline(
+        x=Q_val,
+        color='w',
+        linewidth=0.6,
+    )
+
+    ax[n].axhline(
+        y=Q_val,
+        color='w',
+        linewidth=0.6,
+    )
+
     ax[n].set_xticklabels([])
     ax[n].set_yticklabels([])
 
@@ -125,8 +148,8 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v4'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v8'),
     transparent=True,
 )
 
-plt.show()
+#plt.show()

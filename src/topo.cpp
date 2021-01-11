@@ -250,68 +250,59 @@ arma::cx_mat44 topo_orthU_2d(double kx, double ky, const system_data_v2& sys) {
         vecs.eye();
         return vecs;
     }
+    const double k_mass{sys.params.B2 * k2 - sys.params.M};
 
-    const double orth_norm_inv1{
-        1.0 / (M_SQRT2 *
-               std::sqrt(
-                   1.0 +
-                   1.0 / (std::sqrt(
-                              std::pow(sys.params.A2, 2) * k2 +
-                              std::pow(sys.params.M - sys.params.B2 * k2, 2)) /
-                              (sys.params.B2 * k2 - sys.params.M) -
-                          1.0))),
+    const double denom_1{
+        1.0 / std::sqrt(
+                  1 + std::pow(
+                          k_mass + std::sqrt(
+                                       std::pow(sys.params.A2, 2) * k2 +
+                                       std::pow(k_mass, 2)),
+                          2) /
+                          (std::pow(sys.params.A2, 2) * k2)),
     };
 
-    const double orth_norm_inv2{
-        1.0 / (M_SQRT2 *
-               std::sqrt(
-                   1.0 -
-                   1.0 / (std::sqrt(
-                              std::pow(sys.params.A2, 2) * k2 +
-                              std::pow(sys.params.M - sys.params.B2 * k2, 2)) /
-                              (sys.params.B2 * k2 - sys.params.M) +
-                          1.0))),
+    const double denom_2{
+        1.0 / std::sqrt(
+                  1 + std::pow(
+                          -k_mass + std::sqrt(
+                                        std::pow(sys.params.A2, 2) * k2 +
+                                        std::pow(k_mass, 2)),
+                          2) /
+                          (std::pow(sys.params.A2, 2) * k2)),
     };
 
-    vecs(0, 0) = -(sys.params.B2 * k2 +
-                   std::sqrt(
-                       std::pow(sys.params.A2, 2) * k2 +
-                       std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
-                   sys.params.M) /
-                 (sys.params.A2 * kp) * orth_norm_inv1;
+    const double num_1{
+        (k_mass +
+         std::sqrt(std::pow(sys.params.A2, 2) * k2 + std::pow(k_mass, 2))) /
+            sys.params.A2,
+    };
+
+    const double num_2{
+        (-k_mass +
+         std::sqrt(std::pow(sys.params.A2, 2) * k2 + std::pow(k_mass, 2))) /
+            sys.params.A2,
+    };
+
+    vecs(0, 0) = num_1 * denom_1 / km;
     vecs(1, 0) = 0;
     vecs(2, 0) = 0;
-    vecs(3, 0) = orth_norm_inv1;
-
-    vecs(0, 2) = 0;
-    vecs(1, 2) = (sys.params.B2 * k2 -
-                  std::sqrt(
-                      std::pow(sys.params.A2, 2) * k2 +
-                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
-                  sys.params.M) /
-                 (sys.params.A2 * kp) * orth_norm_inv2;
-    vecs(2, 2) = orth_norm_inv2;
-    vecs(3, 2) = 0;
-
-    vecs(0, 3) = (-sys.params.B2 * k2 +
-                  std::sqrt(
-                      std::pow(sys.params.A2, 2) * k2 +
-                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) +
-                  sys.params.M) /
-                 (sys.params.A2 * kp) * orth_norm_inv2;
-    vecs(1, 3) = 0;
-    vecs(2, 3) = 0;
-    vecs(3, 3) = orth_norm_inv2;
+    vecs(3, 0) = denom_1;
 
     vecs(0, 1) = 0;
-    vecs(1, 1) = (sys.params.B2 * k2 +
-                  std::sqrt(
-                      std::pow(sys.params.A2, 2) * k2 +
-                      std::pow(sys.params.B2 * k2 - sys.params.M, 2)) -
-                  sys.params.M) /
-                 (sys.params.A2 * kp) * orth_norm_inv1;
-    vecs(2, 1) = orth_norm_inv1;
+    vecs(1, 1) = num_2 * denom_2 / km;
+    vecs(2, 1) = denom_2;
     vecs(3, 1) = 0;
+
+    vecs(0, 2) = num_2 * denom_2 / kp;
+    vecs(1, 2) = 0;
+    vecs(2, 2) = 0;
+    vecs(3, 2) = denom_2;
+
+    vecs(0, 3) = 0;
+    vecs(1, 3) = num_1 * denom_1 / kp;
+    vecs(2, 3) = denom_1;
+    vecs(3, 3) = 0;
 
     return vecs;
 }
@@ -334,9 +325,9 @@ arma::cx_mat44 topo_vert_2d(
     const arma::vec2& Q, const arma::vec2& k, const system_data_v2& sys) {
     const arma::umat transf = {
         {1, 0, 0, 0},
-        {0, 0, 0, 1},
-        {0, 1, 0, 0},
         {0, 0, 1, 0},
+        {0, 1, 0, 0},
+        {0, 0, 0, 1},
     };
 
     return transf *
@@ -681,6 +672,7 @@ struct topo_pot_cou_f {
     double k1, k2;
     double Q             = 0;
     double det_log_scale = 9.0;
+    uint8_t i, j;
 
     double disp_min = 0.0;
 
@@ -859,7 +851,8 @@ struct topo_th_int_t {
                            .submat(1, 1, 2, 2)),
         };
 
-        return 2 * (result(1, 1) - result(0, 1));
+        return result(0, 0) + result(1, 1) +
+               (pot.add_coupling ? -1 : 1) * (result(1, 0) + result(0, 1));
     }
 };
 
@@ -867,6 +860,8 @@ struct topo_pot_eff_cou_2d_f {
     const system_data_v2& sys;
     double Q;
     double k1, k2;
+    uint8_t i, j;
+    bool add_coupling = false;
 
     double det_log_scale = 3.0;
 
@@ -1283,10 +1278,41 @@ std::vector<double> topo_eff_cou_Q_ij_mat(
 
     pot_functor pot_s(sys, Q, mat_i, mat_j);
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
-    mat_s.fill_mat_potcoef();
 
-    return std::vector<double>(
-        mat_s.mat_potcoef.begin(), mat_s.mat_potcoef.end());
+    constexpr double k_max{8};
+    arma::vec k_vec{arma::linspace(1.0 / N_k, k_max, N_k)};
+
+    const double du{k_vec(1) - k_vec(0)};
+
+    arma::mat hamilt(N_k, N_k, arma::fill::none);
+
+    std::string filename = "extra/data/topo/potcoef_mat_int/" +
+                           std::string(typeid(pot_functor).name()) + "_" +
+                           std::to_string(pot_s.i) + "_" +
+                           std::to_string(pot_s.j) + "_" +
+                           std::to_string(N_k) + "_" + std::to_string(k_max) +
+                           "_" + std::to_string(pot_s.Q) + ".csv";
+    std::cout << filename << std::endl;
+
+    if (std::filesystem::exists(filename)) {
+        hamilt.load(filename, arma::csv_ascii);
+        hamilt /= pot_s.sys.params.eps_sol;
+    } else {
+#pragma omp parallel for collapse(2) schedule(guided)
+        for (uint32_t i = 0; i < N_k; i++) {
+            for (uint32_t j = 0; j <= i; j++) {
+                if (j <= i) {
+                    hamilt(i, j) = mat_s.pot_integral_d(k_vec(i), k_vec(j));
+                    hamilt(j, i) = hamilt(i, j);
+                }
+            }
+        }
+
+        // Saves only the potential contribution to the hamiltonian.
+        hamilt.save(filename, arma::csv_ascii);
+    }
+
+    return std::vector<double>(hamilt.begin(), hamilt.end());
 }
 
 std::vector<double> topo_eff_cou_Q_mat(
@@ -1366,14 +1392,14 @@ std::vector<double> topo_p_cou_eig(
 }
 
 std::vector<double> topo_t_cou_eig(
-    double k_max, uint32_t N_k, const system_data_v2& sys) {
+    double Q, double k_max, uint32_t N_k, const system_data_v2& sys) {
     arma::vec E_k(N_k);
     arma::vec k_vec{arma::linspace(1.0 / N_k, k_max, N_k)};
 
     const double du{k_vec(1) - k_vec(0)};
 
     for (uint32_t i = 0; i < N_k; i++) {
-        E_k[i] = topo_disp_t_int(0, k_vec[i], sys);
+        E_k[i] = topo_disp_t_int(Q, k_vec[i], sys);
     }
 
     arma::mat hamilt = arma::diagmat(E_k);
@@ -1382,7 +1408,7 @@ std::vector<double> topo_t_cou_eig(
     for (uint32_t i = 0; i < N_k; i++) {
         for (uint32_t j = 0; j <= i; j++) {
             if (j < i) {
-                hamilt(i, j) += du * M_SQRT2 * k_vec(j) *
+                hamilt(i, j) += 2 * du * k_vec(j) *
                                 topo_green_cou_int(k_vec(i), k_vec(j), sys);
                 hamilt(j, i) = hamilt(i, j);
             }
@@ -1419,9 +1445,10 @@ std::vector<double> topo_t_cou_eig(
 
 std::vector<double> topo_t_eff_cou_eig(
     double Q, double k_max, uint32_t N_k, const system_data_v2& sys) {
-    using pot_functor = topo_pot_cou_f;
+    using pot_functor = topo_pot_eff_cou_2d_f;
 
     pot_functor pot_s(sys, Q);
+    pot_s.add_coupling = false;
     topo_mat_s<pot_functor> mat_s(N_k, pot_s);
 
     arma::vec E_k(N_k);
@@ -1436,7 +1463,8 @@ std::vector<double> topo_t_eff_cou_eig(
     arma::mat hamilt(N_k, N_k, arma::fill::none);
 
     std::string filename = "extra/data/topo/potcoef_eig/" +
-                           std::string(typeid(pot_functor).name()) + "_" +
+                           std::string(typeid(pot_functor).name()) +
+                           (pot_s.add_coupling ? "_add_" : "_sub_") +
                            std::to_string(N_k) + "_" + std::to_string(k_max) +
                            "_" + std::to_string(pot_s.Q) + ".csv";
     std::cout << filename << std::endl;
@@ -1490,12 +1518,61 @@ std::vector<double> topo_t_eff_cou_eig(
     return std::vector<double>(result.begin(), result.end());
 }
 
+double topo_bloch_th_f(double th, topo_bloch_s* s) {
+    const double kx{
+        0.5 * (s->Q * std::cos(s->phi) + s->k * std::cos(s->phi + th)),
+    };
+    const double ky{
+        0.5 * (s->Q * std::sin(s->phi) + s->k * std::sin(s->phi + th)),
+    };
+
+    arma::cx_vec4 state = topo_orthU_2d(kx, ky, s->sys).col(s->state_idx);
+    return arma::cdot(state, s->gamma_vec[s->dim_idx] * state).real();
+}
+
+std::vector<double> topo_bloch_th(
+    double Q, double phi, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+    topo_bloch_s s{k, Q, phi, sys};
+
+    integrands[0].function = &templated_f<topo_bloch_s, topo_bloch_th_f>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    arma::mat::fixed<3, 4> result_mat;
+
+    for (uint32_t state_idx = 0; state_idx < 4; state_idx++) {
+        for (uint32_t dim_idx = 0; dim_idx < 3; dim_idx++) {
+            s.state_idx = state_idx;
+            s.dim_idx   = dim_idx;
+
+            gsl_integration_qag(
+                integrands, 0, 2 * M_PI, local_eps, 0, local_ws_size,
+                GSL_INTEG_GAUSS31, ws, result, error);
+
+            result_mat(dim_idx, state_idx) = result[0] * 0.5 * M_1_PI;
+        }
+    }
+
+    gsl_integration_workspace_free(ws);
+
+    return std::vector<double>(result_mat.begin(), result_mat.end());
+}
+
 double topo_chern_th1_f(double th, topo_chern_int_s* s) {
     const double kQcos{
         s->k * s->k + s->Q * s->Q + 2 * s->k * s->Q * std::cos(th),
     };
 
-    return s->sys.params.A2 * s->sys.params.A2 * 0.5 / s->Q *
+    return s->sys.params.A2 * s->sys.params.A2 * 0.5 *
            (s->Q + s->k * std::cos(th)) *
            (s->sys.params.M + s->sys.params.B2 * kQcos) /
            std::pow(
@@ -1530,7 +1607,7 @@ double topo_chern_th1(double Q, double k, const system_data_v2& sys) {
     return result[0] * 2;
 }
 
-double topo_chern_th2_f(double th, topo_chern_int_s* s) {
+double topo_chern_c_th2_f(double th, topo_chern_int_s* s) {
     const double kQcos{
         s->k * s->k + s->Q * s->Q + 2 * s->k * s->Q * std::cos(th),
     };
@@ -1549,7 +1626,7 @@ double topo_chern_th2_f(double th, topo_chern_int_s* s) {
                  s->sys.params.B2 * s->sys.params.B2 * kQcos),
     };
 
-    return -M_SQRT2 * s->sys.params.A2 / s->Q * (s->Q + s->k * std::cos(th)) *
+    return -M_SQRT2 * s->sys.params.A2 * (s->Q + s->k * std::cos(th)) *
            std::pow(long_kQcos, 0.25) /
            std::pow(
                s->sys.params.M - s->sys.params.B2 * kQcos +
@@ -1557,7 +1634,7 @@ double topo_chern_th2_f(double th, topo_chern_int_s* s) {
                1.5);
 }
 
-double topo_chern_th2(double Q, double k, const system_data_v2& sys) {
+double topo_chern_c_th2(double Q, double k, const system_data_v2& sys) {
     constexpr uint32_t n_int{1};
     constexpr uint32_t local_ws_size{(1 << 7)};
     constexpr double local_eps{1e-8};
@@ -1568,8 +1645,9 @@ double topo_chern_th2(double Q, double k, const system_data_v2& sys) {
 
     topo_chern_int_s s{k, Q, sys};
 
-    integrands[0].function = &templated_f<topo_chern_int_s, topo_chern_th2_f>;
-    integrands[0].params   = &s;
+    integrands[0].function =
+        &templated_f<topo_chern_int_s, topo_chern_c_th2_f>;
+    integrands[0].params = &s;
 
     gsl_integration_workspace* ws =
         gsl_integration_workspace_alloc(local_ws_size);
@@ -1580,5 +1658,195 @@ double topo_chern_th2(double Q, double k, const system_data_v2& sys) {
 
     gsl_integration_workspace_free(ws);
 
+    /*
+     * Factor of two because symmetric integrand and integral region [0, 2 *
+     * pi].
+     */
     return result[0] * 2;
+}
+
+double topo_chern_h_th2_f(double th, topo_chern_int_s* s) {
+    const double kQcos{
+        s->k * s->k + s->Q * s->Q - 2 * s->k * s->Q * std::cos(th),
+    };
+
+    const double long_kQcos{
+        s->sys.params.A2 * s->sys.params.A2 * kQcos +
+            std::pow(s->sys.params.M - s->sys.params.B2 * kQcos, 2),
+    };
+
+    double r =
+        0.5 * s->sys.params.A2 * (s->Q - s->k * std::cos(th)) /
+        (std::pow(long_kQcos, 0.25) *
+         std::pow(
+             s->sys.params.A2 * s->sys.params.A2 * kQcos +
+                 2 * std::pow(s->sys.params.M - s->sys.params.B2 * kQcos, 2) +
+                 2 * (-s->sys.params.M + s->sys.params.B2 * kQcos) *
+                     std::sqrt(long_kQcos),
+             0.25));
+
+    printf(
+        "%f, %e, %f\n", th,
+        s->sys.params.A2 * s->sys.params.A2 * kQcos +
+            2 * std::pow(s->sys.params.M - s->sys.params.B2 * kQcos, 2) +
+            2 * (-s->sys.params.M + s->sys.params.B2 * kQcos) *
+                std::sqrt(long_kQcos),
+        r);
+
+    return r;
+}
+
+double topo_chern_h_th2(double Q, double k, const system_data_v2& sys) {
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    topo_chern_int_s s{k, Q, sys};
+
+    integrands[0].function =
+        &templated_f<topo_chern_int_s, topo_chern_h_th2_f>;
+    integrands[0].params = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, 0, M_PI, local_eps, 0, local_ws_size, GSL_INTEG_GAUSS31,
+        ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    /*
+     * Factor of two because symmetric integrand and integral region [0, 2 *
+     * pi].
+     */
+    return result[0] * 2;
+}
+
+double topo_chern_k_f(double k, topo_chern_int_s* s) {
+    const double wf_Qk{
+        gsl_spline2d_eval(s->spline, s->Q, k, s->Q_acc, s->k_acc)};
+    const double dwf_dQk{
+        gsl_spline2d_eval_deriv_x(s->spline, s->Q, k, s->Q_acc, s->k_acc)};
+
+    /*
+     * Contribution from conduction states is the same, so
+     * topo_chern_th1 is multiplied by two.
+     */
+
+    return 2 * k *
+           (wf_Qk * dwf_dQk * (topo_chern_c_th2(s->Q, k, s->sys)) +
+            std::pow(wf_Qk, 2) * topo_chern_th1(s->Q, k, s->sys));
+}
+
+double topo_chern_k(double Q, topo_chern_int_s* s) {
+    /*
+     * topo_chern_int_s is only used for the system_data
+     * and interpolation data.
+     */
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    /*
+     * Ignore k in topo_chern_int_s.
+     */
+    topo_chern_int_s new_s{
+        0,        Q,        s->sys,    s->Q_min, s->Q_max,
+        s->k_min, s->k_max, s->spline, s->Q_acc, s->k_acc,
+    };
+
+    integrands[0].function = &templated_f<topo_chern_int_s, topo_chern_k_f>;
+    integrands[0].params   = &new_s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, s->k_min, s->k_max, local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    printf("Q: %f, %f\n", Q, result[0]);
+
+    return result[0];
+}
+
+double topo_chern(
+    const std::vector<double>& wf_vec,
+    const std::vector<double>& Q_vec,
+    const std::vector<double>& k_vec,
+    const system_data_v2& sys) {
+    /*
+     * Prepare interpolated wavefunction for integration.
+     */
+    const gsl_interp2d_type* T = gsl_interp2d_bilinear;
+
+    const uint64_t N_Q{Q_vec.size()}, N_k{k_vec.size()};
+
+    const double Q_lims[2] = {Q_vec[0], Q_vec[N_Q - 1]};
+    const double k_lims[2] = {k_vec[0], k_vec[N_k - 1]};
+
+    gsl_spline2d* spline{gsl_spline2d_alloc(T, N_Q, N_k)};
+    gsl_interp_accel* Q_acc = gsl_interp_accel_alloc();
+    gsl_interp_accel* k_acc = gsl_interp_accel_alloc();
+
+    double* wf_arr = new double[N_Q * N_k];
+
+    for (uint32_t i = 0; i < N_Q; i++) {
+        for (uint32_t j = 0; j < N_k; j++) {
+            gsl_spline2d_set(spline, wf_arr, i, j, wf_vec[i * N_k + j]);
+        }
+    }
+
+    gsl_spline2d_init(spline, Q_vec.data(), k_vec.data(), wf_arr, N_Q, N_k);
+
+    /*
+     * Integration over Q.
+     */
+    constexpr uint32_t n_int{1};
+    constexpr uint32_t local_ws_size{(1 << 7)};
+    constexpr double local_eps{1e-8};
+
+    double result[n_int] = {0}, error[n_int] = {0};
+
+    gsl_function integrands[n_int];
+
+    /*
+     * Ignore k and Q in topo_chern_int_s.
+     */
+    topo_chern_int_s s{
+        0,         0,         sys,    Q_lims[0], Q_lims[1],
+        k_lims[0], k_lims[1], spline, Q_acc,     k_acc,
+    };
+
+    integrands[0].function = &templated_f<topo_chern_int_s, topo_chern_k>;
+    integrands[0].params   = &s;
+
+    gsl_integration_workspace* ws =
+        gsl_integration_workspace_alloc(local_ws_size);
+
+    gsl_integration_qag(
+        integrands, Q_lims[0], Q_lims[1], local_eps, 0, local_ws_size,
+        GSL_INTEG_GAUSS31, ws, result, error);
+
+    gsl_integration_workspace_free(ws);
+
+    /*
+     * Free interpolation data.
+     */
+    gsl_spline2d_free(spline);
+    gsl_interp_accel_free(Q_acc);
+    gsl_interp_accel_free(k_acc);
+
+    return result[0];
 }

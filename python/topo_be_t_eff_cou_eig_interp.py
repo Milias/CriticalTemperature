@@ -1,5 +1,6 @@
 from common import *
 import matplotlib.pyplot as plt
+matplotlib.use('pdf')
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -19,25 +20,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-
-def find_eps_sol(N_k, sys, be_cou, be_bnd):
-    def find_f(eps_sol):
-        sys.params.eps_sol = eps_sol
-        return topo_be_p_cou(N_k, sys, be_bnd) - be_cou
-
-    return root_scalar(
-        find_f,
-        bracket=(2, 10),
-        method='brentq',
-    ).root
-
-
-"""
-eps_sol = find_eps_sol(N_k, sys, 193e-3, 1)
-print(eps_sol)
-"""
-
-file_version = 'v5'
+file_version = 'v3'
 
 if file_version == 'v1':
     N_Q = 1 << 6
@@ -51,28 +34,30 @@ elif file_version == 'v3':
 elif file_version == 'v4':
     N_Q = 1 << 8
     Q_vec = linspace(0, 0.25, N_Q)
-elif file_version == 'v5':
-    N_Q = (1 << 7) + (1 << 6)
-    Q_vec = linspace(0, 3.0, N_Q)
 
 Q_val = Q_vec[0]
-
 k_max = 8.0
+
+eig_arr = array(time_func(
+    topo_t_eff_cou_eig_interp,
+    Q_val,
+    k_max,
+    N_k,
+    N_k_interp,
+    sys,
+)).reshape(N_k_interp + 1, N_k_interp)
+
 print('k_max: %f' % k_max)
 
-k_vec = linspace(1 / N_k, k_max, N_k)
+k_vec = linspace(1 / N_k, k_max, N_k_interp)
 
-eig_arr = array(topo_t_cou_eig(Q_val, k_max, N_k, sys)).reshape(N_k + 1, N_k)
 eig_val = eig_arr[0]
 eig_vec = eig_arr[1:]
 
-#print(-2 * sys.c_aEM**2 / sys.params.eps_sol**2 * sys.d_params.m_p)
-
 plot_k_max = 0.5
-k_plot_vec = linspace(0, plot_k_max, 1 << 10)
+k_plot_vec = linspace(1 / N_k, plot_k_max, 1 << 10)
 disp_int_plot_vec = array([topo_disp_t_int(Q_val, k, sys) for k in k_plot_vec])
 
-k_vec = linspace(0, k_max, N_k)
 disp_int_vec = array([topo_disp_t_int(Q_val, k, sys) for k in k_vec])
 
 print('disp_min: %f eV' % amin(disp_int_vec))
@@ -81,8 +66,8 @@ n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-plot_vec = flatnonzero(eig_val < amin(disp_int_vec))
-#plot_vec = arange(6)
+plot_vec = flatnonzero(eig_val < amin(disp_int_vec))[:5]
+#plot_vec = arange(3)
 plot_eig_val = eig_val[plot_vec]
 
 print(plot_eig_val)
@@ -190,4 +175,4 @@ plt.savefig(
     transparent=True,
 )
 
-plt.show()
+#plt.show()

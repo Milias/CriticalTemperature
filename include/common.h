@@ -11,6 +11,7 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_interp.h>
+#include <gsl/gsl_spline.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_roots.h>
@@ -21,7 +22,8 @@
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 #include <gsl/gsl_sf_zeta.h>
-#include <gsl/gsl_spline.h>
+#include <gsl/gsl_interp2d.h>
+#include <gsl/gsl_spline2d.h>
 #include <gsl/gsl_sum.h>
 #include <gsl/gsl_vector.h>
 #include <mpfr.h>

@@ -8,14 +8,14 @@ plt.rcParams.update({
     'text.usetex': True,
 })
 
-fig_size = tuple(array([6.8 * 2, 5.3 * 2]))
+fig_size = tuple(array([6.8 * 4, 5.3 * 4]))
 
 
 def compute_cou_mat(result, q, q_ang_vec, k_vec, sys):
     for ii, q_ang in enumerate(q_ang_vec):
         result[ii] = array(
             topo_cou_2d_v(
-                [0.00, 0.0],
+                [0.05, 0.0],
                 -k_vec,
                 k_vec + array([q * cos(q_ang), q * sin(q_ang)]),
                 sys,
@@ -71,7 +71,8 @@ for ii, q in enumerate(q_vec):
     )
 
 #n_x, n_y = 16, 16
-n_x, n_y = 4, 4
+n_x, n_y = 8, 8
+#n_x, n_y = 4, 4
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 

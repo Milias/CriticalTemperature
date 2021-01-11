@@ -91,11 +91,20 @@ std::vector<double> topo_p_cou_eig(
     double k_max, uint32_t N_k, const system_data_v2& sys);
 
 std::vector<double> topo_t_cou_eig(
-    double k_max, uint32_t N_k, const system_data_v2& sys);
+    double Q, double k_max, uint32_t N_k, const system_data_v2& sys);
 
 std::vector<double> topo_t_eff_cou_eig(
     double Q, double k_max, uint32_t N_k, const system_data_v2& sys);
 
-double topo_chern_th1(double Q, double k, const system_data_v2& sys);
-double topo_chern_th2(double Q, double k, const system_data_v2& sys);
+std::vector<double> topo_bloch_th(
+    double Q, double phi, double k, const system_data_v2& sys);
 
+double topo_chern_th1(double Q, double k, const system_data_v2& sys);
+double topo_chern_c_th2(double Q, double k, const system_data_v2& sys);
+double topo_chern_h_th2(double Q, double k, const system_data_v2& sys);
+
+double topo_chern(
+    const std::vector<double>& wf_vec,
+    const std::vector<double>& Q_vec,
+    const std::vector<double>& k_vec,
+    const system_data_v2& sys);

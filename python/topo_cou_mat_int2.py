@@ -11,8 +11,8 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-N_Q = 1 << 6
-Q_vec = linspace(0, 0.2, N_Q)
+N_Q = 1 << 7
+Q_vec = linspace(0, 0.125, N_Q)
 
 try:
     os.mkdir('/storage/Reference/Work/University/PhD/TopoExciton/cou_mat')
@@ -38,7 +38,7 @@ def cou_mat_savefig(ii, Q_vec):
     plt.rcParams.update({
         'font.family': 'serif',
         'font.serif': ['Computer Modern'],
-        'text.usetex': True,
+        'text.usetex': False,
     })
 
     n_x, n_y = 1, 1
@@ -74,11 +74,11 @@ def cou_mat_savefig(ii, Q_vec):
     fig.subplots_adjust(wspace=0, hspace=0)
 
     plt.savefig(
-        '/storage/Reference/Work/University/PhD/TopoExciton/cou_mat/%0d_%s_%s.pdf'
+        '/storage/Reference/Work/University/PhD/TopoExciton/cou_mat_2/%0d_%s_%s.pdf'
         % (
             ii,
             os.path.splitext(os.path.basename(__file__))[0],
-            'v1',
+            'v2',
         ),
         transparent=True,
         dpi=300,

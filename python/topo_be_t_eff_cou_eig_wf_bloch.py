@@ -1,6 +1,6 @@
 from common import *
 import matplotlib.pyplot as plt
-matplotlib.use('pdf')
+#matplotlib.use('pdf')
 
 plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
@@ -37,18 +37,13 @@ N_Q_max = 128
 k_max = 8.0
 print('k_max: %f' % k_max)
 
-k_vec = linspace(-Q_vec[-1], Q_vec[-1], 1 << 8)
-k_int_vec = linspace(0.0, Q_vec[-1], 1 << 8)
-disp_vec = array([topo_eigenval_2d_v(0.5 * k, sys) for k in k_vec])
-disp_int_vec = array(
-    [amin([topo_disp_t_int(Q, k, sys) for k in k_int_vec]) for Q in Q_vec])
-
 eig_vec = full((N_Q_max, N_k), float('nan'))
 
 try:
-    eig_vec = load(
-        'extra/data/topo/%s_data_%s.npy' %
-        (os.path.splitext(os.path.basename(__file__))[0], file_version))
+    eig_vec = load('extra/data/topo/%s_data_%s.npy' % (
+        'topo_be_t_eff_cou_eig_wf',
+        file_version,
+    ))
 
 except IOError as e:
     print('%s' % e, flush=True)
@@ -84,91 +79,64 @@ for ii, Q_val in enumerate(Q_vec[:N_Q_max]):
 
     del eig_arr
 
-interp_k_vec = linspace(1 / N_k, k_max, N_k)
-print(
-    topo_chern(
-        eig_vec.ravel(),
-        Q_vec,
-        interp_k_vec,
-        sys,
-    ))
+Q_idx = 30
+Q_val = Q_vec[Q_idx]
+phi_val = 0.25 * pi
+k_vec = linspace(0, k_max, N_k)
+
+wf_interp = interp1d(k_vec, eig_vec[Q_idx])
+
+bloch_c_vec = array([[
+    topo_bloch_cx_th(Q_val, phi_val, k, sys),
+    topo_bloch_cy_th(Q_val, phi_val, k, sys),
+    topo_bloch_cz_th(Q_val, phi_val, k, sys),
+] for k in k_vec])
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
+plot_labels = ['$\sigma^x(k)$', '$\sigma^y(k)$', '$\sigma^z(k)$']
+
 colors = [
     matplotlib.colors.to_hex(matplotlib.colors.hsv_to_rgb([h, 0.8, 0.8]))
-    for h in linspace(0, 0.7, N_states_max)
+    for h in linspace(0, 0.7, 3)
 ]
-
-plot_data = full((N_Q, N_states_max), float('nan'))
 
 ax[0].axhline(
     y=0,
     color='k',
-    linestyle='-',
-    linewidth=0.5,
-)
-
-ax[-1].plot(
-    Q_vec,
-    disp_int_vec,
-    color='b',
     linewidth=0.6,
 )
 
-ax[0].plot(
-    k_vec,
-    disp_vec[:, 2],
-    color='g',
-    linewidth=0.7,
+ax[0].axvline(
+    x=Q_val,
+    color='m',
+    linewidth=0.5,
 )
 
-ax[0].plot(
-    k_vec,
-    disp_vec[:, 0],
-    color='c',
-    linewidth=0.7,
-)
-
-ax[0].plot(
-    -Q_vec,
-    disp_int_vec,
-    color='b',
-    linewidth=0.7,
-)
-"""
-for ii in range(N_states_max - 1, -1, -1):
-    kwargs = {
-        'color': colors[ii],
-        'linestyle': '-',
-        'linewidth': 1.1,
-    }
-
+for i in range(3):
     ax[0].plot(
-        Q_vec,
-        plot_data[:, ii],
-        **kwargs,
+        k_vec,
+        bloch_c_vec[:, i] * (wf_interp(k_vec)**2),
+        color=colors[i],
+        linewidth=1.2,
+        label=plot_labels[i],
     )
 
-    kwargs['label'] = '$E_{%d}$' % (ii + 1)
-
-    ax[0].plot(
-        -Q_vec,
-        plot_data[:, ii],
-        **kwargs,
+    ax[0].axhline(
+        y=trapz(bloch_c_vec[:, i] * (wf_interp(k_vec)**2), k_vec),
+        linewidth=0.7,
+        color=colors[i],
     )
-"""
 
-ax[0].set_xlim(-Q_vec[-1], Q_vec[-1])
-
-ax[0].set_xlabel('Q (nm$^{-1}$)')
-ax[0].set_ylabel('E (eV)')
+ax[0].set_xlabel('$k$ (nm$^{-1}$)')
+ax[0].set_xlim(k_vec[0], 1.0)
+#ax[0].set_ylim(-1, 1)
 
 ax[0].legend(
-    loc='center right',
-    prop={'size': 10},
+    loc='upper right',
+    prop={'size': 12},
 )
 
 plt.tight_layout()
@@ -180,4 +148,4 @@ plt.savefig(
     transparent=True,
 )
 
-#plt.show()
+plt.show()

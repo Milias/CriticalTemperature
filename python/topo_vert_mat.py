@@ -8,7 +8,7 @@ plt.rcParams.update({
     'text.usetex': True,
 })
 
-fig_size = tuple(array([6.8, 5.3]))
+fig_size = tuple(2 * array([6.8, 5.3]))
 
 with open('config/topo_sys.yaml') as f:
     print('Loading "%s".' % f.name)
@@ -19,11 +19,13 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-k_val = array([0.05, 0.0])
+Q_th = 0.0 * pi
+Q_length = 1.0
+Q_val = array([cos(Q_th), sin(Q_th)]) * Q_length
 kz_val = 0.0
 
-th_val = 0.25 * pi
-q_vec = linspace(-0.35, 0.35, 1 << 8 + 1)
+th_val = Q_th + 0.25 * pi
+q_vec = linspace(-5.0, 5.0, 1 << 8 + 1)
 result = zeros((q_vec.size, 4, 4), dtype=complex)
 
 disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in q_vec])
@@ -31,10 +33,12 @@ disp_vec = array([topo_eigenval_3d_v(k, kz_val, sys) for k in q_vec])
 
 states_transf = array([
     [1, 0, 0, 0],
-    [0, 0, 0, 1],
-    [0, 1, 0, 0],
     [0, 0, 1, 0],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
 ])
+
+print(states_transf)
 
 disp_arr = zeros((q_vec.size, 4, 4, 2))
 for i, j in itertools.product(range(4), repeat=2):
@@ -44,9 +48,9 @@ for i, j in itertools.product(range(4), repeat=2):
 for ii, q in enumerate(q_vec):
     result[ii] = array(
         topo_vert_2d_v(
-            [0.0, 0.0],
+            Q_val,
             [q * cos(th_val), q * sin(th_val)],
-            k_val,
+            [0.0, 0.0],
             sys,
         ),
         order='F',
@@ -59,12 +63,13 @@ for ii, q in enumerate(q_vec):
                      disp_arr[ii, :, :, i],
                  ), states_transf.T)
 
-#n_x, n_y = 4, 4
-n_x, n_y = 2, 2
+n_x, n_y = 4, 4
+#n_x, n_y = 2, 2
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-band_labels = ('v', 'v\'', 'c\'', 'c')
+#band_labels = ('v', 'v\'', 'c\'', 'c')
+band_labels = ('h_+', 'h_-', 'e_+', 'e_-')
 band_idx_all = array(tuple(itertools.product(
     range(4),
     repeat=2,
@@ -79,8 +84,8 @@ for i in range(2):
 for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     plot_data = result[:, i, j]
 
-    ax[n].plot(q_vec, real(plot_data), 'r-')
     ax[n].plot(q_vec, imag(plot_data), 'b-')
+    ax[n].plot(q_vec, real(plot_data), 'r-')
 
     ax[n].set_xlim(q_vec[0], q_vec[-1])
     ax[n].axhline(
@@ -94,6 +99,18 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
         color='k',
         linestyle='--',
         linewidth=0.7,
+    )
+    ax[n].axvline(
+        x=Q_length,
+        color='c',
+        linestyle='-',
+        linewidth=0.6,
+    )
+    ax[n].axvline(
+        x=-Q_length,
+        color='c',
+        linestyle='-',
+        linewidth=0.6,
     )
 
     ax[n].plot(
@@ -113,9 +130,9 @@ for n, (i, j) in enumerate(itertools.product(range(n_x), range(n_y))):
     )
 
     ax[n].text(
-        q_vec[0] * 0.98,
-        -1.2 * 0.98,
-        r'$%s%s$' % (
+        q_vec[0] * 0.95,
+        -1.2 * 0.95,
+        r'$%s,%s$' % (
             band_labels[band_idx_all[i, j, 0]],
             band_labels[band_idx_all[i, j, 1]],
         ),
@@ -137,7 +154,7 @@ fig.subplots_adjust(wspace=0, hspace=0)
 
 plt.savefig(
     '/storage/Reference/Work/University/PhD/TopoExciton/%s_%s.pdf' %
-    (os.path.splitext(os.path.basename(__file__))[0], 'v3'),
+    (os.path.splitext(os.path.basename(__file__))[0], 'v6'),
     transparent=True,
 )
 

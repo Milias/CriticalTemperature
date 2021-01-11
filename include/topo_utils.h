@@ -59,10 +59,21 @@ struct topo_mat_s {
     }
 
     void fill_mat_potcoef() {
-        std::string filename = "extra/data/topo/potcoef/" +
-                               std::string(typeid(topo_functor).name()) + "_" +
-                               std::to_string(N_k) + "_" +
-                               std::to_string(pot_s.Q) + ".csv";
+        std::string filename;
+
+        if (std::string(typeid(topo_functor).name()) ==
+            "24topo_pot_eff_cou_2d_ij_f") {
+            filename = "extra/data/topo/potcoef/" +
+                       std::string(typeid(topo_functor).name()) + "_" +
+                       std::to_string(pot_s.i) + "_" +
+                       std::to_string(pot_s.j) + "_" + std::to_string(N_k) +
+                       "_" + std::to_string(pot_s.Q) + ".csv";
+        } else {
+            filename = "extra/data/topo/potcoef/" +
+                       std::string(typeid(topo_functor).name()) + "_" +
+                       std::to_string(N_k) + "_" + std::to_string(pot_s.Q) +
+                       ".csv";
+        }
         std::cout << filename << std::endl;
         if (std::filesystem::exists(filename)) {
             mat_potcoef.load(filename, arma::csv_ascii);
@@ -96,7 +107,7 @@ struct topo_mat_s {
          * Takes the interaction potential matrix elements and
          * adapts them to the discretization method.
          */
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(guided)
         for (uint32_t i = 0; i < N_k; i++) {
             for (uint32_t k = 0; k < N_k; k++) {
                 const double t_v[2] = {u0(i), u0(k)};
@@ -121,7 +132,7 @@ struct topo_mat_s {
         // -= because the kinetic part is saved for z - H_0.
         row_elem = -arma::diagmat(row_G0);
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(guided)
         for (uint32_t i = 0; i < N_k; i++) {
             for (uint32_t k = 0; k < N_k; k++) {
                 const double t_v[2] = {u0(i), u0(k)};
@@ -179,9 +190,48 @@ struct topo_disp_t_th_s {
     const system_data_v2& sys;
 };
 
+struct topo_bloch_s {
+    double k;
+    double Q;
+    double phi;
+
+    const system_data_v2& sys;
+
+    uint32_t dim_idx = 0;
+    /* (h_-, h_+, e_+, e_-) */
+    uint32_t state_idx = 0;
+
+    const arma::cx_mat44 gamma_vec[3] = {
+        {
+            {0, 0, 0, 1},
+            {0, 0, 1, 0},
+            {0, 1, 0, 0},
+            {1, 0, 0, 0},
+        },
+        {
+            {0, 0, 0, std::complex<double>(0, -1)},
+            {0, 0, std::complex<double>(0, 1), 0},
+            {0, std::complex<double>(0, -1), 0, 0},
+            {std::complex<double>(0, 1), 0, 0, 0},
+        },
+        {
+            {1, 0, 0, 0},
+            {0, 1, 0, 0},
+            {0, 0, -1, 0},
+            {0, 0, 0, -1},
+        },
+    };
+};
+
 struct topo_chern_int_s {
     double k;
     double Q;
 
     const system_data_v2& sys;
+
+    double Q_min, Q_max, k_min, k_max;
+
+    gsl_spline2d* spline    = nullptr;
+    gsl_interp_accel* Q_acc = nullptr;
+    gsl_interp_accel* k_acc = nullptr;
 };

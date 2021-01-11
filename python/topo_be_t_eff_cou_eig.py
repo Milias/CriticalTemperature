@@ -20,7 +20,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-file_version = 'v3'
+file_version = 'v5'
 
 if file_version == 'v1':
     N_Q = 1 << 6
@@ -31,25 +31,24 @@ elif file_version == 'v2':
 elif file_version == 'v3':
     N_Q = 1 << 7
     Q_vec = linspace(0, 0.125, N_Q)
+elif file_version == 'v4':
+    N_Q = 1 << 8
+    Q_vec = linspace(0, 0.25, N_Q)
+elif file_version == 'v5':
+    N_Q = (1 << 7) + (1 << 6)
+    Q_vec = linspace(0, 3.0, N_Q)
 
-Q_val = Q_vec[3]
-k_max = 8.0
+N_states_max = 4
+Q_val = Q_vec[46]
+k_max = 16
 
-for ii, Q_val in enumerate(Q_vec):
-    eig_arr = array(time_func(
-        topo_t_eff_cou_eig,
-        Q_val,
-        k_max,
-        N_k,
-        sys,
-    )).reshape(N_k + 1, N_k)
-
-    print('[%d/%d] (Q, E_Q): (%f, %f)' % (
-        ii + 1,
-        N_Q,
-        Q_val,
-        eig_arr[0, 0],
-    ))
+eig_arr = array(time_func(
+    topo_t_eff_cou_eig,
+    Q_val,
+    k_max,
+    N_k,
+    sys,
+)).reshape(N_k + 1, N_k)
 
 print('k_max: %f' % k_max)
 
@@ -58,7 +57,7 @@ k_vec = linspace(1 / N_k, k_max, N_k)
 eig_val = eig_arr[0]
 eig_vec = eig_arr[1:]
 
-plot_k_max = 0.5
+plot_k_max = 16
 k_plot_vec = linspace(0, plot_k_max, 1 << 10)
 disp_int_plot_vec = array([topo_disp_t_int(Q_val, k, sys) for k in k_plot_vec])
 
@@ -71,7 +70,7 @@ n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
 ax = [fig.add_subplot(n_y, n_x, i + 1) for i in range(n_x * n_y)]
 
-plot_vec = flatnonzero(eig_val < amin(disp_int_vec))[:5]
+plot_vec = flatnonzero(eig_val < amin(disp_int_vec))[:N_states_max]
 #plot_vec = arange(3)
 plot_eig_val = eig_val[plot_vec]
 
@@ -138,6 +137,7 @@ for eig_idx in plot_vec:
         zorder=-eig_idx,
     )
 
+    """
     ax[0].plot(
         k_vec,
         eig_vec[eig_idx],
@@ -149,6 +149,7 @@ for eig_idx in plot_vec:
         markeredgecolor=colors[eig_idx],
         zorder=-eig_idx,
     )
+    """
 
 ax[0].axhline(
     y=0,

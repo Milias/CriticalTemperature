@@ -20,7 +20,7 @@ globals().update(settings_dict['globals'])
 params = initialize_struct(sys_params, settings_dict['params'])
 sys = system_data_v2(params)
 
-file_version = 'v5'
+file_version = 'v3'
 
 if file_version == 'v1':
     N_Q = 1 << 6
@@ -31,17 +31,16 @@ elif file_version == 'v2':
 elif file_version == 'v3':
     N_Q = 1 << 7
     Q_vec = linspace(0, 0.125, N_Q)
-elif file_version == 'v4':
-    N_Q = (1 << 7) + (1 << 6)
-    Q_vec = linspace(0, 0.25, N_Q)
-elif file_version == 'v5':
-    N_Q = (1 << 7) + (1 << 6)
-    Q_vec = linspace(0, 3.0, N_Q)
 
 N_states_max = 6
-N_Q_max = N_Q
-k_max = 16
+N_Q_max = 128
+k_max = 8.0
 print('k_max: %f' % k_max)
+plot_k_max = 0.4
+
+print(topo_chern_th1(0.4, 0.1, sys))
+print(topo_chern_c_th2(0.4, 0.1, sys))
+print(topo_chern_h_th2(0.4, 0.1, sys))
 
 k_vec = linspace(-Q_vec[-1], Q_vec[-1], 1 << 8)
 k_int_vec = linspace(0.0, Q_vec[-1], 1 << 8)
@@ -49,24 +48,19 @@ disp_vec = array([topo_eigenval_2d_v(0.5 * k, sys) for k in k_vec])
 disp_int_vec = array(
     [amin([topo_disp_t_int(Q, k, sys) for k in k_int_vec]) for Q in Q_vec])
 
-eig_val = full((N_Q_max, N_states_max), float('nan'))
-eig_vec = full((N_Q_max, N_states_max, N_k), float('nan'))
+eig_vec = full((N_Q_max, N_k), float('nan'))
 
 try:
-    loaded_data = load(
+    eig_vec = load(
         'extra/data/topo/%s_data_%s.npy' %
         (os.path.splitext(os.path.basename(__file__))[0], file_version))
-
-    #eig_val[:loaded_data.shape[0]] = loaded_data
 
 except IOError as e:
     print('%s' % e, flush=True)
 
 for ii, Q_val in enumerate(Q_vec[:N_Q_max]):
-    """
-    if not isnan(eig_val[ii, 0]):
+    if not isnan(eig_vec[ii, 0]):
         continue
-    """
 
     eig_arr = array(time_func(
         topo_t_eff_cou_eig,
@@ -75,18 +69,16 @@ for ii, Q_val in enumerate(Q_vec[:N_Q_max]):
         N_k,
         sys,
     )).reshape(N_k + 1, N_k)
-    """
-    eig_val[ii] = eig_arr[0]
-    eig_vec[ii] = eig_arr[1:]
+
+    eig_vec[ii] = eig_arr[1]
 
     save(
         'extra/data/topo/%s_data_%s' % (
             os.path.splitext(os.path.basename(__file__))[0],
             file_version,
         ),
-        eig_val,
+        eig_vec,
     )
-    """
 
     print('[%d/%d] (Q, E_Q): (%f, %f)' % (
         ii + 1,
@@ -95,7 +87,7 @@ for ii, Q_val in enumerate(Q_vec[:N_Q_max]):
         eig_arr[0, 0],
     ))
 
-exit()
+    del eig_arr
 
 n_x, n_y = 1, 1
 fig = plt.figure(figsize=fig_size)
@@ -106,81 +98,20 @@ colors = [
     for h in linspace(0, 0.7, N_states_max)
 ]
 
-plot_vec = array([
-    flatnonzero(eig_val[n_q] < disp_int_vec[N_Q_max - 1])[:N_states_max].size
-    for n_q in range(N_Q_max)
-])
-
-plot_data = full((N_Q, N_states_max), float('nan'))
-
-for ii, n_s_max in enumerate(plot_vec):
-    plot_data[:N_Q_max, :n_s_max] = eig_val[:, arange(n_s_max)]
-
-ax[0].axhline(
-    y=0,
-    color='k',
-    linestyle='-',
-    linewidth=0.5,
+ax[0].imshow(
+    eig_vec,
+    extent=(0, k_max, 0, Q_vec[-1]),
+    vmin=0,
+    vmax=4,
+    aspect='auto',
+    cmap='inferno',
 )
 
-ax[-1].plot(
-    Q_vec,
-    disp_int_vec,
-    color='b',
-    linewidth=0.6,
-)
+ax[0].set_xlim(0, plot_k_max)
+ax[0].set_ylim(0, Q_vec[-1])
 
-ax[0].plot(
-    k_vec,
-    disp_vec[:, 2],
-    color='g',
-    linewidth=0.7,
-)
-
-ax[0].plot(
-    k_vec,
-    disp_vec[:, 0],
-    color='c',
-    linewidth=0.7,
-)
-
-ax[0].plot(
-    -Q_vec,
-    disp_int_vec,
-    color='b',
-    linewidth=0.7,
-)
-
-for ii in range(N_states_max - 1, -1, -1):
-    kwargs = {
-        'color': colors[ii],
-        'linestyle': '-',
-        'linewidth': 1.1,
-    }
-
-    ax[0].plot(
-        Q_vec,
-        plot_data[:, ii],
-        **kwargs,
-    )
-
-    kwargs['label'] = '$E_{%d}$' % (ii + 1)
-
-    ax[0].plot(
-        -Q_vec,
-        plot_data[:, ii],
-        **kwargs,
-    )
-
-ax[0].set_xlim(-Q_vec[-1], Q_vec[-1])
-
-ax[0].set_xlabel('Q (nm$^{-1}$)')
-ax[0].set_ylabel('E (eV)')
-
-ax[0].legend(
-    loc='center right',
-    prop={'size': 10},
-)
+ax[0].set_xlabel('$k$ (nm$^{-1}$)')
+ax[0].set_ylabel('$Q$ (nm$^{-1}$)')
 
 plt.tight_layout()
 fig.subplots_adjust(wspace=0, hspace=0)
